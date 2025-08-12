@@ -8,15 +8,18 @@
 </head>
 <body>
 
-<h1>Hent annoncer fra GulogGratis</h1>
-<form id="searchForm" class="controls">
-  <div class="input-wrapper">
-    <input type="text" id="searchTerm" placeholder="Søg efter..." value="Østervig" autocomplete="off" />
-    <div class="spinner" id="loadingSpinner"></div>
+<div class="page-container">
+  <h1><span class="gg-highlight">GulogGratis</span></h1>
+  <form id="searchForm" class="controls">
+    <div class="input-wrapper">
+      <input type="text" id="searchTerm" placeholder="Søg efter..." value="lænestol" autocomplete="off" />
+      <div class="spinner" id="loadingSpinner"></div>
+    </div>
+  </form>
+  <div id="grid">
+    <!-- cards -->
   </div>
-</form>
-
-<div id="grid"></div>
+</div>
 
 <script>
 const PROXY = "https://corsproxy.io/?";
@@ -50,30 +53,31 @@ const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: 
   }
 }`;
 
-let alleListings = [];
-let visibleCount = 0;
-const batchSize = 12;
+let currentPage = 1;
 let currentTerm = "";
+let hasNextPage = false;
+let isLoading = false;
 
 const form = document.getElementById("searchForm");
 const input = document.getElementById("searchTerm");
+const grid = document.getElementById("grid");
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const søgeord = input.value.trim();
   if (!søgeord) return;
 
+  currentTerm = søgeord;
+  currentPage = 1;
+  grid.innerHTML = "";
+
   input.disabled = true;
   document.getElementById("loadingSpinner").classList.add("active");
 
-  try {
-    await hentAlleSider(søgeord);
-  } catch (err) {
-    console.log("Fejl: " + err.message);
-  } finally {
-    input.disabled = false;
-    document.getElementById("loadingSpinner").classList.remove("active");
-  }
+  await hentOgVisSide(currentPage);
+
+  input.disabled = false;
+  document.getElementById("loadingSpinner").classList.remove("active");
 });
 
 async function hentSide(page, term) {
@@ -105,50 +109,55 @@ async function hentSide(page, term) {
   return res.json();
 }
 
-async function hentAlleSider(term) {
-  alleListings = [];
-  let page = 1;
+async function hentOgVisSide(page) {
+  if (isLoading) return;
+  isLoading = true;
 
-  while (true) {
-    const data = await hentSide(page, term);
+  try {
+    const data = await hentSide(page, currentTerm);
     const searchData = data?.data?.search || {};
 
+    hasNextPage = searchData?.pagination?.hasNext;
     const listings = searchData.listings || [];
-    alleListings = alleListings.concat(listings);
 
-    if (!searchData?.pagination?.hasNext) {
-      break;
-    }
-    page++;
+    listings.forEach(({ id, title, price, url, primaryImage, city, zipcode }) => {
+      const card = document.createElement("a");
+      card.className = "card";
+      card.href = "https://www.guloggratis.dk" + url;
+      card.target = "_blank";
+      card.rel = "noopener noreferrer";
+
+      const location = [city, zipcode].filter(Boolean).join(" ") || "Ingen placering";
+
+      card.innerHTML = `
+        <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
+        <div class="card-content">
+          <h3>${title}</h3>
+          <div class="price">${price?.text || "Ingen pris"}</div>
+          <div class="city">${location}</div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  } catch (err) {
+    console.error("Fejl:", err.message);
+  } finally {
+    isLoading = false;
   }
-
-  visResultat();
 }
 
-function visResultat() {
-  const grid = document.getElementById("grid");
-  grid.innerHTML = "";
+const sentinel = document.createElement("div");
+sentinel.id = "sentinel";
+document.body.appendChild(sentinel);
 
-  alleListings.forEach(({ id, title, price, url, primaryImage, city, zipcode }) => {
-    const card = document.createElement("a");
-    card.className = "card";
-    card.href = "https://www.guloggratis.dk" + url;
-    card.target = "_blank";
-    card.rel = "noopener noreferrer";
-    
-    const location = [city, zipcode].filter(Boolean).join(" ") || "Ingen placering";
+const observer = new IntersectionObserver(async (entries) => {
+  if (entries[0].isIntersecting && hasNextPage && !isLoading) {
+    currentPage++;
+    await hentOgVisSide(currentPage);
+  }
+}, { rootMargin: "200px" });
 
-    card.innerHTML = `
-      <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
-      <div class="card-content">
-        <h3>${title}</h3>
-        <div class="price">${price?.text || "Ingen pris"}</div>
-        <div class="city">${location}</div>
-      </div>
-    `;
-    grid.appendChild(card);
-  });
-}
+observer.observe(sentinel);
 </script>
 
 </body>
