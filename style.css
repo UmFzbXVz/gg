@@ -1,11 +1,12 @@
 body {
     font-family: sans-serif;
-    background: #fafafa;
+    background: linear-gradient(135deg, #1e1e1e, #2c2c2c);
     margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
+    color: #eee;
 }
 
 .page-container {
@@ -57,21 +58,6 @@ input:hover {
     box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 
-
-.card {
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    display: flex;
-    flex-direction: column;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    text-decoration: none;
-    color: inherit;
-    animation: fadeInUp 0.4s ease forwards;
-
-}
-
 .card:hover {
     transform: translateY(-4px);
     box-shadow: 0 4px 10px rgba(0,0,0,0.15);
@@ -84,13 +70,13 @@ input:hover {
 
 .price {
     font-weight: bold;
-    color: #d9534f;
     margin-top: 8px;
+    color: #d9534f;
 }
 
 .city {
     font-size: 0.9em;
-    color: #666;
+    color: #ccc;
 }
 
 .input-wrapper {
@@ -126,10 +112,13 @@ input:hover {
 }
 
 .card {
-    background: white;
-    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     overflow: hidden;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -156,6 +145,7 @@ input:hover {
     flex: 1;
     display: flex;
     flex-direction: column;
+    color: white;
 }
 
 .card-content h3 {
