@@ -9,10 +9,11 @@ body {
 }
 
 h1 {
-    margin-top: 30px;
+    margin-top: 20px;
     margin-bottom: 20px;
     text-align: center;
     color: #333;
+    font-size: 1.5em;
 }
 
 .controls {
