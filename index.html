@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<title>GG</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+
+<h1>Hent annoncer fra GulogGratis</h1>
+<form id="searchForm" class="controls">
+  <div class="input-wrapper">
+    <input type="text" id="searchTerm" placeholder="Søg efter..." value="Østervig" autocomplete="off" />
+    <div class="spinner" id="loadingSpinner"></div>
+  </div>
+</form>
+
+<div id="grid"></div>
+
+<script>
+const PROXY = "https://corsproxy.io/?";
+const API_URL = "https://api.guloggratis.dk/graphql";
+
+const HEADERS = {
+    "accept": "*/*",
+    "accept-encoding": "gzip, deflate",
+    "accept-language": "en-US,en;q=0.9",
+    "apollo-require-preflight": "true",
+    "content-type": "application/json",
+    "origin": "https://www.guloggratis.dk",
+    "referer": "https://www.guloggratis.dk/",
+    "user-agent": "Dalvik/2.1.0 (Linux; U; Android 13; SM-G960F Build/TQ3A.230901.001) GGApp/8.4.4 EmbeddedBrowser",
+    "x-client-idfa": "granted",
+    "x-client-type": "android",
+    "x-client-version": "8.4.4",
+    "x-requested-with": "dk.guloggratis"
+};
+
+const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) {
+  redirect(url: $currentUrl)
+  search(filters: $filters, pagination: $pagination) {
+    pagination { total hasPrevious hasNext __typename }
+    listings {
+      id title description url
+      price { text raw __typename }
+      primaryImage { url(size: Listing320) __typename }
+      city zipcode
+    }
+  }
+}`;
+
+let alleListings = [];
+let visibleCount = 0;
+const batchSize = 12;
+let currentTerm = "";
+
+const form = document.getElementById("searchForm");
+const input = document.getElementById("searchTerm");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const søgeord = input.value.trim();
+  if (!søgeord) return;
+
+  input.disabled = true;
+  document.getElementById("loadingSpinner").classList.add("active");
+
+  try {
+    await hentAlleSider(søgeord);
+  } catch (err) {
+    console.log("Fejl: " + err.message);
+  } finally {
+    input.disabled = false;
+    document.getElementById("loadingSpinner").classList.remove("active");
+  }
+});
+
+async function hentSide(page, term) {
+  const body = {
+    operationName: "Search",
+    variables: {
+      filters: {
+        weapons: true,
+        term: term,
+        sorting: "LastCreated",
+        categoryFields: []
+      },
+      pagination: {
+        perPage: 60,
+        page: page
+      },
+      currentUrl: "/s"
+    },
+    query: GRAPHQL_QUERY
+  };
+
+  const res = await fetch(PROXY + API_URL, {
+    method: "POST",
+    headers: HEADERS,
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) throw new Error(`Fejl ved hentning af side ${page}: ${res.status}`);
+  return res.json();
+}
+
+async function hentAlleSider(term) {
+  alleListings = [];
+  let page = 1;
+
+  while (true) {
+    const data = await hentSide(page, term);
+    const searchData = data?.data?.search || {};
+
+    const listings = searchData.listings || [];
+    alleListings = alleListings.concat(listings);
+
+    if (!searchData?.pagination?.hasNext) {
+      break;
+    }
+    page++;
+  }
+
+  visResultat();
+}
+
+function visResultat() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+
+  alleListings.forEach(({ id, title, price, url, primaryImage, city, zipcode }) => {
+    const card = document.createElement("a");
+    card.className = "card";
+    card.href = "https://www.guloggratis.dk" + url;
+    card.target = "_blank";
+    card.rel = "noopener noreferrer";
+    
+    const location = [city, zipcode].filter(Boolean).join(" ") || "Ingen placering";
+
+    card.innerHTML = `
+      <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
+      <div class="card-content">
+        <h3>${title}</h3>
+        <div class="price">${price?.text || "Ingen pris"}</div>
+        <div class="city">${location}</div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+</script>
+
+</body>
+</html>
