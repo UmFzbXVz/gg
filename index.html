@@ -13,8 +13,23 @@
   <h1><span class="gg-highlight">Gul og Gratis</span></h1>
   <form id="searchForm" class="controls">
     <div class="input-wrapper">
-      <input type="text" id="searchTerm" placeholder="Søg efter..." value="lænestol" autocomplete="off" />
+      <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off" />
       <div class="spinner" id="loadingSpinner"></div>
+    </div>
+    <div class="filter-wrapper">
+      <button id="filterButton" class="filter-button" type="button">
+        <img src="https://www.svgrepo.com/show/502848/sort.svg" alt="Filter icon" class="filter-icon" />
+      </button>
+      <div id="filterMenu" class="filter-menu">
+        <div class="toggle-container">
+          <label for="sortToggle" class="toggle-label">Relevans</label>
+          <label class="switch">
+            <input type="checkbox" id="sortToggle" checked>
+            <span class="slider round"></span>
+          </label>
+          <label for="sortToggle" class="toggle-label">Senest oprettet</label>
+        </div>
+      </div>
     </div>
   </form>
   <div id="grid">
@@ -56,12 +71,17 @@ const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: 
 
 let currentPage = 1;
 let currentTerm = "";
+let currentSorting = "LastCreated";
 let hasNextPage = false;
 let isLoading = false;
 
 const form = document.getElementById("searchForm");
 const input = document.getElementById("searchTerm");
 const grid = document.getElementById("grid");
+const spinner = document.getElementById("loadingSpinner");
+const filterButton = document.getElementById("filterButton");
+const filterMenu = document.getElementById("filterMenu");
+const sortToggle = document.getElementById("sortToggle");
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -69,26 +89,51 @@ form.addEventListener("submit", async (e) => {
   if (!søgeord) return;
 
   currentTerm = søgeord;
+  await performSearch();
+});
+
+filterButton.addEventListener("click", (e) => {
+  e.stopPropagation();
+  filterMenu.classList.toggle("open");
+});
+
+document.addEventListener("click", (e) => {
+  if (!filterButton.contains(e.target) && !filterMenu.contains(e.target)) {
+    filterMenu.classList.remove("open");
+  }
+});
+
+sortToggle.addEventListener("change", async () => {
+  currentSorting = sortToggle.checked ? "LastCreated" : "Relevancy";
+  if (currentTerm) {
+    await performSearch();
+  }
+});
+
+async function performSearch() {
   currentPage = 1;
   grid.innerHTML = "";
-
   input.disabled = true;
-  document.getElementById("loadingSpinner").classList.add("active");
+  filterButton.disabled = true;
+  sortToggle.disabled = true;
+  spinner.classList.add("active");
 
   await hentOgVisSide(currentPage);
 
   input.disabled = false;
-  document.getElementById("loadingSpinner").classList.remove("active");
-});
+  filterButton.disabled = false;
+  sortToggle.disabled = false;
+  spinner.classList.remove("active");
+}
 
-async function hentSide(page, term) {
+async function hentSide(page, term, sorting) {
   const body = {
     operationName: "Search",
     variables: {
       filters: {
         weapons: true,
         term: term,
-        sorting: "LastCreated",
+        sorting: sorting,
         categoryFields: []
       },
       pagination: {
@@ -115,11 +160,16 @@ async function hentOgVisSide(page) {
   isLoading = true;
 
   try {
-    const data = await hentSide(page, currentTerm);
+    const data = await hentSide(page, currentTerm, currentSorting);
     const searchData = data?.data?.search || {};
 
     hasNextPage = searchData?.pagination?.hasNext;
     const listings = searchData.listings || [];
+    
+    if (page === 1 && listings.length === 0) {
+      grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${currentTerm}</strong>".</div>`;
+      return;
+    }
 
     listings.forEach(({ id, title, price, url, primaryImage, city, zipcode }) => {
       const card = document.createElement("a");
@@ -128,16 +178,19 @@ async function hentOgVisSide(page) {
       card.target = "_blank";
       card.rel = "noopener noreferrer";
 
-      const location = [city, zipcode].filter(Boolean).join(" ") || "Ingen placering";
+      const location = [city, zipcode].filter(Boolean).join(" ") || "";
 
       card.innerHTML = `
         <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
         <div class="card-content">
           <h3>${title}</h3>
-          <div class="price">${price?.text || "Ingen pris"}</div>
-          <div class="city">${location}</div>
+          <div class="card-footer">
+            <span class="location">${location}</span>
+            <span class="price">${price?.text || ""}</span>
+          </div>
         </div>
       `;
+
       grid.appendChild(card);
     });
   } catch (err) {
