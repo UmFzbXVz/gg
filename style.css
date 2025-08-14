@@ -406,6 +406,12 @@ input:checked + .slider:before {
     }
 }
 
+@media (max-width: 600px) {
+    #grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 @media (max-width: 480px) {
     .card img {
         aspect-ratio: 16 / 9;
