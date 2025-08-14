@@ -1,170 +1,574 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-<meta charset="UTF-8">
-<title>GG</title>
-<link rel="stylesheet" href="style.css">
-<link rel="icon" type="image/png" href="favicon.png">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta charset="UTF-8">
+    <title>GG</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 </head>
 <body>
-
-<div class="page-container">
-  <h1><span class="gg-highlight">Gul og Gratis</span></h1>
-  <form id="searchForm" class="controls">
-    <div class="input-wrapper">
-      <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off" />
-      <div class="spinner" id="loadingSpinner"></div>
-    </div>
-  </form>
-  <div id="grid">
-    <!-- cards -->
-  </div>
-</div>
-
-<script>
-const PROXY = "https://corsproxy.io/?";
-const API_URL = "https://api.guloggratis.dk/graphql";
-
-const HEADERS = {
-    "accept": "*/*",
-    "accept-encoding": "gzip, deflate",
-    "accept-language": "en-US,en;q=0.9",
-    "apollo-require-preflight": "true",
-    "content-type": "application/json",
-    "origin": "https://www.guloggratis.dk",
-    "referer": "https://www.guloggratis.dk/",
-    "user-agent": "Dalvik/2.1.0 (Linux; U; Android 13; SM-G960F Build/TQ3A.230901.001) GGApp/8.4.4 EmbeddedBrowser",
-    "x-client-idfa": "granted",
-    "x-client-type": "android",
-    "x-client-version": "8.4.4",
-    "x-requested-with": "dk.guloggratis"
-};
-
-const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) {
-  redirect(url: $currentUrl)
-  search(filters: $filters, pagination: $pagination) {
-    pagination { total hasPrevious hasNext __typename }
-    listings {
-      id title description url
-      price { text raw __typename }
-      primaryImage { url(size: Listing320) __typename }
-      city zipcode
-    }
-  }
-}`;
-
-let currentPage = 1;
-let currentTerm = "";
-let hasNextPage = false;
-let isLoading = false;
-
-const form = document.getElementById("searchForm");
-const input = document.getElementById("searchTerm");
-const grid = document.getElementById("grid");
-
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const søgeord = input.value.trim();
-  if (!søgeord) return;
-
-  currentTerm = søgeord;
-  currentPage = 1;
-  grid.innerHTML = "";
-
-  input.disabled = true;
-  document.getElementById("loadingSpinner").classList.add("active");
-
-  await hentOgVisSide(currentPage);
-
-  input.disabled = false;
-  document.getElementById("loadingSpinner").classList.remove("active");
-});
-
-async function hentSide(page, term) {
-  const body = {
-    operationName: "Search",
-    variables: {
-      filters: {
-        weapons: true,
-        term: term,
-        sorting: "LastCreated",
-        categoryFields: []
-      },
-      pagination: {
-        perPage: 60,
-        page: page
-      },
-      currentUrl: "/s"
-    },
-    query: GRAPHQL_QUERY
-  };
-
-  const res = await fetch(PROXY + API_URL, {
-    method: "POST",
-    headers: HEADERS,
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) throw new Error(`Fejl ved hentning af side ${page}: ${res.status}`);
-  return res.json();
-}
-
-async function hentOgVisSide(page) {
-  if (isLoading) return;
-  isLoading = true;
-
-  try {
-    const data = await hentSide(page, currentTerm);
-    const searchData = data?.data?.search || {};
-
-    hasNextPage = searchData?.pagination?.hasNext;
-    const listings = searchData.listings || [];
-    
-    if (page === 1 && listings.length === 0) {
-      grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${currentTerm}</strong>".</div>`;
-      return;
-    }
-
-    listings.forEach(({ id, title, price, url, primaryImage, city, zipcode }) => {
-      const card = document.createElement("a");
-      card.className = "card";
-      card.href = "https://www.guloggratis.dk" + url;
-      card.target = "_blank";
-      card.rel = "noopener noreferrer";
-
-      const location = [city, zipcode].filter(Boolean).join(" ") || "";
-
-      card.innerHTML = `
-        <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
-        <div class="card-content">
-          <h3>${title}</h3>
-          <div class="price">${price?.text || "Ingen pris"}</div>
-          <div class="city">${location}</div>
+    <div class="page-container">
+        <h1><span class="gg-highlight">Gul og Gratis</span></h1>
+        <form id="searchForm" class="controls">
+            <div class="input-wrapper">
+                <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off" />
+                <div class="spinner" id="loadingSpinner"></div>
+            </div>
+        </form>
+        <div id="grid">
+            <!-- cards -->
         </div>
-      `;
-      grid.appendChild(card);
-    });
-  } catch (err) {
-    console.error("Fejl:", err.message);
-  } finally {
-    isLoading = false;
-  }
-}
+    </div>
+    <script>
+        const PROXY = "https://corsproxy.io/?";
+        const API_URL = "https://api.guloggratis.dk/graphql";
+        const HEADERS = {
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate",
+            "accept-language": "en-US,en;q=0.9",
+            "apollo-require-preflight": "true",
+            "content-type": "application/json",
+            "origin": "https://www.guloggratis.dk",
+            "referer": "https://www.guloggratis.dk/",
+            "user-agent": "Dalvik/2.1.0 (Linux; U; Android 15; SM-E366B Build/TQ3A.250901.001) GGApp/8.4.4 EmbeddedBrowser",
+            "x-client-idfa": "granted",
+            "x-client-type": "android",
+            "x-client-version": "8.4.4",
+            "x-requested-with": "dk.guloggratis"
+        };
 
-const sentinel = document.createElement("div");
-sentinel.id = "sentinel";
-document.body.appendChild(sentinel);
+        const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) {
+            redirect(url: $currentUrl)
+            search(filters: $filters, pagination: $pagination) {
+                pagination {
+                    total
+                    hasPrevious
+                    hasNext
+                    __typename
+                }
+                listings {
+                    id
+                    title
+                    description
+                    url
+                    price {
+                        text
+                        raw
+                        __typename
+                    }
+                    primaryImage {
+                        url(size: Listing320)
+                        __typename
+                    }
+                    city
+                    zipcode
+                }
+            }
+        }`;
 
-const observer = new IntersectionObserver(async (entries) => {
-  if (entries[0].isIntersecting && hasNextPage && !isLoading) {
-    currentPage++;
-    await hentOgVisSide(currentPage);
-  }
-}, { rootMargin: "200px" });
+        const GET_LISTING_QUERY = `query GetListing($id: ID!) {
+            listing(id: $id) {
+                id
+                title
+                url
+                description
+                categoryId
+                externalLink
+                status
+                viewsCount
+                draftFinishedAt
+                expiredAt
+                productType
+                favoritesCount
+                isWeaponContent
+                isTransactionEnabled
+                metaTitle
+                metaDescription
+                isFixedPrice
+                isInBasket
+                isShippingAvailable
+                transactionData {
+                    transactionId
+                    __typename
+                }
+                price {
+                    raw
+                    text
+                    type
+                    __typename
+                }
+                originalPrice
+                images {
+                    sortOrder
+                    small: url(size: Listing640)
+                    medium: url(size: Listing1280)
+                    bigPictureSmall: url(size: Listing640x640)
+                    bigPictureMedium: url(size: Listing1280x1280)
+                    bigPictureLarge: url(size: Listing2560x2560)
+                    __typename
+                }
+                user {
+                    id
+                    displayName
+                    isBusiness
+                    mitIdValidatedAt
+                    isReachableByMessage
+                    isTransactionEnabled
+                    isSafepayAuthenticated
+                    status
+                    avatar {
+                        url(size: Avatar75)
+                        __typename
+                    }
+                    subscription {
+                        userId
+                        __typename
+                    }
+                    memberSince: createdAt(dateFormat: RELATIVE_LONG)
+                    availableFrom
+                    availableTo
+                    onlineListingsCount
+                    business {
+                        isBannerOwnershipActive
+                        isNoFollowEnabled
+                        isGenericExternalLinkTextEnabled
+                        isPromotionsEnabled
+                        isReachableByMail
+                        website
+                        websiteText
+                        profileText
+                        __typename
+                    }
+                    displayAddress
+                    city
+                    zipcode
+                    createdAt
+                    transactionHandInTime
+                    isFollowing
+                    receivedRatings {
+                        amount
+                        average
+                        __typename
+                    }
+                    followersCount
+                    __typename
+                }
+                displayAddress
+                phones {
+                    id
+                    masked
+                    __typename
+                }
+                categories {
+                    id
+                    title
+                    url
+                    __typename
+                }
+                leafCategory {
+                    id
+                    title
+                    url
+                    featureTags
+                    isPublished
+                    __typename
+                }
+                listingFields {
+                    field {
+                        id
+                        isSeo
+                        title
+                        slug
+                        isBookable
+                        sortOrder
+                        parentFieldId
+                        __typename
+                    }
+                    fieldOption {
+                        slug
+                        title
+                        __typename
+                    }
+                    value
+                    fullValue
+                    displayGroup {
+                        id
+                        title
+                        sortOrder
+                        __typename
+                    }
+                    __typename
+                }
+                __typename
+            }
+        }`;
 
-observer.observe(sentinel);
-</script>
+        const GET_USER_PROFILE_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) {
+          redirect(url: $currentUrl)
+          search(filters: $filters, pagination: $pagination) {
+            hash
+            seoTitle
+            seoDescription
+            title
+            isWeaponContent
+            category {
+              id
+              title
+              url
+              description
+              isPublished
+              icon
+              parent {
+                title
+                url
+                parent {
+                  title
+                  url
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+            availableCategories {
+              title
+              url
+              count
+              __typename
+            }
+            seoFilters {
+              title
+              values
+              __typename
+            }
+            metaCategories
+            listings {
+              id
+              title
+              isNew
+              description
+              url
+              externalLink
+              price {
+                text
+                raw
+                __typename
+              }
+              originalPrice
+              isTransactionEnabled
+              productType
+              primaryImage {
+                url(size: Listing320)
+                __typename
+              }
+              images {
+                id
+                url(size: Listing160)
+                largeUrl: url(size: Listing640x640)
+                small: url(size: Listing160)
+                xlarge: url(size: Listing1280x1280)
+                __typename
+              }
+              createdAt(dateFormat: RELATIVE_SHORT)
+              address
+              city
+              zipcode
+              userId
+              user {
+                id
+                avatar {
+                  url(size: Avatar75)
+                  __typename
+                }
+                displayName
+                mitIdValidatedAt
+                isBusiness
+                isSafepayAuthenticated
+                isReachableByMessage
+                __typename
+              }
+              isWeaponContent
+              __typename
+            }
+            galleryListings(filters: $filters) {
+              id
+              title
+              price {
+                raw
+                text
+                __typename
+              }
+              primaryImage {
+                url(size: Listing320)
+                __typename
+              }
+              url
+              user {
+                displayName
+                avatar {
+                  url(size: Avatar75)
+                  __typename
+                }
+                isBusiness
+                __typename
+              }
+              isWeaponContent
+              __typename
+            }
+            pagination {
+              total
+              hasPrevious
+              hasNext
+              __typename
+            }
+            seoLinks {
+              title
+              slug
+              options {
+                title
+                slug
+                __typename
+              }
+              __typename
+            }
+            userProfile {
+              id
+              displayName
+              phones {
+                id
+                masked
+                __typename
+              }
+              avatar {
+                url(size: Avatar150)
+                __typename
+              }
+              subscription {
+                userId
+                __typename
+              }
+              zipcode
+              city
+              mitIdValidatedAt
+              isBusiness
+              memberSince: createdAt(dateFormat: RELATIVE_LONG)
+              createdAt(dateFormat: ABSOLUTE_DATE_YEAR)
+              availableFrom
+              availableTo
+              business {
+                isBannerOwnershipActive
+                isNoFollowEnabled
+                isGenericExternalLinkTextEnabled
+                isPromotionsEnabled
+                isReachableByMail
+                website
+                websiteText
+                profileText
+                __typename
+              }
+              status
+              transactionHandInTime
+              isTransactionEnabled
+              isSafepayAuthenticated
+              isFollowing
+              receivedRatings {
+                amount
+                average
+                __typename
+              }
+              followersCount
+              __typename
+            }
+            __typename
+          }
+        }`;
 
+        let currentPage = 1;
+        let currentTerm = "";
+        let hasNextPage = false;
+        let isLoading = false;
+
+        const form = document.getElementById("searchForm");
+        const input = document.getElementById("searchTerm");
+        const grid = document.getElementById("grid");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const søgeord = input.value.trim();
+            if (!søgeord) return;
+            currentTerm = søgeord;
+            currentPage = 1;
+            grid.innerHTML = "";
+            input.disabled = true;
+            document.getElementById("loadingSpinner").classList.add("active");
+            await hentOgVisSide(currentPage);
+            input.disabled = false;
+            document.getElementById("loadingSpinner").classList.remove("active");
+        });
+
+        async function hentSide(page, term) {
+            const body = {
+                operationName: "Search",
+                variables: {
+                    category: "/mobler",
+                    filters: {
+                        area: ["oestjylland", "vestogmidtjylland", "nordjylland"],
+                        categoryFields: [],
+                        listingTypes: ["Sell"],
+                        sorting: "LastCreated",
+                        term: term,
+                        userType: "Private",
+                        weapons: true
+                    },
+                    pagination: { perPage: 60, page: page },
+                    currentUrl: "/s"
+                },
+                query: GRAPHQL_QUERY
+            };
+            const res = await fetch(PROXY + API_URL, { method: "POST", headers: HEADERS, body: JSON.stringify(body) });
+            if (!res.ok) {
+                throw new Error(`Fejl ved hentning af side ${page}: ${res.status}`);
+            }
+            return res.json();
+        }
+
+        async function hentOgVisSide(page) {
+            if (isLoading) return;
+            isLoading = true;
+            try {
+                const data = await hentSide(page, currentTerm);
+                const searchData = data?.data?.search || {};
+                hasNextPage = searchData?.pagination?.hasNext;
+                const listings = searchData.listings || [];
+                if (page === 1 && listings.length === 0) {
+                    grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${currentTerm}</strong>".</div>`;
+                    return;
+                }
+                listings.forEach(({ id, title, price, url, primaryImage, city, zipcode }) => {
+                    const card = document.createElement("a");
+                    card.className = "card";
+                    card.href = "https://www.guloggratis.dk" + url;
+                    card.target = "_blank";
+                    card.rel = "noopener noreferrer";
+                    const location = [city, zipcode].filter(Boolean).join(" ") || "";
+                    card.innerHTML = `
+                        <button class="info-btn" data-id="${id}">i</button>
+                        <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
+                        <div class="card-content">
+                            <h3>${title}</h3>
+                            <div class="price">${price?.text || "Ingen pris"}</div>
+                            <div class="city">${location}</div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (err) {
+                console.error("Fejl:", err.message);
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        grid.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('info-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = e.target.dataset.id;
+                await showSellerInfo(id);
+            }
+        });
+
+        async function showSellerInfo(listingId) {
+            try {
+                const listingBody = {
+                    operationName: "GetListing",
+                    variables: { id: listingId },
+                    query: GET_LISTING_QUERY
+                };
+                const listingRes = await fetch(PROXY + API_URL, { method: "POST", headers: HEADERS, body: JSON.stringify(listingBody) });
+                const listingData = await listingRes.json();
+                const user = listingData?.data?.listing?.user;
+                if (!user) return;
+
+                console.log('Brugerens ID:', user.id);
+
+                const profileBody = {
+                    operationName: "Search",
+                    variables: {
+                        filters: {
+                            weapons: true,
+                            categoryFields: [],
+                            userIds: [user.id]
+                        },
+                        pagination: {
+                            perPage: 36,
+                            page: 1
+                        },
+                        currentUrl: ""
+                    },
+                    query: GET_USER_PROFILE_QUERY
+                };
+                const profileRes = await fetch(PROXY + API_URL, { method: "POST", headers: HEADERS, body: JSON.stringify(profileBody) });
+                const profileData = await profileRes.json();
+                const search = profileData?.data?.search;
+                if (!search) return;
+
+                const userProfile = search.userProfile;
+                const listings = search.listings || [];
+                const pagination = search.pagination || {};
+
+                const addresses = [...new Set(listings.map(listing => listing.address).filter(Boolean))];
+
+                let fullAddress = '';
+                if (addresses.length > 0 && userProfile.zipcode && userProfile.city) {
+                    fullAddress = `${addresses[0]}, ${userProfile.zipcode} ${userProfile.city}`;
+                }
+
+                const mapsLink = fullAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}` : '';
+
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = `
+    <div class="modal-content">
+        <h2>Sælgers information</h2>
+        <p>Navn: <strong>${userProfile.displayName || 'Ukendt'}</strong></p>
+        <p>Medlem siden: <strong>${userProfile.memberSince || 'Ukendt'}</strong></p>
+        <p>Antal online annoncer: <strong><a href="https://www.guloggratis.dk/bruger/${user.id}" target="_blank" rel="noopener noreferrer">${pagination.total || 0}</a></strong></p>
+        <p>By: <strong>${userProfile.city || ''} ${userProfile.zipcode || ''}</strong></p>
+        ${fullAddress ? `
+            <p class="address-line">
+                Adresse:
+                <img class="maps-icon" src="https://www.merrimackvalleyglass.com/wp-content/uploads/2020/07/1200px-Google_Maps_icon_2020.svg_.png" alt="Google Maps">
+                <strong><a href="${mapsLink}" target="_blank" rel="noopener noreferrer">${fullAddress}</a></strong>
+            </p>
+        ` : ''}
+        <button class="close-btn">Luk</button>
+    </div>
+`;
+
+                document.body.appendChild(modal);
+                const closeBtn = modal.querySelector('.close-btn');
+                closeBtn.addEventListener('click', () => modal.remove());
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) modal.remove();
+                });
+            } catch (err) {
+                console.error('Fejl ved hentning af sælgerinfo:', err);
+            }
+        }
+
+        const sentinel = document.createElement("div");
+        sentinel.id = "sentinel";
+        document.body.appendChild(sentinel);
+
+        const observer = new IntersectionObserver(async (entries) => {
+            if (entries[0].isIntersecting && hasNextPage && !isLoading) {
+                currentPage++;
+                await hentOgVisSide(currentPage);
+            }
+        }, { rootMargin: "200px" });
+        observer.observe(sentinel);
+    </script>
 </body>
 </html>
