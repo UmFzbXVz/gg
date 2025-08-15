@@ -3,6 +3,15 @@
     const API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON";
     let isLoading = false;
 
+    function formatPrice(amount, currency) {
+        if (typeof amount !== "number") return "";
+        let formatted = amount.toLocaleString("da-DK");
+        if (currency === "DKK") {
+            return `${formatted} kr.`;
+        }
+        return `${formatted} ${currency || ""}`;
+    }
+
     window.hentOgVisDBA = async function(term) {
         if (isLoading) return;
         isLoading = true;
@@ -35,11 +44,13 @@
                                      ? doc.image_urls[0] 
                                      : "";
 
+                    const priceText = formatPrice(doc.price?.amount, doc.price?.currency_code);
+
                     card.innerHTML = `
                         <img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" />
                         <div class="card-content">
                             <h3>${doc.heading || ""}</h3>
-                            <div class="price">${doc.price?.amount || ""} ${doc.price?.currency_code || ""}</div>
+                            <div class="price">${priceText}</div>
                             <div class="city">${location}</div>
                         </div>
                         <div class="dba-badge">dba</div>
