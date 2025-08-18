@@ -48,18 +48,7 @@ function parseGGDate(str) {
         "x-requested-with": "dk.guloggratis"
     };
 
-const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) {
-    redirect(url: $currentUrl)
-    search(filters: $filters, pagination: $pagination) {
-        pagination { total hasPrevious hasNext __typename }
-        listings {
-            id title description url price { text raw __typename }
-            primaryImage { url(size: Listing320) __typename }
-            city zipcode
-            createdAt(dateFormat: RELATIVE_SHORT) 
-        }
-    }
-}`;
+const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) {    redirect(url: $currentUrl)    search(filters: $filters, pagination: $pagination) {        pagination { total hasPrevious hasNext __typename }        availableCategories {            title            url            count            __typename        }        listings {            id            title            description            url            price { text raw __typename }            primaryImage { url(size: Listing320) __typename }            city            zipcode            createdAt(dateFormat: RELATIVE_SHORT)        }    }}`;
 
         const GET_LISTING_QUERY = `query GetListing($id: ID!) {            listing(id: $id) {                id                title                url                description                categoryId                externalLink                status                viewsCount                draftFinishedAt                expiredAt                productType                favoritesCount                isWeaponContent                isTransactionEnabled                metaTitle                metaDescription                isFixedPrice                isInBasket                isShippingAvailable                transactionData {                    transactionId                    __typename                }                price {                    raw                    text                    type                    __typename                }                originalPrice                images {                    sortOrder                    small: url(size: Listing640)                    medium: url(size: Listing1280)                    bigPictureSmall: url(size: Listing640x640)                    bigPictureMedium: url(size: Listing1280x1280)                    bigPictureLarge: url(size: Listing2560x2560)                    __typename                }                user {                    id                    displayName                    isBusiness                    mitIdValidatedAt                    isReachableByMessage                    isTransactionEnabled                    isSafepayAuthenticated                    status                    avatar {                        url(size: Avatar75)                        __typename                    }                    subscription {                        userId                        __typename                    }                    memberSince: createdAt(dateFormat: RELATIVE_LONG)                    availableFrom                    availableTo                    onlineListingsCount                    business {                        isBannerOwnershipActive                        isNoFollowEnabled                        isGenericExternalLinkTextEnabled                        isPromotionsEnabled                        isReachableByMail                        website                        websiteText                        profileText                        __typename                    }                    displayAddress                    city                    zipcode                    createdAt                    transactionHandInTime                    isFollowing                    receivedRatings {                        amount                        average                        __typename                    }                    followersCount                    __typename                }                displayAddress                phones {                    id                    masked                    __typename                }                categories {                    id                    title                    url                    __typename                }                leafCategory {                    id                    title                    url                    featureTags                    isPublished                    __typename                }                listingFields {                    field {                        id                        isSeo                        title                        slug                        isBookable                        sortOrder                        parentFieldId                        __typename                    }                    fieldOption {                        slug                        title                        __typename                    }                    value                    fullValue                    displayGroup {                        id                        title                        sortOrder                        __typename                    }                    __typename                }                __typename            }        }`;
 
@@ -103,6 +92,18 @@ const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: 
         const data = await hentSide(page, currentTerm);
         const searchData = data?.data?.search || {};
         hasNextPage = searchData?.pagination?.hasNext;
+        
+        if (page === 1) {
+            const categories = searchData.availableCategories || [];
+            const moblerCategory = categories.find(cat => cat.title.toLowerCase() === "møbler");
+            if (moblerCategory) {
+                console.log(`Antal matchende annoncer: ${moblerCategory.count}`);
+                window.totalAds += moblerCategory.count;
+                window.updateProgress();
+            }
+        }
+        
+        
         const listings = searchData.listings || [];
         if (page === 1 && listings.length === 0) {
             return;
@@ -129,7 +130,8 @@ const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: 
             card.dataset.timestamp = parsedTimestamp;
             window.allCards.push(card);  
         });
-        window.sortAndRender(); 
+        window.loadedAds += listings.length;
+        window.updateProgress();
     } catch (err) {
         console.error("Fejl:", err.message);
     } finally {
@@ -193,21 +195,13 @@ const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: 
         }
     });
 
-    const sentinel = document.createElement("div");
-    sentinel.id = "gg-sentinel";
-    document.body.appendChild(sentinel);
-    const observer = new IntersectionObserver(async (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isLoading) {
-            currentPage++;
-            await hentOgVisSide(currentPage);
-        }
-    }, { rootMargin: "200px" });
-    observer.observe(sentinel);
-
 window.hentOgVisGG = async function(term) {
     currentTerm = term;
     currentPage = 1;
-    await hentOgVisSide(currentPage);
+    hasNextPage = true;
+    while (hasNextPage) {
+        await hentOgVisSide(currentPage);
+        currentPage++;
+    }
 };
 })();
-
