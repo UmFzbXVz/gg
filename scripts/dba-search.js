@@ -29,37 +29,44 @@
             const data = await res.json();
 
             const docs = data.docs || [];
-            docs.forEach(doc => {
-                if (doc.type === "bap") {
-                    const card = document.createElement("a");
-                    card.className = "card";
-                    card.href = doc.canonical_url?.startsWith("http") 
-                                ? doc.canonical_url 
-                                : `https://www.dba.dk${doc.canonical_url || ""}`;
-                    card.target = "_blank";
-                    card.rel = "noopener noreferrer";
+            const bapDocs = docs.filter(doc => doc.type === "bap");
+            console.log(`Antal resultater for "${term}":`, bapDocs.length);
 
-                    const location = doc.location || "";
-                    const imageSrc = (doc.image_urls && doc.image_urls.length > 0) 
-                                     ? doc.image_urls[0] 
-                                     : "";
+            window.totalAds += bapDocs.length;
+            window.updateProgress();
 
-                    const priceText = formatPrice(doc.price?.amount, doc.price?.currency_code);
+            bapDocs.forEach(doc => {
+                const card = document.createElement("a");
+                card.className = "card";
+                card.href = doc.canonical_url?.startsWith("http") 
+                            ? doc.canonical_url 
+                            : `https://www.dba.dk${doc.canonical_url || ""}`;
+                card.target = "_blank";
+                card.rel = "noopener noreferrer";
 
-                    card.innerHTML = `
-                        <img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" />
-                        <div class="card-content">
-                            <h3>${doc.heading || ""}</h3>
-                            <div class="price">${priceText}</div>
-                            <div class="city">${location}</div>
-                        </div>
-                        <div class="dba-badge">dba</div>
-                    `;
+                const location = doc.location || "";
+                const imageSrc = (doc.image_urls && doc.image_urls.length > 0) 
+                                 ? doc.image_urls[0] 
+                                 : "";
 
-                    card.dataset.timestamp = doc.timestamp || 0;  
-                    window.allCards.push(card); 
-                }
+                const priceText = formatPrice(doc.price?.amount, doc.price?.currency_code);
+
+                card.innerHTML = `
+                    <img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" />
+                    <div class="card-content">
+                        <h3>${doc.heading || ""}</h3>
+                        <div class="price">${priceText}</div>
+                        <div class="city">${location}</div>
+                    </div>
+                    <div class="dba-badge">dba</div>
+                `;
+
+                card.dataset.timestamp = doc.timestamp || 0;  
+                window.allCards.push(card); 
             });
+
+            window.loadedAds += bapDocs.length;
+            window.updateProgress();
         } catch (err) {
             console.error("Fejl DBA:", err);
         } finally {
