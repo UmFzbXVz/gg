@@ -1,47 +1,71 @@
 <!DOCTYPE html>
 <html lang="da">
-	<head>
-		<meta charset="UTF-8">
-		<title>Kvit og Frit</title>
-		<link rel="stylesheet" href="style.css">
-		<link rel="icon" type="image/png" href="favicon.png">
-		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-	</head>
-	<body>
-		<div class="page-container">
-			<h1>
-				<span class="gg-highlight">Kvit og Frit</span>
-			</h1>
-			<form id="searchForm" class="controls">
-				<div class="input-wrapper">
-					<input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
-					<div class="spinner" id="loadingSpinner"></div>
-				</div>
-			</form>
-			<div id="grid"></div>
-		</div>
-		<script src="scripts/gg-search.js"></script>
-		<script src="scripts/dba-search.js"></script>
+    <head>
+        <meta charset="UTF-8">
+        <title>Hest og Hanegal</title>
+        <link rel="stylesheet" href="style.css">
+        <link rel="icon" type="image/png" href="favicon.png">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    </head>
+    <body>
+        <div class="page-container">
+            <h1>
+                <span class="gg-highlight">Kvit og Frit</span>
+            </h1>
+            <form id="searchForm" class="controls">
+                <div class="input-wrapper">
+                    <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
+                </div>
+            </form>
+            <div id="grid"></div>
+        </div>
+        <script src="scripts/gg-search.js"></script>
+        <script src="scripts/dba-search.js"></script>
 <script>
 (() => {
     const form = document.getElementById("searchForm");
     const input = document.getElementById("searchTerm");
     const grid = document.getElementById("grid");
-    const spinner = document.getElementById("loadingSpinner");
-    
+
+    const BATCH_SIZE = 60; 
     let isFirstSearch = true;
     window.allCards = [];
-    
+    let currentIndex = 0;
+
     function showNoResults(term) {
-        if (window.allCards.length === 0) { 
+        if (window.allCards.length === 0) {
             grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
         }
     }
 
-    window.sortAndRender = function() {
+    function sortAllCards() {
         window.allCards.sort((a, b) => b.dataset.timestamp - a.dataset.timestamp);
+    }
+
+    function renderNextBatch() {
+        const nextBatch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
+        nextBatch.forEach(card => grid.appendChild(card));
+        currentIndex += nextBatch.length;
+    }
+
+    function handleScroll() {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+            renderNextBatch();
+        }
+    }
+
+    window.sortAndRender = function() {
+        sortAllCards();
         grid.innerHTML = "";
-        window.allCards.forEach(card => grid.appendChild(card));
+        currentIndex = 0;
+        renderNextBatch();
+        window.addEventListener('scroll', handleScroll);
+    }
+
+    window.updateProgress = function() {
+        if (window.totalAds === 0) return;
+        const percent = Math.min((window.loadedAds / window.totalAds) * 100, 100);
+        input.style.background = `linear-gradient(to right, #4CAF50 ${percent}%, #f0f0f0 ${percent}%)`;
     }
 
     form.addEventListener("submit", async (e) => {
@@ -50,31 +74,36 @@
         if (!term) return;
 
         input.disabled = true;
-        spinner.classList.add("active");
 
         if (isFirstSearch) {
             grid.innerHTML = "";
             isFirstSearch = false;
         }
 
-        window.allCards = []; 
+        window.allCards = [];
+        window.totalAds = 0;
+        window.loadedAds = 0;
+        currentIndex = 0;
+
+        window.removeEventListener('scroll', handleScroll);
 
         const ggPromise = window.hentOgVisGG(term);
         const dbaPromise = window.hentOgVisDBA(term);
 
         try {
             await Promise.all([ggPromise, dbaPromise]);
-            window.sortAndRender();  
+            window.sortAndRender();
             showNoResults(term);
         } catch (err) {
             console.error("Fejl i søgning:", err);
         } finally {
             input.disabled = false;
-            spinner.classList.remove("active");
+            input.style.background = '';
         }
     });
 })();
 </script>
 
-	</body>
+
+    </body>
 </html>
