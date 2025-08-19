@@ -3,31 +3,58 @@ const danishMonths = {
     'jul': 6, 'aug': 7, 'sep': 8, 'okt': 9, 'nov': 10, 'dec': 11
 };
 
+const danishWeekdays = {
+    'søn': 0, 'man': 1, 'tir': 2, 'ons': 3, 'tor': 4, 'fre': 5, 'lør': 6
+};
+
 function parseGGDate(str) {
     if (!str) return 0;
     const now = new Date();
+    let date = new Date(now);
+
     if (str === 'i dag') {
-        return now.getTime();
+        date.setHours(0, 0, 0, 0);
+        return date.getTime();
     } else if (str === 'i går') {
-        now.setDate(now.getDate() - 1);
-        return now.getTime();
-    } else {
-        const match = str.match(/^(\d+)\.\s*(\w+)\.$/);
-        if (match) {
-            const day = parseInt(match[1]);
-            const monthAbbr = match[2].toLowerCase();
-            const month = danishMonths[monthAbbr];
-            if (month !== undefined) {
-                let year = now.getFullYear();
-                const date = new Date(year, month, day);
-                if (date > now) {
-                    date.setFullYear(year - 1);
-                }
-                return date.getTime();
+        date.setDate(date.getDate() - 1);
+        date.setHours(0, 0, 0, 0);
+        return date.getTime();
+    }
+
+    const weekdayMatch = str.match(/^([a-zæøå]+)\.?$/i);
+    if (weekdayMatch) {
+        const abbr = weekdayMatch[1].toLowerCase();
+        const weekday = danishWeekdays[abbr];
+        if (weekday !== undefined) {
+            let target = new Date(now);
+            target.setHours(0, 0, 0, 0);
+
+            let diff = now.getDay() - weekday;
+            if (diff <= 0) {
+                diff += 7;
             }
+            target.setDate(now.getDate() - diff);
+            return target.getTime();
         }
     }
-    return 0; 
+
+    const match = str.match(/^(\d+)\.\s*(\w+)\.?\s*(\d+)?\.?$/);
+    if (match) {
+        const day = parseInt(match[1]);
+        const monthAbbr = match[2].toLowerCase();
+        const month = danishMonths[monthAbbr];
+        if (month === undefined) return 0;
+
+        let year = match[3] ? parseInt(match[3]) : now.getFullYear();
+        date = new Date(year, month, day, 0, 0, 0, 0);
+
+        if (!match[3] && date > now) {
+            date.setFullYear(year - 1);
+        }
+        return date.getTime();
+    }
+
+    return 0;
 }
 
 (() => {
@@ -49,10 +76,8 @@ function parseGGDate(str) {
     };
 
 const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) {    redirect(url: $currentUrl)    search(filters: $filters, pagination: $pagination) {        pagination { total hasPrevious hasNext __typename }        availableCategories {            title            url            count            __typename        }        listings {            id            title            description            url            price { text raw __typename }            primaryImage { url(size: Listing320) __typename }            city            zipcode            createdAt(dateFormat: RELATIVE_SHORT)        }    }}`;
-
-        const GET_LISTING_QUERY = `query GetListing($id: ID!) {            listing(id: $id) {                id                title                url                description                categoryId                externalLink                status                viewsCount                draftFinishedAt                expiredAt                productType                favoritesCount                isWeaponContent                isTransactionEnabled                metaTitle                metaDescription                isFixedPrice                isInBasket                isShippingAvailable                transactionData {                    transactionId                    __typename                }                price {                    raw                    text                    type                    __typename                }                originalPrice                images {                    sortOrder                    small: url(size: Listing640)                    medium: url(size: Listing1280)                    bigPictureSmall: url(size: Listing640x640)                    bigPictureMedium: url(size: Listing1280x1280)                    bigPictureLarge: url(size: Listing2560x2560)                    __typename                }                user {                    id                    displayName                    isBusiness                    mitIdValidatedAt                    isReachableByMessage                    isTransactionEnabled                    isSafepayAuthenticated                    status                    avatar {                        url(size: Avatar75)                        __typename                    }                    subscription {                        userId                        __typename                    }                    memberSince: createdAt(dateFormat: RELATIVE_LONG)                    availableFrom                    availableTo                    onlineListingsCount                    business {                        isBannerOwnershipActive                        isNoFollowEnabled                        isGenericExternalLinkTextEnabled                        isPromotionsEnabled                        isReachableByMail                        website                        websiteText                        profileText                        __typename                    }                    displayAddress                    city                    zipcode                    createdAt                    transactionHandInTime                    isFollowing                    receivedRatings {                        amount                        average                        __typename                    }                    followersCount                    __typename                }                displayAddress                phones {                    id                    masked                    __typename                }                categories {                    id                    title                    url                    __typename                }                leafCategory {                    id                    title                    url                    featureTags                    isPublished                    __typename                }                listingFields {                    field {                        id                        isSeo                        title                        slug                        isBookable                        sortOrder                        parentFieldId                        __typename                    }                    fieldOption {                        slug                        title                        __typename                    }                    value                    fullValue                    displayGroup {                        id                        title                        sortOrder                        __typename                    }                    __typename                }                __typename            }        }`;
-
-        const GET_USER_PROFILE_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) {          redirect(url: $currentUrl)          search(filters: $filters, pagination: $pagination) {            hash            seoTitle            seoDescription            title            isWeaponContent            category {              id              title              url              description              isPublished              icon              parent {                title                url                parent {                  title                  url                  __typename                }                __typename              }              __typename            }            availableCategories {              title              url              count              __typename            }            seoFilters {              title              values              __typename            }            metaCategories            listings {              id              title              isNew              description              url              externalLink              price {                text                raw                __typename              }              originalPrice              isTransactionEnabled              productType              primaryImage {                url(size: Listing320)                __typename              }              images {                id                url(size: Listing160)                largeUrl: url(size: Listing640x640)                small: url(size: Listing160)                xlarge: url(size: Listing1280x1280)                __typename              }              createdAt(dateFormat: RELATIVE_SHORT)              address              city              zipcode              userId              user {                id                avatar {                  url(size: Avatar75)                  __typename                }                displayName                mitIdValidatedAt                isBusiness                isSafepayAuthenticated                isReachableByMessage                __typename              }              isWeaponContent              __typename            }            galleryListings(filters: $filters) {              id              title              price {                raw                text                __typename              }              primaryImage {                url(size: Listing320)                __typename              }              url              user {                displayName                avatar {                  url(size: Avatar75)                  __typename                }                isBusiness                __typename              }              isWeaponContent              __typename            }            pagination {              total              hasPrevious              hasNext              __typename            }            seoLinks {              title              slug              options {                title                slug                __typename              }              __typename            }            userProfile {              id              displayName              phones {                id                masked                __typename              }              avatar {                url(size: Avatar150)                __typename              }              subscription {                userId                __typename              }              zipcode              city              mitIdValidatedAt              isBusiness              memberSince: createdAt(dateFormat: RELATIVE_LONG)              createdAt(dateFormat: ABSOLUTE_DATE_YEAR)              availableFrom              availableTo              business {                isBannerOwnershipActive                isNoFollowEnabled                isGenericExternalLinkTextEnabled                isPromotionsEnabled                isReachableByMail                website                websiteText                profileText                __typename              }              status              transactionHandInTime              isTransactionEnabled              isSafepayAuthenticated              isFollowing              receivedRatings {                amount                average                __typename              }              followersCount              __typename            }            __typename          }        }`;
+const GET_LISTING_QUERY = `query GetListing($id: ID!) {            listing(id: $id) {                id                title                url                description                categoryId                externalLink                status                viewsCount                draftFinishedAt                expiredAt                productType                favoritesCount                isWeaponContent                isTransactionEnabled                metaTitle                metaDescription                isFixedPrice                isInBasket                isShippingAvailable                transactionData {                    transactionId                    __typename                }                price {                    raw                    text                    type                    __typename                }                originalPrice                images {                    sortOrder                    small: url(size: Listing640)                    medium: url(size: Listing1280)                    bigPictureSmall: url(size: Listing640x640)                    bigPictureMedium: url(size: Listing1280x1280)                    bigPictureLarge: url(size: Listing2560x2560)                    __typename                }                user {                    id                    displayName                    isBusiness                    mitIdValidatedAt                    isReachableByMessage                    isTransactionEnabled                    isSafepayAuthenticated                    status                    avatar {                        url(size: Avatar75)                        __typename                    }                    subscription {                        userId                        __typename                    }                    memberSince: createdAt(dateFormat: RELATIVE_LONG)                    availableFrom                    availableTo                    onlineListingsCount                    business {                        isBannerOwnershipActive                        isNoFollowEnabled                        isGenericExternalLinkTextEnabled                        isPromotionsEnabled                        isReachableByMail                        website                        websiteText                        profileText                        __typename                    }                    displayAddress                    city                    zipcode                    createdAt                    transactionHandInTime                    isFollowing                    receivedRatings {                        amount                        average                        __typename                    }                    followersCount                    __typename                }                displayAddress                phones {                    id                    masked                    __typename                }                categories {                    id                    title                    url                    __typename                }                leafCategory {                    id                    title                    url                    featureTags                    isPublished                    __typename                }                listingFields {                    field {                        id                        isSeo                        title                        slug                        isBookable                        sortOrder                        parentFieldId                        __typename                    }                    fieldOption {                        slug                        title                        __typename                    }                    value                    fullValue                    displayGroup {                        id                        title                        sortOrder                        __typename                    }                    __typename                }                __typename            }        }`;
+const GET_USER_PROFILE_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) {          redirect(url: $currentUrl)          search(filters: $filters, pagination: $pagination) {            hash            seoTitle            seoDescription            title            isWeaponContent            category {              id              title              url              description              isPublished              icon              parent {                title                url                parent {                  title                  url                  __typename                }                __typename              }              __typename            }            availableCategories {              title              url              count              __typename            }            seoFilters {              title              values              __typename            }            metaCategories            listings {              id              title              isNew              description              url              externalLink              price {                text                raw                __typename              }              originalPrice              isTransactionEnabled              productType              primaryImage {                url(size: Listing320)                __typename              }              images {                id                url(size: Listing160)                largeUrl: url(size: Listing640x640)                small: url(size: Listing160)                xlarge: url(size: Listing1280x1280)                __typename              }              createdAt(dateFormat: RELATIVE_SHORT)              address              city              zipcode              userId              user {                id                avatar {                  url(size: Avatar75)                  __typename                }                displayName                mitIdValidatedAt                isBusiness                isSafepayAuthenticated                isReachableByMessage                __typename              }              isWeaponContent              __typename            }            galleryListings(filters: $filters) {              id              title              price {                raw                text                __typename              }              primaryImage {                url(size: Listing320)                __typename              }              url              user {                displayName                avatar {                  url(size: Avatar75)                  __typename                }                isBusiness                __typename              }              isWeaponContent              __typename            }            pagination {              total              hasPrevious              hasNext              __typename            }            seoLinks {              title              slug              options {                title                slug                __typename              }              __typename            }            userProfile {              id              displayName              phones {                id                masked                __typename              }              avatar {                url(size: Avatar150)                __typename              }              subscription {                userId                __typename              }              zipcode              city              mitIdValidatedAt              isBusiness              memberSince: createdAt(dateFormat: RELATIVE_LONG)              createdAt(dateFormat: ABSOLUTE_DATE_YEAR)              availableFrom              availableTo              business {                isBannerOwnershipActive                isNoFollowEnabled                isGenericExternalLinkTextEnabled                isPromotionsEnabled                isReachableByMail                website                websiteText                profileText                __typename              }              status              transactionHandInTime              isTransactionEnabled              isSafepayAuthenticated              isFollowing              receivedRatings {                amount                average                __typename              }              followersCount              __typename            }            __typename          }        }`;
 
     let currentPage = 1;
     let currentTerm = "";
@@ -85,30 +110,28 @@ const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: 
         return res.json();
     }
 
-   async function hentOgVisSide(page) {
+async function hentOgVisSide(page) {
     if (isLoading) return;
     isLoading = true;
     try {
         const data = await hentSide(page, currentTerm);
         const searchData = data?.data?.search || {};
         hasNextPage = searchData?.pagination?.hasNext;
-        
+
         if (page === 1) {
             const categories = searchData.availableCategories || [];
             const moblerCategory = categories.find(cat => cat.title.toLowerCase() === "møbler");
             if (moblerCategory) {
-                console.log(`Antal matchende annoncer: ${moblerCategory.count}`);
-                window.totalAds += moblerCategory.count;
-                window.updateProgress();
+                const total = Math.min(moblerCategory.count, MAX_RESULTS);
+                window.totalAds = total;  
             }
         }
-        
-        
+
         const listings = searchData.listings || [];
-        if (page === 1 && listings.length === 0) {
-            return;
-        }
-        listings.forEach(({ id, title, price, url, primaryImage, city, zipcode, createdAt }) => {
+        const remaining = MAX_RESULTS - window.loadedAds; 
+        const toShow = listings.slice(0, remaining);
+
+        toShow.forEach(({ id, title, price, url, primaryImage, city, zipcode, createdAt }) => {
             const card = document.createElement("a");
             card.className = "card";
             card.href = "https://www.guloggratis.dk" + url;
@@ -125,19 +148,19 @@ const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: 
                 </div>
                 <div class="gg-badge">GG</div>
             `;
-
             const parsedTimestamp = parseGGDate(createdAt);
             card.dataset.timestamp = parsedTimestamp;
-            window.allCards.push(card);  
+            window.allCards.push(card);
         });
-        window.loadedAds += listings.length;
-        window.updateProgress();
+
+        window.loadedAds += toShow.length;
     } catch (err) {
         console.error("Fejl:", err.message);
     } finally {
         isLoading = false;
     }
 }
+
 
     async function showSellerInfo(listingId) {
         try {
@@ -199,7 +222,8 @@ window.hentOgVisGG = async function(term) {
     currentTerm = term;
     currentPage = 1;
     hasNextPage = true;
-    while (hasNextPage) {
+
+    while (hasNextPage && currentPage <= 7 && window.allCards.length < 300) {
         await hentOgVisSide(currentPage);
         currentPage++;
     }
