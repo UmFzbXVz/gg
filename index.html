@@ -2,7 +2,7 @@
 <html lang="da">
     <head>
         <meta charset="UTF-8">
-        <title>Hest og Hanegal</title>
+        <title>Råt og Hvidt</title>
         <link rel="stylesheet" href="style.css">
         <link rel="icon" type="image/png" href="favicon.png">
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
@@ -10,11 +10,12 @@
     <body>
         <div class="page-container">
             <h1>
-                <span class="gg-highlight">Hest og Hanegal</span>
+                <span class="gg-highlight">Råt og Hvidt</span>
             </h1>
             <form id="searchForm" class="controls">
                 <div class="input-wrapper">
                     <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
+                    <div id="searchSpinner" class="spinner"></div>
                 </div>
             </form>
             <div id="grid"></div>
@@ -25,9 +26,10 @@
 (() => {
     const form = document.getElementById("searchForm");
     const input = document.getElementById("searchTerm");
+    const spinner = document.getElementById("searchSpinner");
     const grid = document.getElementById("grid");
 
-    const BATCH_SIZE = 60; 
+    const BATCH_SIZE = 30; 
     let isFirstSearch = true;
     window.allCards = [];
     let currentIndex = 0;
@@ -39,7 +41,7 @@
     }
 
     function sortAllCards() {
-        window.allCards.sort((a, b) => b.dataset.timestamp - a.dataset.timestamp);
+        window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
     }
 
     function renderNextBatch() {
@@ -62,18 +64,13 @@
         window.addEventListener('scroll', handleScroll);
     }
 
-    window.updateProgress = function() {
-        if (window.totalAds === 0) return;
-        const percent = Math.min((window.loadedAds / window.totalAds) * 100, 100);
-        input.style.background = `linear-gradient(to right, #4CAF50 ${percent}%, #f0f0f0 ${percent}%)`;
-    }
-
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const term = input.value.trim();
         if (!term) return;
 
         input.disabled = true;
+        spinner.classList.add("active");
 
         if (isFirstSearch) {
             grid.innerHTML = "";
@@ -84,7 +81,6 @@
         window.totalAds = 0;
         window.loadedAds = 0;
         currentIndex = 0;
-
         window.removeEventListener('scroll', handleScroll);
 
         const ggPromise = window.hentOgVisGG(term);
@@ -92,18 +88,17 @@
 
         try {
             await Promise.all([ggPromise, dbaPromise]);
+            window.loadedAds = window.totalAds; 
             window.sortAndRender();
             showNoResults(term);
         } catch (err) {
             console.error("Fejl i søgning:", err);
         } finally {
             input.disabled = false;
-            input.style.background = '';
+            spinner.classList.remove("active");
         }
     });
 })();
 </script>
-
-
-    </body>
+</body>
 </html>
