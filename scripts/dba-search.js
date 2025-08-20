@@ -14,10 +14,10 @@ const MAX_RESULTS = 600;
     return `${formatted} ${currency || ""}`;
   }
 
-  async function fetchDBAPage(page, term) {
+  async function fetchDBAPage(page, term, category) {
     const params = new URLSearchParams();
     params.append("q", term);
-    params.append("category", "0.78");
+    params.append("category", category);
     params.append("sort", "PUBLISHED_DESC");
     ["0.200006", "0.200005", "0.200007", "0.200008"].forEach(loc => params.append("location", loc));
     params.append("dealer_segment", "1");
@@ -38,12 +38,12 @@ const MAX_RESULTS = 600;
     };
   }
 
-  window.hentOgVisDBA = async function(term) {
+  window.hentOgVisDBA = async function(term, category) {
     if (isLoading) return;
     isLoading = true;
     try {
       let currentPage = 1;
-      const firstPageData = await fetchDBAPage(currentPage, term);
+      const firstPageData = await fetchDBAPage(currentPage, term, category);
       const totalResults = Math.min(firstPageData.totalResults, MAX_RESULTS);
       window.totalAds += totalResults;
 
@@ -86,7 +86,7 @@ const MAX_RESULTS = 600;
 
       const numPages = Math.ceil(totalResults / perPage);
       for (currentPage = 2; currentPage <= numPages && window.allCards.length < window.totalAds; currentPage++) {
-        const pageData = await fetchDBAPage(currentPage, term);
+        const pageData = await fetchDBAPage(currentPage, term, category);
         pageData.bapDocs.forEach(doc => {
           const card = document.createElement("a");
           card.className = "card";
