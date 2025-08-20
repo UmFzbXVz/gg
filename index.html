@@ -1,38 +1,71 @@
 <!DOCTYPE html>
 <html lang="da">
-    <head>
-        <meta charset="UTF-8">
-        <title>Råt og Hvidt</title>
-        <link rel="stylesheet" href="style.css">
-        <link rel="icon" type="image/png" href="favicon.png">
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    </head>
-    <body>
-        <div class="page-container">
-            <h1>
-                <span class="title-highlight">Råt og Hvidt</span>
-            </h1>
-            <form id="searchForm" class="controls">
-                <div class="input-wrapper">
-                    <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
-                    <div id="searchSpinner" class="spinner"></div>
-                </div>
-            </form>
-            <div id="grid"></div>
+<head>
+    <meta charset="UTF-8">
+    <title>Råt og Hvidt</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+</head>
+<body>
+<div class="page-container">
+    <h1>
+        <span class="title-highlight">Råt og Hvidt</span>
+    </h1>
+    <form id="searchForm" class="controls">
+        <div class="input-wrapper">
+            <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
+            <div id="searchSpinner" class="spinner"></div>
         </div>
-        <script src="scripts/gg-search.js"></script>
-        <script src="scripts/dba-search.js"></script>
+        <div class="category-selector">
+            <button id="categoryButton" class="category-button" type="button">
+                <img src="https://www.svgrepo.com/show/423753/sorting-left.svg" alt="" class="category-icon">
+            </button>
+            <div id="categoryMenu" class="category-menu" style="display: none;">
+                <ul>
+                    <li data-value="mobler">Møbler og indretning</li>
+                    <li data-value="dyr">Dyr og udstyr</li>
+                    <li data-value="kunst">Kunst og antik</li>
+                </ul>
+            </div>
+        </div>
+    </form>
+    <div id="grid"></div>
+</div>
+<script src="scripts/gg-search.js"></script>
+<script src="scripts/dba-search.js"></script>
 <script>
 (() => {
     const form = document.getElementById("searchForm");
     const input = document.getElementById("searchTerm");
     const spinner = document.getElementById("searchSpinner");
     const grid = document.getElementById("grid");
+    const categoryButton = document.getElementById("categoryButton");
+    const categoryMenu = document.getElementById("categoryMenu");
+    let selectedCategory = 'mobler'; 
 
     const BATCH_SIZE = 30; 
     let isFirstSearch = true;
     window.allCards = [];
     let currentIndex = 0;
+
+    const categories = {
+        'mobler': {
+            ggSlug: '/mobler',
+            ggTitle: 'møbler',
+            dbaCat: '0.78'
+        },
+        'dyr': {
+            ggSlug: '/dyr-og-tilbehor',
+            ggTitle: 'dyr og tilbehør',
+            dbaCat: '0.77'
+        },
+        'kunst': {
+            ggSlug: '/antikviteter-og-kunst',
+            ggTitle: 'antikviteter og kunst',
+            dbaCat: '0.76'
+        }
+    };
 
     function showNoResults(term) {
         if (window.allCards.length === 0) {
@@ -64,10 +97,36 @@
         window.addEventListener('scroll', handleScroll);
     }
 
+    categoryButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isVisible = categoryMenu.style.display === 'block';
+        categoryMenu.style.display = isVisible ? 'none' : 'block';
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!categoryButton.contains(e.target) && !categoryMenu.contains(e.target)) {
+            categoryMenu.style.display = 'none';
+        }
+    });
+
+    categoryMenu.querySelectorAll('li').forEach(li => {
+        li.addEventListener('click', () => {
+            selectedCategory = li.dataset.value;
+            categoryMenu.style.display = 'none';
+            const term = input.value.trim();
+            if (term) {
+                form.requestSubmit();
+            }
+        });
+    });
+
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const term = input.value.trim();
         if (!term) return;
+
+        const selectedCat = selectedCategory;
+        const catObj = categories[selectedCat];
 
         input.disabled = true;
         spinner.classList.add("active");
@@ -83,8 +142,8 @@
         currentIndex = 0;
         window.removeEventListener('scroll', handleScroll);
 
-        const ggPromise = window.hentOgVisGG(term);
-        const dbaPromise = window.hentOgVisDBA(term);
+        const ggPromise = window.hentOgVisGG(term, catObj);
+        const dbaPromise = window.hentOgVisDBA(term, catObj.dbaCat);
 
         try {
             await Promise.all([ggPromise, dbaPromise]);
