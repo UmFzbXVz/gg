@@ -66,6 +66,9 @@
             dbaCat: '0.76'
         }
     };
+    
+    const defaultLi = categoryMenu.querySelector('li[data-value="mobler"]');
+    if (defaultLi) defaultLi.classList.add('active');
 
     function showNoResults(term) {
         if (window.allCards.length === 0) {
@@ -112,9 +115,16 @@
     categoryMenu.querySelectorAll('li').forEach(li => {
         li.addEventListener('click', () => {
             selectedCategory = li.dataset.value;
+
+            categoryMenu.querySelectorAll('li').forEach(item => item.classList.remove('active'));
+            li.classList.add('active');
+
             categoryMenu.style.display = 'none';
+
             const term = input.value.trim();
             if (term) {
+                input.disabled = true;
+                spinner.classList.add("active");
                 form.requestSubmit();
             }
         });
@@ -159,5 +169,6 @@
     });
 })();
 </script>
+
 </body>
 </html>
