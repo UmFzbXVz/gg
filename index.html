@@ -111,6 +111,10 @@
             categoryMenu.style.display = 'none';
         }
     });
+    
+    input.addEventListener("focus", function () {
+        this.select();
+    });
 
     categoryMenu.querySelectorAll('li').forEach(li => {
         li.addEventListener('click', () => {
