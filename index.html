@@ -10,7 +10,7 @@
 <body>
 <div class="page-container">
     <h1>
-        <span class="title-highlight">Råt og Hvidt</span>
+        <span class="title-highlight"><span id="rat">Råt</span> og <span id="hvidt">Hvidt</span></span>
     </h1>
     <form id="searchForm" class="controls">
         <div class="input-wrapper">
@@ -50,21 +50,9 @@
     let currentIndex = 0;
 
     const categories = {
-        'mobler': {
-            ggSlug: '/mobler',
-            ggTitle: 'møbler',
-            dbaCat: '0.78'
-        },
-        'dyr': {
-            ggSlug: '/dyr-og-tilbehor',
-            ggTitle: 'dyr og tilbehør',
-            dbaCat: '0.77'
-        },
-        'kunst': {
-            ggSlug: '/antikviteter-og-kunst',
-            ggTitle: 'antikviteter og kunst',
-            dbaCat: '0.76'
-        }
+        'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78' },
+        'dyr':    { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77' },
+        'kunst':  { ggSlug: '/antikviteter-og-kunst', ggTitle: 'antikviteter og kunst', dbaCat: '0.76' }
     };
     
     const defaultLi = categoryMenu.querySelector('li[data-value="mobler"]');
@@ -171,8 +159,49 @@
             spinner.classList.remove("active");
         }
     });
+
+    function magicSpan(id, terms, displayTerm) {
+        const span = document.getElementById(id);
+        if (!span) return;
+        
+        span.addEventListener('click', async () => {
+            const selectedCat = selectedCategory;
+            const catObj = categories[selectedCat];
+
+            input.value = ""; 
+            input.disabled = true;
+            spinner.classList.add("active");
+
+            window.allCards = [];
+            window.totalAds = 0;
+            window.loadedAds = 0;
+            currentIndex = 0;
+            window.removeEventListener('scroll', handleScroll);
+
+            const promises = [];
+            for (const term of terms) {
+                promises.push(window.hentOgVisGG(term, catObj));
+                promises.push(window.hentOgVisDBA(term, catObj.dbaCat));
+            }
+
+            try {
+                await Promise.all(promises);
+                window.loadedAds = window.totalAds;
+                window.sortAndRender();
+                showNoResults(displayTerm);
+            } catch (err) {
+                console.error("Fejl i søgning:", err);
+            } finally {
+                input.disabled = false;
+                spinner.classList.remove("active");
+            }
+        });
+    }
+
+    magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri"], "gode sager");
+    magicSpan("hvidt", ["bord", "skrivebord", "skænk", "stol", "lænestol", "hvilestol", "palisander"], "generelle sager");
+
 })();
 </script>
-
 </body>
 </html>
