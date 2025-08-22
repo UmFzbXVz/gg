@@ -195,8 +195,8 @@ async function hentOgVisSide(page, catObj) {
             modal.className = 'modal';
             modal.innerHTML = `
                 <div class="modal-content">
-                    <h2>Sælgers information</h2>
-                    <p>Navn: <strong>${userProfile.displayName || 'Ukendt'}</strong></p>
+                    <h2>Sælgers information</h2><p>Navn:<strong>
+                    <a href="https://www.guloggratis.dk/bruger/${userProfile.id}" target="_blank" rel="noopener noreferrer">${userProfile.displayName || 'Ukendt'}</a></strong></p>
                     <p>Medlem siden: <strong>${userProfile.memberSince || 'Ukendt'}</strong></p>
                     <p>By: <strong>${userProfile.city || ''} ${userProfile.zipcode || ''}</strong></p>
                     ${fullAddress ? `<p class="address-line">Adresse: <img class="maps-icon" src="https://www.merrimackvalleyglass.com/wp-content/uploads/2020/07/1200px-Google_Maps_icon_2020.svg_.png" alt="Google Maps"><strong><a href="${mapsLink}" target="_blank" rel="noopener noreferrer">${fullAddress}</a></strong></p>` : ''}
