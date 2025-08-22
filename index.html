@@ -36,170 +36,192 @@
 <script src="scripts/dba-search.js"></script>
 <script>
 (() => {
-    const form = document.getElementById("searchForm");
-    const input = document.getElementById("searchTerm");
-    const spinner = document.getElementById("searchSpinner");
-    const grid = document.getElementById("grid");
-    const categoryButton = document.getElementById("categoryButton");
-    const categoryMenu = document.getElementById("categoryMenu");
-    let selectedCategory = 'mobler'; 
+	const form = document.getElementById("searchForm");
+	const input = document.getElementById("searchTerm");
+	const spinner = document.getElementById("searchSpinner");
+	const grid = document.getElementById("grid");
+	const categoryButton = document.getElementById("categoryButton");
+	const categoryMenu = document.getElementById("categoryMenu");
+	let selectedCategory = 'mobler';
 
-    const BATCH_SIZE = 30; 
-    let isFirstSearch = true;
-    window.allCards = [];
-    let currentIndex = 0;
+	const BATCH_SIZE = 30;
+	let isFirstSearch = true;
+	window.allCards = [];
+	let currentIndex = 0;
 
-    const categories = {
-        'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78' },
-        'dyr':    { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77' },
-        'kunst':  { ggSlug: '/antikviteter-og-kunst', ggTitle: 'antikviteter og kunst', dbaCat: '0.76' }
-    };
-    
-    const defaultLi = categoryMenu.querySelector('li[data-value="mobler"]');
-    if (defaultLi) defaultLi.classList.add('active');
+	const categories = {
+		'mobler': {
+			ggSlug: '/mobler',
+			ggTitle: 'møbler',
+			dbaCat: '0.78'
+		},
+		'dyr': {
+			ggSlug: '/dyr-og-tilbehor',
+			ggTitle: 'dyr og tilbehør',
+			dbaCat: '0.77'
+		},
+		'kunst': {
+			ggSlug: '/antikviteter-og-kunst',
+			ggTitle: 'antikviteter og kunst',
+			dbaCat: '0.76'
+		}
+	};
 
-    function showNoResults(term) {
-        if (window.allCards.length === 0) {
-            grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
-        }
-    }
+	const defaultLi = categoryMenu.querySelector('li[data-value="mobler"]');
+	if (defaultLi) defaultLi.classList.add('active');
 
-    function sortAllCards() {
-        window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
-    }
+	function showNoResults(term) {
+		if (window.allCards.length === 0) {
+			grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
+		}
+	}
 
-    function renderNextBatch() {
-        const nextBatch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
-        nextBatch.forEach(card => grid.appendChild(card));
-        currentIndex += nextBatch.length;
-    }
+	function sortAllCards() {
+		window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
+	}
 
-    function handleScroll() {
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
-            renderNextBatch();
-        }
-    }
+	function renderNextBatch() {
+		const nextBatch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
+		nextBatch.forEach(card => grid.appendChild(card));
+		currentIndex += nextBatch.length;
+	}
 
-    window.sortAndRender = function() {
-        sortAllCards();
-        grid.innerHTML = "";
-        currentIndex = 0;
-        renderNextBatch();
-        window.addEventListener('scroll', handleScroll);
-    }
+	function handleScroll() {
+		if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+			renderNextBatch();
+		}
+	}
 
-    categoryButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        const isVisible = categoryMenu.style.display === 'block';
-        categoryMenu.style.display = isVisible ? 'none' : 'block';
-    });
+	window.sortAndRender = function() {
+		sortAllCards();
+		grid.innerHTML = "";
+		currentIndex = 0;
+		renderNextBatch();
+		window.addEventListener('scroll', handleScroll);
+	}
 
-    document.addEventListener('click', (e) => {
-        if (!categoryButton.contains(e.target) && !categoryMenu.contains(e.target)) {
-            categoryMenu.style.display = 'none';
-        }
-    });
-    
-    input.addEventListener("focus", function () {
-        this.select();
-    });
+	categoryButton.addEventListener('click', (e) => {
+		e.preventDefault();
+		const isVisible = categoryMenu.style.display === 'block';
+		categoryMenu.style.display = isVisible ? 'none' : 'block';
+	});
 
-    categoryMenu.querySelectorAll('li').forEach(li => {
-        li.addEventListener('click', () => {
-            selectedCategory = li.dataset.value;
+	document.addEventListener('click', (e) => {
+		if (!categoryButton.contains(e.target) && !categoryMenu.contains(e.target)) {
+			categoryMenu.style.display = 'none';
+		}
+	});
 
-            categoryMenu.querySelectorAll('li').forEach(item => item.classList.remove('active'));
-            li.classList.add('active');
+	input.addEventListener("focus", function() {
+		this.select();
+	});
 
-            categoryMenu.style.display = 'none';
+	categoryMenu.querySelectorAll('li').forEach(li => {
+		li.addEventListener('click', () => {
+			selectedCategory = li.dataset.value;
 
-            const term = input.value.trim();
-            if (term) {
-                input.disabled = true;
-                spinner.classList.add("active");
-                form.requestSubmit();
-            }
-        });
-    });
+			categoryMenu.querySelectorAll('li').forEach(item => item.classList.remove('active'));
+			li.classList.add('active');
 
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const term = input.value.trim();
-        if (!term) return;
+			categoryMenu.style.display = 'none';
 
-        const selectedCat = selectedCategory;
-        const catObj = categories[selectedCat];
+			const term = input.value.trim();
+			if (term) {
+				input.disabled = true;
+				spinner.classList.add("active");
+				form.requestSubmit();
+			}
+		});
+	});
 
-        input.disabled = true;
-        spinner.classList.add("active");
+	form.addEventListener("submit", async (e) => {
+		e.preventDefault();
+		const term = input.value.trim();
+		if (!term) return;
 
-        if (isFirstSearch) {
-            grid.innerHTML = "";
-            isFirstSearch = false;
-        }
+		const selectedCat = selectedCategory;
+		const catObj = categories[selectedCat];
 
-        window.allCards = [];
-        window.totalAds = 0;
-        window.loadedAds = 0;
-        currentIndex = 0;
-        window.removeEventListener('scroll', handleScroll);
+		input.disabled = true;
+		spinner.classList.add("active");
 
-        const ggPromise = window.hentOgVisGG(term, catObj);
-        const dbaPromise = window.hentOgVisDBA(term, catObj.dbaCat);
+		if (isFirstSearch) {
+			grid.innerHTML = "";
+			isFirstSearch = false;
+		}
 
-        try {
-            await Promise.all([ggPromise, dbaPromise]);
-            window.loadedAds = window.totalAds; 
-            window.sortAndRender();
-            showNoResults(term);
-        } catch (err) {
-            console.error("Fejl i søgning:", err);
-        } finally {
-            input.disabled = false;
-            spinner.classList.remove("active");
-        }
-    });
+		window.allCards = [];
+		window.totalAds = 0;
+		window.loadedAds = 0;
+		currentIndex = 0;
+		window.removeEventListener('scroll', handleScroll);
 
-    function magicSpan(id, terms, displayTerm) {
-        const span = document.getElementById(id);
-        if (!span) return;
-        
-        span.addEventListener('click', async () => {
-            const selectedCat = selectedCategory;
-            const catObj = categories[selectedCat];
+		const ggPromise = window.hentOgVisGG(term, catObj);
+		const dbaPromise = window.hentOgVisDBA(term, catObj.dbaCat);
 
-            input.value = ""; 
-            input.disabled = true;
-            spinner.classList.add("active");
+		try {
+			await Promise.all([ggPromise, dbaPromise]);
+			window.loadedAds = window.totalAds;
+			window.sortAndRender();
+			showNoResults(term);
+		} catch (err) {
+			console.error("Fejl i søgning:", err);
+		} finally {
+			input.disabled = false;
+			spinner.classList.remove("active");
+		}
+	});
 
-            window.allCards = [];
-            window.totalAds = 0;
-            window.loadedAds = 0;
-            currentIndex = 0;
-            window.removeEventListener('scroll', handleScroll);
+	function magicSpan(id, terms, displayTerm) {
+		const span = document.getElementById(id);
+		if (!span) return;
 
-            const promises = [];
-            for (const term of terms) {
-                promises.push(window.hentOgVisGG(term, catObj));
-                promises.push(window.hentOgVisDBA(term, catObj.dbaCat));
-            }
+		span.addEventListener('click', async () => {
+			const selectedCat = selectedCategory;
+			const catObj = categories[selectedCat];
 
-            try {
-                await Promise.all(promises);
-                window.loadedAds = window.totalAds;
-                window.sortAndRender();
-                showNoResults(displayTerm);
-            } catch (err) {
-                console.error("Fejl i søgning:", err);
-            } finally {
-                input.disabled = false;
-                spinner.classList.remove("active");
-            }
-        });
-    }
+			input.value = "";
+			input.disabled = true;
+			spinner.classList.add("active");
 
-    magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig"], "gode sager");
-    magicSpan("hvidt", ["bord", "skrivebord", "sofa", "skænk", "stol", "lænestol", "hvilestol", "palisander"], "generelle sager");
+			window.allCards = [];
+			window.totalAds = 0;
+			window.loadedAds = 0;
+			currentIndex = 0;
+			window.removeEventListener('scroll', handleScroll);
+
+			try {
+				for (const term of terms) {
+					await window.hentOgVisGG(term, catObj);
+					await window.hentOgVisDBA(term, catObj.dbaCat);
+				}
+
+				const seenKeys = new Set();
+				window.allCards = window.allCards.filter(card => {
+					const title = card.querySelector('h3')?.innerText || '';
+					const price = card.querySelector('.price')?.innerText || '';
+					const key = title + '|' + price;
+					if (seenKeys.has(key)) return false;
+					seenKeys.add(key);
+					return true;
+				});
+
+
+				window.loadedAds = window.totalAds = window.allCards.length;
+				window.sortAndRender();
+				showNoResults(displayTerm);
+
+			} catch (err) {
+				console.error("Fejl i magicSpan-søgning:", err);
+			} finally {
+				input.disabled = false;
+				spinner.classList.remove("active");
+			}
+		});
+	}
+
+	magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig"], "gode sager");
+	magicSpan("hvidt", ["bord", "skrivebord", "sofa", "skænk", "stol", "lænestol", "hvilestol", "palisander"], "generelle sager");
 
 })();
 </script>
