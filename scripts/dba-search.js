@@ -112,6 +112,7 @@ const MAX_RESULTS = 600;
         `;
 
         card.dataset.timestamp = doc.timestamp || 0;
+        card.dataset.images = JSON.stringify(doc.image_urls || []);
         return card;
       }
 
