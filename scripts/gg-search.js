@@ -56,7 +56,6 @@ function parseGGDate(str) {
 
     return 0;
 }
-
 (() => {
     const PROXY = "https://corsproxy.io/?";
     const API_URL = "https://api.guloggratis.dk/graphql";
@@ -137,6 +136,8 @@ async function hentOgVisSide(page, catObj) {
             card.href = "https://www.guloggratis.dk" + url;
             card.target = "_blank";
             card.rel = "noopener noreferrer";
+            card.dataset.source = "gg";
+            card.dataset.id = id;
             const location = [city, zipcode].filter(Boolean).join(" ") || "";
             card.innerHTML = `
                 <button class="info-btn" data-id="${id}">i</button>
