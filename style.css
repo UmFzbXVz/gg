@@ -488,6 +488,7 @@ input:checked + .slider:before {
 
 .ad-modal-content {
   width: 80vw;
+  max-width: 1000px;
   height: 80vh;
   background: rgba(30, 30, 30, 0.9);
   border-radius: 12px;
