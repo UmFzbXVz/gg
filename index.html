@@ -15,7 +15,9 @@
     <form id="searchForm" class="controls">
         <div class="input-wrapper">
             <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
-            <div id="searchSpinner" class="spinner"></div>
+            <svg id="searchSpinner" class="loading-border" viewBox="0 0 300 40" preserveAspectRatio="none">
+                <rect x="2" y="2" width="296" height="36" rx="6" ry="6" fill="none" stroke="#4caf50" stroke-width="3" stroke-linecap="round" />
+            </svg>
         </div>
         <div class="category-selector">
             <button id="categoryButton" class="category-button" type="button">
