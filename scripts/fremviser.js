@@ -154,11 +154,18 @@
 		updateSlide();
 
 		const closeModal = () => {
-			modal.remove();
-			document.removeEventListener("keydown", handleKey);
-			if (grid) grid.style.pointerEvents = "auto";
-			document.body.style.overflow = "auto";
+			modal.classList.add("closing");
+
+			modal.addEventListener("animationend", () => {
+				modal.remove();
+				document.removeEventListener("keydown", handleKey);
+				if (grid) grid.style.pointerEvents = "auto";
+				document.body.style.overflow = "auto";
+			}, {
+				once: true
+			});
 		};
+
 
 		modal.querySelector('.close-modal').addEventListener('click', closeModal);
 		modal.addEventListener('click', (e) => {
