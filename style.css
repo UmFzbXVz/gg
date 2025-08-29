@@ -605,6 +605,7 @@ input:checked + .slider:before {
  overflow-x: hidden;
  white-space: pre-wrap;
  padding-right: 4px;
+ padding: 4px;
 }
 
 .ad-location {
@@ -746,3 +747,4 @@ input:checked + .slider:before {
   opacity: 0;
  }
 }
+
