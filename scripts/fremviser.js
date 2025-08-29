@@ -101,7 +101,7 @@
     <div class="ad-info">
         <h2 class="ad-title">${title}</h2>
         <div class="ad-price">${price}</div>
-        <hr class="ad-divider">  <!-- ALTID divider efter pris -->
+        <hr class="ad-divider">
         ${hasDescription ? `<div class="ad-description">${description}</div><hr class="ad-divider">` : ""}
         <div class="ad-location">${location}</div>
     </div>
@@ -186,15 +186,19 @@
 				document.removeEventListener("keydown", handleKey);
 				if (grid) grid.style.pointerEvents = "auto";
 				document.body.style.overflow = "auto";
-			}, {
-				once: true
-			});
+			}, { once: true });
+
+			if (history.state && history.state.modalOpen) {
+				history.back();
+			}
 		};
 
 		modal.querySelector('.close-modal').addEventListener('click', closeModal);
 		modal.addEventListener('click', (e) => {
 			if (e.target === modal) closeModal();
 		});
+
+		history.pushState({ modalOpen: true }, "", "#modal");
 	}
 
 	grid.addEventListener('click', async (e) => {
@@ -222,9 +226,7 @@
 				try {
 					const body = {
 						operationName: "GetListing",
-						variables: {
-							id
-						},
+						variables: { id },
 						query: GET_LISTING_QUERY
 					};
 					const res = await fetch(PROXY + API_URL, {
@@ -248,6 +250,15 @@
 			}
 
 			openAdModal(title, description, price, location, images, originalUrl);
+		}
+	});
+
+	window.addEventListener("popstate", (event) => {
+		const modal = document.querySelector(".ad-modal");
+		if (modal && event.state && event.state.modalOpen) {
+			modal.remove();
+			document.body.style.overflow = "auto";
+			if (grid) grid.style.pointerEvents = "auto";
 		}
 	});
 })();
