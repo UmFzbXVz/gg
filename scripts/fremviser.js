@@ -101,7 +101,7 @@
     <div class="ad-info">
         <h2 class="ad-title">${title}</h2>
         <div class="ad-price">${price}</div>
-        <hr class="ad-divider">
+        <hr class="ad-divider">  <!-- ALTID divider efter pris -->
         ${hasDescription ? `<div class="ad-description">${description}</div><hr class="ad-divider">` : ""}
         <div class="ad-location">${location}</div>
     </div>
@@ -178,27 +178,34 @@
 
 		updateSlide();
 
+		history.pushState({ modalOpen: true }, "", window.location.href);
+		const handlePop = () => {
+			if (modal.isConnected) closeModal();
+		};
+		window.addEventListener("popstate", handlePop);
+
 		const closeModal = () => {
 			modal.classList.add("closing");
 
 			modal.addEventListener("animationend", () => {
 				modal.remove();
 				document.removeEventListener("keydown", handleKey);
+				window.removeEventListener("popstate", handlePop);
 				if (grid) grid.style.pointerEvents = "auto";
 				document.body.style.overflow = "auto";
-			}, { once: true });
 
-			if (history.state && history.state.modalOpen) {
-				history.back();
-			}
+				if (history.state && history.state.modalOpen) {
+					history.back();
+				}
+			}, {
+				once: true
+			});
 		};
 
 		modal.querySelector('.close-modal').addEventListener('click', closeModal);
 		modal.addEventListener('click', (e) => {
 			if (e.target === modal) closeModal();
 		});
-
-		history.pushState({ modalOpen: true }, "", "#modal");
 	}
 
 	grid.addEventListener('click', async (e) => {
@@ -250,15 +257,6 @@
 			}
 
 			openAdModal(title, description, price, location, images, originalUrl);
-		}
-	});
-
-	window.addEventListener("popstate", (event) => {
-		const modal = document.querySelector(".ad-modal");
-		if (modal && event.state && event.state.modalOpen) {
-			modal.remove();
-			document.body.style.overflow = "auto";
-			if (grid) grid.style.pointerEvents = "auto";
 		}
 	});
 })();
