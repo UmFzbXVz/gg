@@ -15,8 +15,20 @@
 		"x-client-version": "8.4.4",
 		"x-requested-with": "dk.guloggratis"
 	};
-
-	const GET_LISTING_QUERY = `query GetListing($id: ID!) { listing(id: $id) { id title url description categoryId externalLink status viewsCount draftFinishedAt expiredAt productType favoritesCount isWeaponContent isTransactionEnabled metaTitle metaDescription isFixedPrice isInBasket isShippingAvailable transactionData { transactionId __typename } price { raw text type __typename } originalPrice images { sortOrder small: url(size: Listing640) medium: url(size: Listing1280) bigPictureSmall: url(size: Listing640x640) bigPictureMedium: url(size: Listing1280x1280) bigPictureLarge: url(size: Listing2560x2560) __typename } user { id displayName isBusiness mitIdValidatedAt isReachableByMessage isTransactionEnabled isSafepayAuthenticated status avatar { url(size: Avatar75) __typename } subscription { userId __typename } memberSince: createdAt(dateFormat: RELATIVE_LONG) availableFrom availableTo onlineListingsCount business { isBannerOwnershipActive isNoFollowEnabled isGenericExternalLinkTextEnabled isPromotionsEnabled isReachableByMail website websiteText profileText __typename } displayAddress city zipcode createdAt transactionHandInTime isFollowing receivedRatings { amount average __typename } followersCount __typename } displayAddress phones { id masked __typename } categories { id title url __typename } leafCategory { id title url featureTags isPublished __typename } listingFields { field { id isSeo title slug isBookable sortOrder parentFieldId __typename } fieldOption { slug title __typename } value fullValue displayGroup { id title sortOrder __typename } __typename } __typename } }`;
+	const GET_LISTING_QUERY = `query GetListing($id: ID!) {
+    listing(id: $id) {
+        id
+        title
+        url
+        description
+        price { raw text type }
+        images {
+            sortOrder
+            small: url(size: Listing640)
+            medium: url(size: Listing1280)
+        }
+    }
+}`;
 
 	const grid = document.getElementById("grid");
 
@@ -26,8 +38,25 @@
 			const text = await res.text();
 			const parser = new DOMParser();
 			const htmlDoc = parser.parseFromString(text, 'text/html');
+
+			const ldJsonEl = htmlDoc.querySelector('script[type="application/ld+json"]');
+			if (ldJsonEl) {
+				try {
+					const data = JSON.parse(ldJsonEl.textContent);
+					if (data && data.description) {
+						return data.description.trim();
+					}
+				} catch (err) {
+					console.warn("Kunne ikke parse JSON-LD for DBA annonce:", err);
+				}
+			}
+
 			const descEl = htmlDoc.querySelector('.vip-description-text');
-			return descEl ? descEl.innerText.trim() : 'Ingen beskrivelse tilgængelig.';
+			if (descEl) {
+				return descEl.innerText.trim();
+			}
+
+			return 'Ingen beskrivelse tilgængelig.';
 		} catch (err) {
 			console.error('Fejl ved hentning af DBA beskrivelse:', err);
 			return 'Fejl ved indlæsning af beskrivelse.';
@@ -48,47 +77,43 @@
 			images.forEach(src => {
 				const googleUrl = `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}`;
 				html += `
-        <div class="slide">
-            <img src="${src}" alt="${title}">
-            <a href="${googleUrl}" target="_blank" rel="noopener noreferrer" class="google-icon" title="Søg dette billede på Google">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20" height="20" alt="Google Lens">
-            </a>
-        </div>`;
+    <div class="slide">
+        <img src="${src}" alt="${title}">
+        <a href="${googleUrl}" target="_blank" rel="noopener noreferrer" class="google-icon" title="Søg dette billede på Google">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20" height="20" alt="Google Lens">
+        </a>
+    </div>`;
 			});
 			html += '</div>';
 
 			if (images.length > 1) {
-				html += '<button class="arrow left-arrow">&lt;</button>';
-				html += '<button class="arrow right-arrow">&gt;</button>';
+				html += '<button class="arrow left-arrow"><</button>';
+				html += '<button class="arrow right-arrow">></button>';
 				html += '<div class="slide-indicator"></div>';
 			}
 
 			html += '</div>';
 			return html;
 		};
-
-		const hasDescription = description && description.trim() !== "" && description.trim() !== "Ingen beskrivelse tilgængelig.";
-
-		modal.innerHTML = `
-    <div class="ad-modal-content">
-        ${createSlider()}
-        <div class="ad-info">
-            <h2 class="ad-title">${title}</h2>
-            <div class="ad-price">${price}</div>
-            <hr class="ad-divider">
-            ${hasDescription ? `<div class="ad-description">${description}</div><hr class="ad-divider">` : ""}
-            <div class="ad-location">${location}</div>
-        </div>
-        <a href="${originalUrl}" target="_blank" rel="noopener noreferrer" class="original-link" title="Se annoncen">
-            <img src="https://ruban.nu/image/external-link-white.svg" alt="Se annoncen" width="24" height="24">
-        </a>
-        <button class="close-modal">×</button>
+		const hasDescription = description && description.trim() && description.trim() !== "Ingen beskrivelse tilgængelig.";
+		let modalHtml = `<div class="ad-modal-content">
+    ${createSlider()}
+    <div class="ad-info">
+        <h2 class="ad-title">${title}</h2>
+        <div class="ad-price">${price}</div>
+        <hr class="ad-divider">  <!-- ALTID divider efter pris -->
+        ${hasDescription ? `<div class="ad-description">${description}</div><hr class="ad-divider">` : ""}
+        <div class="ad-location">${location}</div>
     </div>
+    <a href="${originalUrl}" target="_blank" rel="noopener noreferrer" class="original-link" title="Se annoncen">
+        <img src="https://ruban.nu/image/external-link-white.svg" alt="Se annoncen" width="24" height="24">
+    </a>
+    <button class="close-modal">×</button>
+</div>
 `;
-
+		modal.innerHTML = modalHtml;
 		document.body.appendChild(modal);
 
-		const grid = document.getElementById("grid");
 		if (grid) grid.style.pointerEvents = "none";
 		document.body.style.overflow = "hidden";
 
@@ -165,7 +190,6 @@
 				once: true
 			});
 		};
-
 
 		modal.querySelector('.close-modal').addEventListener('click', closeModal);
 		modal.addEventListener('click', (e) => {
