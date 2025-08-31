@@ -192,7 +192,7 @@ input {
  text-align: left;
  font-weight: bold;
  color: #d9534f;
- font-size: clamp(0.8rem, 1vw, 1rem);
+ font-size: clamp(0.9rem, 1vw, 1.2rem);
 }
 
 .toggle-container {
@@ -286,22 +286,18 @@ input:checked + .slider:before {
 }
 
 .info-btn {
- position: absolute;
- top: 10px;
- right: 10px;
- background: rgba(255, 255, 255, 0.8);
- color: #333;
- border: none;
- border-radius: 50%;
- width: 24px;
- height: 24px;
- font-weight: bold;
- cursor: pointer;
- z-index: 1;
- display: flex;
- align-items: center;
- justify-content: center;
- font-size: 14px;
+  position: absolute;
+  top: 36px;  
+  right: 8px;  
+  background: white;
+  color: #007bff;;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
 }
 
 .info-btn:hover {
@@ -310,9 +306,9 @@ input:checked + .slider:before {
 
 .gg-badge {
  position: absolute;
- bottom: 10px;
+ top: 10px;
  right: 10px;
- background: rgba(250, 242, 134, 1);
+ background: rgba(250, 242, 134, 0.8);
  color: #000;
  font-weight: bold;
  padding: 2px;
@@ -324,9 +320,9 @@ input:checked + .slider:before {
 
 .dba-badge {
  position: absolute;
- bottom: 10px;
+ top: 10px;
  right: 10px;
- background-color: white;
+ background: rgba(255, 255, 255, 0.8);
  color: rgb(0, 9, 138);
  font-weight: bold;
  padding: 2px;
@@ -600,7 +596,7 @@ input:checked + .slider:before {
  text-align: center;
  margin-bottom: 10px;
  white-space: pre-wrap;
- font-size: 1rem;
+ font-size: clamp(0.8rem, 1vw, 1.2rem);
  color: #ddd;
  max-height: calc(1.5em * 5);
  overflow-y: auto;
@@ -682,11 +678,8 @@ input:checked + .slider:before {
  .card-content {
   padding: 8px;
  }
- .card-content h3 {
-  font-size: 0.95rem;
- }
  .price {
-  font-size: 0.9rem;
+  font-size: 1rem;
  }
  .location {
   font-size: 0.8rem;
