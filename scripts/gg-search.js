@@ -72,6 +72,7 @@ function parseGGDate(str) {
 
 	return 0;
 }
+
 (() => {
 	const PROXY = "https://corsproxy.io/?";
 	const API_URL = "https://api.guloggratis.dk/graphql";
@@ -130,74 +131,6 @@ function parseGGDate(str) {
 		});
 		if (!res.ok) throw new Error(`Fejl ved hentning af side ${page}: ${res.status}`);
 		return res.json();
-	}
-
-	async function hentOgVisSide(page, catObj) {
-		if (isLoading) return;
-		isLoading = true;
-		try {
-			const data = await hentSide(page, currentTerm, catObj.ggSlug);
-			const searchData = data?.data?.search || {};
-			hasNextPage = searchData?.pagination?.hasNext;
-
-			if (page === 1) {
-				const categories = searchData.availableCategories || [];
-				const targetCategory = categories.find(cat => cat.title.toLowerCase() === catObj.ggTitle.toLowerCase());
-				if (targetCategory) {
-					const total = Math.min(targetCategory.count, 300);
-					window.totalAds += total;
-				}
-			}
-
-			const listings = searchData.listings || [];
-			const remaining = 300 - window.loadedAds;
-			const toShow = listings.slice(0, remaining);
-
-			toShow.forEach(({
-				id,
-				title,
-				price,
-				url,
-				primaryImage,
-				city,
-				zipcode,
-				createdAt
-			}) => {
-				const card = document.createElement("a");
-				card.className = "card";
-				card.href = "https://www.guloggratis.dk" + url;
-				card.target = "_blank";
-				card.rel = "noopener noreferrer";
-				card.dataset.source = "gg";
-				card.dataset.id = id;
-
-				const location = [city, zipcode].filter(Boolean).join(" ") || "";
-
-				card.innerHTML = `
-        <button class="info-btn" data-id="${id}">i</button>
-        <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
-        <div class="gg-badge">GG</div>
-        <div class="card-content">
-            <h3>${title}</h3>
-            <div class="card-footer">
-                <div class="price">${price?.text || "Ingen pris"}</div>
-                <div class="city">${location}</div>
-            </div>
-        </div>
-    `;
-
-				const parsedTimestamp = parseGGDate(createdAt);
-				card.dataset.timestamp = parsedTimestamp;
-				window.allCards.push(card);
-			});
-
-
-			window.loadedAds += toShow.length;
-		} catch (err) {
-			console.error("Fejl:", err.message);
-		} finally {
-			isLoading = false;
-		}
 	}
 
 
@@ -280,12 +213,81 @@ function parseGGDate(str) {
 		}
 	});
 
-	window.hentOgVisGG = async function(term, catObj) {
+
+	async function hentOgVisSide(page, catObj) {
+		if (isLoading) return;
+		isLoading = true;
+		try {
+			const data = await hentSide(page, currentTerm, catObj.ggSlug);
+			const searchData = data?.data?.search || {};
+			hasNextPage = searchData?.pagination?.hasNext;
+
+			if (page === 1) {
+				const categories = searchData.availableCategories || [];
+				const targetCategory = categories.find(cat => cat.title.toLowerCase() === catObj.ggTitle.toLowerCase());
+				if (targetCategory) {
+					const total = Math.min(targetCategory.count, 300);
+					window.totalAds += total;
+				}
+			}
+
+			const listings = searchData.listings || [];
+			const remaining = 300 - window.loadedAds;
+			const toShow = listings.slice(0, remaining);
+
+			toShow.forEach(({
+				id,
+				title,
+				price,
+				url,
+				primaryImage,
+				city,
+				zipcode,
+				createdAt
+			}) => {
+				const card = document.createElement("a");
+				card.className = "card";
+				card.href = "https://www.guloggratis.dk" + url;
+				card.target = "_blank";
+				card.rel = "noopener noreferrer";
+				card.dataset.source = "gg";
+				card.dataset.id = id;
+
+				const location = [city, zipcode].filter(Boolean).join(" ") || "";
+
+				card.innerHTML = `
+					<button class="info-btn" data-id="${id}">i</button>
+					<img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
+					<div class="gg-badge">GG</div>
+					<div class="card-content">
+						<h3>${title}</h3>
+						<div class="card-footer">
+							<div class="price">${price?.text || "Ingen pris"}</div>
+							<div class="city">${location}</div>
+						</div>
+					</div>
+				`;
+
+				const parsedTimestamp = parseGGDate(createdAt);
+				card.dataset.timestamp = parsedTimestamp;
+				window.allCards.push(card);
+			});
+
+			window.loadedAds += toShow.length;
+		} catch (err) {
+			console.error("Fejl:", err.message);
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	window.hentOgVisGG = async function(term, catObj, isBackground = false) {
 		currentTerm = term;
 		currentPage = 1;
 		hasNextPage = true;
 
-		while (hasNextPage && currentPage <= 7 && window.allCards.length < 300) {
+		const maxPages = isBackground ? 1 : 7;
+		while (hasNextPage && currentPage <= maxPages && window.allCards.length < 300) {
 			await hentOgVisSide(currentPage, catObj);
 			currentPage++;
 		}
