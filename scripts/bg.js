@@ -3,7 +3,10 @@
 	let lastResultsKeys = new Set();
 	let pendingNewMap = new Map();
 	const originalTitle = document.title;
-	const REFRESH_INTERVAL = 10 * 60 * 1000;
+	const REFRESH_INTERVAL = 5 * 60 * 1000;
+	const seenPendingTerms = new Map(); 
+
+	const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 	function cardKey(card) {
 		return card.dataset.id || card.dataset.key;
@@ -36,36 +39,41 @@
 
 	function insertNewCardsAnimated(cards, opts = {}) {
 		const grid = document.getElementById("grid");
-		const staggerMs = opts.staggerMs || 40;
 		const baseDelay = opts.baseDelay || 0;
+		const staggerMs = opts.staggerMs || 40;
+		const maxStaggerCards = 20;
 
 		cards.forEach((card, i) => {
 			card.classList.add('new-card');
-			card.style.animationDelay = `${baseDelay + i * staggerMs}ms`;
+			let delay = baseDelay;
+
+			if (cards.length <= maxStaggerCards) {
+				delay += i * staggerMs;
+			}
+
+			card.style.animationDelay = `${delay}ms`;
 			grid.prepend(card);
 
+			const animationDuration = 500;
 			setTimeout(() => {
 				card.classList.remove('new-card');
 				card.style.animationDelay = '';
-			}, 500 + i * staggerMs);
+			}, animationDuration + delay);
 		});
 	}
 
 	async function backgroundSearch() {
 		if (!window.bgSearchEnabled) return;
 		if (!activeSearches.length) return;
-
 		if (!Array.isArray(window.allCards)) window.allCards = [];
 		const oldAllCards = [...window.allCards];
 
 		const newCardsThisRun = [];
 		const seenKeysThisRun = new Set();
 
-		for (const {
-				term,
-				catObj
-			}
-			of activeSearches) {
+		for (const { term, catObj } of activeSearches) {
+			if (!seenPendingTerms.has(term)) seenPendingTerms.set(term, new Set());
+
 			try {
 				window.allCards = [];
 				await Promise.all([
@@ -77,10 +85,13 @@
 				temp.forEach(card => {
 					const k = cardKey(card);
 					if (!k) return;
-					if (lastResultsKeys.has(k) || seenKeysThisRun.has(k) || pendingNewMap.has(k)) return;
+					const seenTerm = seenPendingTerms.get(term);
+					if (lastResultsKeys.has(k) || seenKeysThisRun.has(k) || pendingNewMap.has(k) || seenTerm.has(k)) return;
+
 					seenKeysThisRun.add(k);
 					pendingNewMap.set(k, card);
 					newCardsThisRun.push(card);
+					seenTerm.add(k);
 				});
 			} catch (err) {
 				console.error(`Fejl i baggrundssøgning for "${term}":`, err);
@@ -96,47 +107,39 @@
 
 		window.allCards = mergeUniqueByKey(newCardsThisRun, oldAllCards);
 
-		if (document.hasFocus()) {
-			const keysToMark = [];
-			newCardsThisRun.forEach(card => {
-				const k = cardKey(card);
-				if (pendingNewMap.has(k)) {
-					keysToMark.push(k);
-				}
-			});
-
-			insertNewCardsAnimated(newCardsThisRun, {
-				staggerMs: 40
-			});
-
-			keysToMark.forEach(k => {
-				lastResultsKeys.add(k);
-				pendingNewMap.delete(k);
-			});
-			updateTitle(pendingNewMap.size);
+		if (document.visibilityState === "visible") {
+			showPendingNow(newCardsThisRun);
 		} else {
 			updateTitle(pendingNewMap.size);
 		}
 	}
 
-	window.addEventListener('focus', () => {
+	function showPendingNow(cards) {
+		insertNewCardsAnimated(cards, { staggerMs: 40 });
+		cards.forEach(card => {
+			const k = cardKey(card);
+			lastResultsKeys.add(k);
+			pendingNewMap.delete(k);
+		});
+		updateTitle(pendingNewMap.size);
+	}
+
+	document.addEventListener("visibilitychange", () => {
+		if (document.visibilityState !== "visible") return;
 		if (!window.bgSearchEnabled) return;
 
 		if (pendingNewMap.size === 0) {
 			updateTitle(0);
 			return;
 		}
+
 		const cards = Array.from(pendingNewMap.values());
 		if (!cards.length) {
 			updateTitle(0);
 			return;
 		}
 
-		insertNewCardsAnimated(cards, {
-			staggerMs: 60,
-			baseDelay: 0
-		});
-
+		insertNewCardsAnimated(cards, { staggerMs: 60, baseDelay: 0 });
 		for (const k of pendingNewMap.keys()) {
 			lastResultsKeys.add(k);
 		}
@@ -149,10 +152,7 @@
 		addActiveSearch: (term, catObj) => {
 			if (!window.bgSearchEnabled) return;
 			if (!activeSearches.some(s => s.term === term && s.catObj === catObj)) {
-				activeSearches.push({
-					term,
-					catObj
-				});
+				activeSearches.push({ term, catObj });
 			}
 		},
 		removeActiveSearch: (term, catObj) => {
@@ -163,19 +163,24 @@
 			if (!Array.isArray(window.allCards)) window.allCards = [];
 			lastResultsKeys = makeKeysFromCards(window.allCards);
 			pendingNewMap.clear();
+			seenPendingTerms.clear();
 			updateTitle(0);
 			console.log("Baseline sat med", lastResultsKeys.size, "elementer");
 		},
 		pendingCount: () => pendingNewMap.size,
-
 		clear: () => {
 			activeSearches = [];
 			lastResultsKeys.clear();
 			pendingNewMap.clear();
+			seenPendingTerms.clear();
 			updateTitle(0);
 			console.log("bgSearch er nulstillet");
 		}
 	};
 
-	setInterval(backgroundSearch, REFRESH_INTERVAL);
+	if (!isMobile) {
+		setInterval(backgroundSearch, REFRESH_INTERVAL);
+	} else {
+		console.log("Mobildetektion: bg.js interval er deaktiveret, kører kun ved visibilitychange");
+	}
 })();
