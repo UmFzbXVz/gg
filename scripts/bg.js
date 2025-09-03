@@ -3,7 +3,7 @@
 	let lastResultsKeys = new Set();
 	let pendingNewMap = new Map();
 	const originalTitle = document.title;
-	const REFRESH_INTERVAL = 5 * 60 * 1000;
+	const REFRESH_INTERVAL = 1 * 20 * 1000;
 	const seenPendingTerms = new Map();
 
 	const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -124,31 +124,32 @@
 	}
 
 	function showPendingNow(cards) {
-		const grid = document.getElementById("grid");
+		if (cards.length) {
+			const grid = document.getElementById("grid");
 
-		grid.querySelectorAll(".card.bg-new-card").forEach(el => {
-			el.classList.remove("bg-new-card");
-		});
+			grid.querySelectorAll(".card.bg-new-card").forEach(el => {
+				el.classList.remove("bg-new-card");
+			});
 
-		insertNewCardsAnimated(cards, {
-			staggerMs: 40
-		});
+			insertNewCardsAnimated(cards, {
+				staggerMs: 40
+			});
 
-		cards.forEach(card => {
-			const k = cardKey(card);
-			lastResultsKeys.add(k);
-			pendingNewMap.delete(k);
+			cards.forEach(card => {
+				const k = cardKey(card);
+				lastResultsKeys.add(k);
+				pendingNewMap.delete(k);
 
-			for (const set of seenPendingTerms.values()) set.delete(k);
+				for (const set of seenPendingTerms.values()) set.delete(k);
 
-			setTimeout(() => {
-				card.classList.add("bg-new-card");
-			}, 350);
-		});
+				setTimeout(() => {
+					card.classList.add("bg-new-card");
+				}, 350);
+			});
 
-		if (!isMobile) updateTitle(pendingNewMap.size);
+			if (!isMobile) updateTitle(pendingNewMap.size);
+		}
 	}
-
 
 
 	if (isMobile) {
