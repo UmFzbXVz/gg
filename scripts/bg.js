@@ -151,34 +151,30 @@
 		}
 	}
 
-
 	if (isMobile) {
-		function handleReturnToPage() {
-			if (document.visibilityState === "visible" && window.bgSearchEnabled) {
-				if (pendingNewMap.size || activeSearches.length) {
-					backgroundSearch().then(() => {
-						showPendingNow([...pendingNewMap.values()]);
-					});
+		let mobilePageVisible = true;
+
+		async function handleReturnToPage() {
+			if (!window.bgSearchEnabled) return;
+
+			const wasVisible = mobilePageVisible;
+			mobilePageVisible = document.visibilityState === "visible";
+
+			if (mobilePageVisible && !wasVisible) {
+				if (activeSearches.length) {
+					await backgroundSearch();
+				}
+
+				const pendingCards = [...pendingNewMap.values()];
+				if (pendingCards.length) {
+					showPendingNow(pendingCards);
 				}
 			}
 		}
 
 		document.addEventListener("visibilitychange", handleReturnToPage);
 		window.addEventListener("pageshow", handleReturnToPage);
-	} else {
-		setInterval(async () => {
-			if (window.bgSearchEnabled) {
-				await backgroundSearch();
-			}
-		}, REFRESH_INTERVAL);
-
-		document.addEventListener("visibilitychange", () => {
-			if (document.visibilityState === "visible" && pendingNewMap.size) {
-				showPendingNow([...pendingNewMap.values()]);
-			}
-		});
 	}
-
 
 	window.bgSearch = {
 		addActiveSearch: (term, catObj) => {
