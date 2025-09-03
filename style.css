@@ -146,7 +146,6 @@ input {
   aspect-ratio: 4 / 3;
   object-fit: cover;
   background: #ddd;
-  flex-shrink: 0;
 }
 
 .card-content {
@@ -756,7 +755,6 @@ input:checked + .slider:before {
 @media (max-width: 480px) {
   .card img {
     aspect-ratio: 16 / 9;
-    height: auto;
   }
   .card-footer,
   .location {
