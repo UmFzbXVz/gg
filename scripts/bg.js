@@ -124,18 +124,32 @@
 	}
 
 	function showPendingNow(cards) {
+		const grid = document.getElementById("grid");
+
+		grid.querySelectorAll(".card.bg-new-card").forEach(el => {
+			el.classList.remove("bg-new-card");
+		});
+
 		insertNewCardsAnimated(cards, {
 			staggerMs: 40
 		});
+
 		cards.forEach(card => {
 			const k = cardKey(card);
 			lastResultsKeys.add(k);
 			pendingNewMap.delete(k);
 
 			for (const set of seenPendingTerms.values()) set.delete(k);
+
+			setTimeout(() => {
+				card.classList.add("bg-new-card");
+			}, 350);
 		});
+
 		if (!isMobile) updateTitle(pendingNewMap.size);
 	}
+
+
 
 	if (isMobile) {
 		function handleReturnToPage() {
