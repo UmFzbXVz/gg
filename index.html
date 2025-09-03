@@ -47,210 +47,245 @@
 
 <script>
 (() => {
-    function cardKey(card) {
-        return card.dataset.id || card.dataset.key;
-    }
+	function cardKey(card) {
+		return card.dataset.id || card.dataset.key;
+	}
 
-    const form = document.getElementById("searchForm");
-    const input = document.getElementById("searchTerm");
-    const spinner = document.getElementById("searchSpinner");
-    const grid = document.getElementById("grid");
-    const categoryButton = document.getElementById("categoryButton");
-    const categoryMenu = document.getElementById("categoryMenu");
-    const bgToggle = document.getElementById("bgToggle");
+	const form = document.getElementById("searchForm");
+	const input = document.getElementById("searchTerm");
+	const spinner = document.getElementById("searchSpinner");
+	const grid = document.getElementById("grid");
+	const categoryButton = document.getElementById("categoryButton");
+	const categoryMenu = document.getElementById("categoryMenu");
+	const bgToggle = document.getElementById("bgToggle");
 
-    let selectedCategory = 'mobler';
-    window.bgSearchEnabled = true;
+	let selectedCategory = 'mobler';
+	window.bgSearchEnabled = true;
 
-    const BATCH_SIZE = 30;
-    let isFirstSearch = true;
-    window.allCards = [];
-    let currentIndex = 0;
+	const BATCH_SIZE = 30;
+	let isFirstSearch = true;
+	window.allCards = [];
+	let currentIndex = 0;
 
-    const categories = {
-        'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78' },
-        'dyr': { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77' },
-        'kunst': { ggSlug: '/antikviteter-og-kunst', ggTitle: 'antikviteter og kunst', dbaCat: '0.76' }
-    };
+	const categories = {
+		'mobler': {
+			ggSlug: '/mobler',
+			ggTitle: 'møbler',
+			dbaCat: '0.78'
+		},
+		'dyr': {
+			ggSlug: '/dyr-og-tilbehor',
+			ggTitle: 'dyr og tilbehør',
+			dbaCat: '0.77'
+		},
+		'kunst': {
+			ggSlug: '/antikviteter-og-kunst',
+			ggTitle: 'antikviteter og kunst',
+			dbaCat: '0.76'
+		}
+	};
 
-    const defaultLi = categoryMenu.querySelector('li[data-value="mobler"]');
-    if (defaultLi) defaultLi.classList.add('active');
+	const defaultLi = categoryMenu.querySelector('li[data-value="mobler"]');
+	if (defaultLi) defaultLi.classList.add('active');
 
-    if (bgToggle) {
-        bgToggle.addEventListener("change", (e) => {
-            window.bgSearchEnabled = e.target.checked;
-            console.log("Baggrundssøgning:", window.bgSearchEnabled ? "TIL" : "FRA");
-            if (!window.bgSearchEnabled && window.bgSearch) {
-                window.bgSearch.clear();
-            }
-        });
-    }
+	if (bgToggle) {
+		bgToggle.addEventListener("change", (e) => {
+			window.bgSearchEnabled = e.target.checked;
+			console.log("Baggrundssøgning:", window.bgSearchEnabled ? "TIL" : "FRA");
+			if (!window.bgSearchEnabled && window.bgSearch) {
+				window.bgSearch.clear();
+			}
+		});
+	}
 
-    function showNoResults(term) {
-        if (window.allCards.length === 0) {
-            grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
-        }
-    }
+	function showNoResults(term) {
+		if (window.allCards.length === 0) {
+			grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
+		}
+	}
 
-    function sortAllCards() {
-        window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
-    }
+	function sortAllCards() {
+		window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
+	}
 
-    function renderNextBatch() {
-        const nextBatch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
-        nextBatch.forEach(card => grid.appendChild(card));
-        currentIndex += nextBatch.length;
-    }
+	function renderNextBatch() {
+		const nextBatch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
+		nextBatch.forEach(card => grid.appendChild(card));
+		currentIndex += nextBatch.length;
+	}
 
-    function handleScroll() {
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
-            renderNextBatch();
-        }
-    }
+	function handleScroll() {
+		if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+			renderNextBatch();
+		}
+	}
 
-    window.sortAndRender = function() {
-        sortAllCards();
-        grid.innerHTML = "";
-        currentIndex = 0;
-        renderNextBatch();
-        window.addEventListener('scroll', handleScroll);
-    }
+	window.sortAndRender = function() {
+		sortAllCards();
+		grid.innerHTML = "";
+		currentIndex = 0;
+		renderNextBatch();
+		window.addEventListener('scroll', handleScroll);
+	}
 
-    categoryButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        const isVisible = categoryMenu.style.display === 'block';
-        categoryMenu.style.display = isVisible ? 'none' : 'block';
-    });
+	categoryButton.addEventListener('click', (e) => {
+		e.preventDefault();
+		const isVisible = categoryMenu.style.display === 'block';
+		categoryMenu.style.display = isVisible ? 'none' : 'block';
+	});
 
-    document.addEventListener('click', (e) => {
-        if (!categoryButton.contains(e.target) && !categoryMenu.contains(e.target)) {
-            categoryMenu.style.display = 'none';
-        }
-    });
+	document.addEventListener('click', (e) => {
+		if (!categoryButton.contains(e.target) && !categoryMenu.contains(e.target)) {
+			categoryMenu.style.display = 'none';
+		}
+	});
 
-    input.addEventListener("focus", function() { this.select(); });
+	input.addEventListener("focus", function() {
+		this.select();
+	});
 
-    categoryMenu.querySelectorAll('li').forEach(li => {
-        li.addEventListener('click', () => {
-            selectedCategory = li.dataset.value;
-            categoryMenu.querySelectorAll('li').forEach(item => item.classList.remove('active'));
-            li.classList.add('active');
-            categoryMenu.style.display = 'none';
-            const term = input.value.trim();
-            if (term) {
-                input.disabled = true;
-                spinner.classList.add("active");
-                form.requestSubmit();
-            }
-        });
-    });
+	categoryMenu.querySelectorAll('li').forEach(li => {
+		li.addEventListener('click', () => {
+			selectedCategory = li.dataset.value;
+			categoryMenu.querySelectorAll('li').forEach(item => item.classList.remove('active'));
+			li.classList.add('active');
+			categoryMenu.style.display = 'none';
+			const term = input.value.trim();
+			if (term) {
+				input.disabled = true;
+				spinner.classList.add("active");
+				form.requestSubmit();
+			}
+		});
+	});
 
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const term = input.value.trim();
-        if (!term) return;
-        const catObj = categories[selectedCategory];
+	form.addEventListener("submit", async (e) => {
+		e.preventDefault();
+		const term = input.value.trim();
+		if (!term) return;
+		const catObj = categories[selectedCategory];
 
-        input.disabled = true;
-        spinner.classList.add("active");
+		input.disabled = true;
+		spinner.classList.add("active");
 
-        if (isFirstSearch) { grid.innerHTML = ""; isFirstSearch = false; }
-        window.allCards = [];
-        window.totalAds = 0;
-        window.loadedAds = 0;
-        currentIndex = 0;
-        window.removeEventListener('scroll', handleScroll);
+		if (isFirstSearch) {
+			grid.innerHTML = "";
+			isFirstSearch = false;
+		}
+		window.allCards = [];
+		window.totalAds = 0;
+		window.loadedAds = 0;
+		currentIndex = 0;
+		window.removeEventListener('scroll', handleScroll);
 
-        if (window.bgSearch) { window.bgSearch.clear(); }
+		if (window.bgSearch) {
+			window.bgSearch.clear();
+		}
 
-        try {
-            await Promise.all([
-                window.hentOgVisGG(term, catObj, false),
-                window.hentOgVisDBA(term, catObj.dbaCat, false)
-            ]);
+		try {
+			await Promise.all([
+				window.hentOgVisGG(term, catObj, false),
+				window.hentOgVisDBA(term, catObj.dbaCat, false)
+			]);
 
-            await new Promise(resolve => setTimeout(resolve, 0));
+			await new Promise(resolve => setTimeout(resolve, 0));
 
-            window.loadedAds = window.totalAds;
-            window.sortAndRender();
+			window.loadedAds = window.totalAds;
+			window.sortAndRender();
 
-            if (window.bgSearchEnabled && window.bgSearch) {
-                window.bgSearch.addActiveSearch(term, catObj);
-                window.bgSearch.setBaseline(); 
-            }
+			if (window.bgSearchEnabled && window.bgSearch) {
+				window.bgSearch.addActiveSearch(term, catObj);
+				window.bgSearch.setBaseline();
+			}
 
-            showNoResults(term);
+			showNoResults(term);
 
-        } catch (err) {
-            console.error("Fejl i søgning:", err);
-        } finally {
-            input.disabled = false;
-            spinner.classList.remove("active");
-        }
-    });
+		} catch (err) {
+			console.error("Fejl i søgning:", err);
+		} finally {
+			input.disabled = false;
+			spinner.classList.remove("active");
+		}
+	});
 
-    function insertNewCardsAnimated(newCards) {
-        newCards.forEach(card => {
-            card.classList.add('new-card');
-            grid.prepend(card);
-            requestAnimationFrame(() => { card.classList.remove('new-card'); });
-        });
-    }
+	function insertNewCardsAnimated(newCards) {
+		newCards.forEach(card => {
+			card.classList.add('new-card');
+			grid.prepend(card);
+			requestAnimationFrame(() => {
+				card.classList.remove('new-card');
+			});
+		});
+	}
 
-    function magicSpan(id, terms, displayTerm) {
-        const span = document.getElementById(id);
-        if (!span) return;
+	function magicSpan(id, terms, displayTerm) {
+		const span = document.getElementById(id);
+		if (!span) return;
 
-        span.addEventListener('click', async () => {
-            const catObj = categories[selectedCategory];
-            input.value = "";
-            input.disabled = true;
-            spinner.classList.add("active");
-            window.allCards = [];
-            window.totalAds = 0;
-            window.loadedAds = 0;
-            currentIndex = 0;
-            window.removeEventListener('scroll', handleScroll);
+		span.addEventListener('click', async () => {
+			const catObj = categories[selectedCategory];
+			input.value = "";
+			input.disabled = true;
+			spinner.classList.add("active");
+			window.allCards = [];
+			window.totalAds = 0;
+			window.loadedAds = 0;
+			currentIndex = 0;
+			window.removeEventListener('scroll', handleScroll);
 
-            try {
-                if (window.bgSearchEnabled && window.bgSearch) {
-                    window.bgSearch.clear(); 
-                    terms.forEach(term => window.bgSearch.addActiveSearch(term, catObj));
-                }
+			try {
+				if (window.bgSearchEnabled && window.bgSearch) {
+					window.bgSearch.clear();
+					terms.forEach(term => window.bgSearch.addActiveSearch(term, catObj));
+				}
 
-                for (const term of terms) {
-                    await window.hentOgVisGG(term, catObj, true);
-                    await window.hentOgVisDBA(term, catObj.dbaCat, true);
-                }
+				for (const term of terms) {
+					await window.hentOgVisGG(term, catObj, true);
+					await window.hentOgVisDBA(term, catObj.dbaCat, true);
+				}
 
-                const seenKeys = new Set();
-                window.allCards = window.allCards.filter(card => {
-                    const key = cardKey(card);
-                    if (seenKeys.has(key)) return false;
-                    seenKeys.add(key);
-                    return true;
-                });
+				const seenKeys = new Set();
+				window.allCards = window.allCards.filter(card => {
+					const key = cardKey(card);
+					if (seenKeys.has(key)) return false;
+					seenKeys.add(key);
+					return true;
+				});
 
-                insertNewCardsAnimated(window.allCards);
-                window.loadedAds = window.totalAds = window.allCards.length;
-                window.sortAndRender();
-                showNoResults(displayTerm);
+				insertNewCardsAnimated(window.allCards);
+				window.loadedAds = window.totalAds = window.allCards.length;
+				window.sortAndRender();
+				showNoResults(displayTerm);
 
-                if (window.bgSearchEnabled && window.bgSearch) {
-                    window.bgSearch.setBaseline();
-                }
+				if (window.bgSearchEnabled && window.bgSearch) {
+					window.bgSearch.setBaseline();
+				}
 
-            } catch (err) {
-                console.error("Fejl i magicSpan-søgning:", err);
-            } finally {
-                input.disabled = false;
-                spinner.classList.remove("active");
-            }
-        });
-    }
+			} catch (err) {
+				console.error("Fejl i magicSpan-søgning:", err);
+			} finally {
+				input.disabled = false;
+				spinner.classList.remove("active");
+			}
+		});
+	}
 
-    magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig"], "gode sager");
-    magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander"], "generelle sager");
+	magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig"], "gode sager");
+	magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander"], "generelle sager");
+
+	window.startSpinner = function() {
+		const spinner = document.getElementById("searchSpinner");
+		const input = document.getElementById("searchTerm");
+		if (spinner) spinner.classList.add("active");
+		input.disabled = true;
+	};
+
+	window.stopSpinner = function() {
+		const spinner = document.getElementById("searchSpinner");
+		const input = document.getElementById("searchTerm");
+		if (spinner) spinner.classList.remove("active");
+		input.disabled = false;
+	};
 
 })();
 </script>
