@@ -256,19 +256,17 @@ function parseGGDate(str) {
 				const location = [city, zipcode].filter(Boolean).join(" ") || "";
 
 				card.innerHTML = `
-    <div class="card-image-wrapper">
-        <button class="info-btn" data-id="${id}">i</button>
-        <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
-        <div class="gg-badge">GG</div>
-    </div>
-    <div class="card-content">
-        <h3>${title}</h3>
-        <div class="card-footer">
-            <div class="price">${price?.text || "Ingen pris"}</div>
-            <div class="city">${location}</div>
-        </div>
-    </div>
-`;
+					<button class="info-btn" data-id="${id}">i</button>
+					<img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
+					<div class="gg-badge">GG</div>
+					<div class="card-content">
+						<h3>${title}</h3>
+						<div class="card-footer">
+							<div class="price">${price?.text || "Ingen pris"}</div>
+							<div class="city">${location}</div>
+						</div>
+					</div>
+				`;
 
 				const parsedTimestamp = parseGGDate(createdAt);
 				card.dataset.timestamp = parsedTimestamp;
