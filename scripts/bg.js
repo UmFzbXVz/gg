@@ -4,7 +4,7 @@
 	let pendingNewMap = new Map();
 	const originalTitle = document.title;
 	const REFRESH_INTERVAL = 1 * 60 * 1000;
-	const seenPendingTerms = new Map(); 
+	const seenPendingTerms = new Map();
 
 	const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -25,8 +25,8 @@
 	function mergeUniqueByKey(newCards, existingCards) {
 		const seen = new Set();
 		const out = [];
-
 		const combined = [...newCards, ...existingCards];
+
 		combined.forEach(card => {
 			const k = cardKey(card);
 			if (!seen.has(k)) {
@@ -34,6 +34,7 @@
 				out.push(card);
 			}
 		});
+
 		return out;
 	}
 
@@ -46,11 +47,7 @@
 		cards.forEach((card, i) => {
 			card.classList.add('new-card');
 			let delay = baseDelay;
-
-			if (cards.length <= maxStaggerCards) {
-				delay += i * staggerMs;
-			}
-
+			if (cards.length <= maxStaggerCards) delay += i * staggerMs;
 			card.style.animationDelay = `${delay}ms`;
 			grid.prepend(card);
 
@@ -63,11 +60,9 @@
 	}
 
 	async function backgroundSearch() {
-		if (!window.bgSearchEnabled) return;
-		if (!activeSearches.length) return;
+		if (!window.bgSearchEnabled || !activeSearches.length) return;
 		if (!Array.isArray(window.allCards)) window.allCards = [];
 		const oldAllCards = [...window.allCards];
-
 		const newCardsThisRun = [];
 		const seenKeysThisRun = new Set();
 
@@ -75,13 +70,15 @@
 			if (!seenPendingTerms.has(term)) seenPendingTerms.set(term, new Set());
 
 			try {
+				const tempAllCards = [...window.allCards];
 				window.allCards = [];
+
 				await Promise.all([
 					window.hentOgVisGG(term, catObj, true),
 					window.hentOgVisDBA(term, catObj.dbaCat, true)
 				]);
-				const temp = [...window.allCards];
 
+				const temp = [...window.allCards];
 				const seenTerm = seenPendingTerms.get(term);
 
 				temp.forEach(card => {
@@ -92,12 +89,13 @@
 					seenKeysThisRun.add(k);
 					pendingNewMap.set(k, card);
 					newCardsThisRun.push(card);
-					seenTerm.add(k); 
+					seenTerm.add(k);
 				});
+
+				window.allCards = mergeUniqueByKey(temp, tempAllCards);
+
 			} catch (err) {
 				console.error(`Fejl i baggrundssøgning for "${term}":`, err);
-			} finally {
-				window.allCards = [...oldAllCards];
 			}
 		}
 
@@ -105,8 +103,6 @@
 			updateTitle(pendingNewMap.size);
 			return;
 		}
-
-		window.allCards = mergeUniqueByKey(newCardsThisRun, oldAllCards);
 
 		if (document.visibilityState === "visible") {
 			showPendingNow(newCardsThisRun);
@@ -122,39 +118,30 @@
 			lastResultsKeys.add(k);
 			pendingNewMap.delete(k);
 
-			for (const [term, set] of seenPendingTerms) {
-				set.delete(k);
-			}
+			for (const set of seenPendingTerms.values()) set.delete(k);
 		});
 		updateTitle(pendingNewMap.size);
 	}
 
-	document.addEventListener("visibilitychange", () => {
-		if (document.visibilityState !== "visible") return;
-		if (!window.bgSearchEnabled) return;
+	if (isMobile) {
+		document.addEventListener("visibilitychange", () => {
+			if (document.visibilityState === "visible" && window.bgSearchEnabled) {
+				if (pendingNewMap.size || activeSearches.length) backgroundSearch();
+			}
+		});
+	} else {
+		setInterval(async () => {
+			if (window.bgSearchEnabled) {
+				await backgroundSearch();
+			}
+		}, REFRESH_INTERVAL);
 
-		if (pendingNewMap.size === 0) {
-			updateTitle(0);
-			return;
-		}
-
-		const cards = Array.from(pendingNewMap.values());
-		if (!cards.length) {
-			updateTitle(0);
-			return;
-		}
-
-		insertNewCardsAnimated(cards, { staggerMs: 60, baseDelay: 0 });
-		cards.forEach(card => lastResultsKeys.add(cardKey(card)));
-
-		for (const card of cards) {
-			const k = cardKey(card);
-			pendingNewMap.delete(k);
-			for (const set of seenPendingTerms.values()) set.delete(k);
-		}
-
-		updateTitle(0);
-	});
+		document.addEventListener("visibilitychange", () => {
+			if (document.visibilityState === "visible" && pendingNewMap.size) {
+				showPendingNow([...pendingNewMap.values()]);
+			}
+		});
+	}
 
 	window.bgSearch = {
 		addActiveSearch: (term, catObj) => {
@@ -185,10 +172,4 @@
 			console.log("bgSearch er nulstillet");
 		}
 	};
-
-	if (!isMobile) {
-		setInterval(backgroundSearch, REFRESH_INTERVAL);
-	} else {
-		console.log("Mobildetektion: bg.js intervalopdatering er deaktiveret, kører kun ved visibilitychange");
-	}
 })();
