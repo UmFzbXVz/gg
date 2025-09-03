@@ -3,7 +3,7 @@
 	let lastResultsKeys = new Set();
 	let pendingNewMap = new Map();
 	const originalTitle = document.title;
-	const REFRESH_INTERVAL = 5 * 60 * 1000;
+	const REFRESH_INTERVAL = 1 * 60 * 1000;
 	const seenPendingTerms = new Map(); 
 
 	const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -82,16 +82,17 @@
 				]);
 				const temp = [...window.allCards];
 
+				const seenTerm = seenPendingTerms.get(term);
+
 				temp.forEach(card => {
 					const k = cardKey(card);
 					if (!k) return;
-					const seenTerm = seenPendingTerms.get(term);
 					if (lastResultsKeys.has(k) || seenKeysThisRun.has(k) || pendingNewMap.has(k) || seenTerm.has(k)) return;
 
 					seenKeysThisRun.add(k);
 					pendingNewMap.set(k, card);
 					newCardsThisRun.push(card);
-					seenTerm.add(k);
+					seenTerm.add(k); 
 				});
 			} catch (err) {
 				console.error(`Fejl i baggrundssøgning for "${term}":`, err);
@@ -120,6 +121,10 @@
 			const k = cardKey(card);
 			lastResultsKeys.add(k);
 			pendingNewMap.delete(k);
+
+			for (const [term, set] of seenPendingTerms) {
+				set.delete(k);
+			}
 		});
 		updateTitle(pendingNewMap.size);
 	}
@@ -140,11 +145,14 @@
 		}
 
 		insertNewCardsAnimated(cards, { staggerMs: 60, baseDelay: 0 });
-		for (const k of pendingNewMap.keys()) {
-			lastResultsKeys.add(k);
+		cards.forEach(card => lastResultsKeys.add(cardKey(card)));
+
+		for (const card of cards) {
+			const k = cardKey(card);
+			pendingNewMap.delete(k);
+			for (const set of seenPendingTerms.values()) set.delete(k);
 		}
 
-		pendingNewMap.clear();
 		updateTitle(0);
 	});
 
@@ -181,6 +189,6 @@
 	if (!isMobile) {
 		setInterval(backgroundSearch, REFRESH_INTERVAL);
 	} else {
-		console.log("Mobildetektion: bg.js interval er deaktiveret, kører kun ved visibilitychange");
+		console.log("Mobildetektion: bg.js intervalopdatering er deaktiveret, kører kun ved visibilitychange");
 	}
 })();
