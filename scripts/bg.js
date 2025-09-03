@@ -71,11 +71,7 @@
 		const seenKeysThisRun = new Set();
 
 		try {
-			for (const {
-					term,
-					catObj
-				}
-				of activeSearches) {
+			for (const { term, catObj } of activeSearches) {
 				if (!seenPendingTerms.has(term)) seenPendingTerms.set(term, new Set());
 
 				try {
@@ -124,44 +120,41 @@
 	}
 
 	function showPendingNow(cards) {
-		if (cards.length) {
-			const grid = document.getElementById("grid");
+		if (!cards.length) return; 
 
-			grid.querySelectorAll(".card.bg-new-card").forEach(el => {
-				el.classList.remove("bg-new-card");
-			});
+		const grid = document.getElementById("grid");
 
-			insertNewCardsAnimated(cards, {
-				staggerMs: 40
-			});
+		grid.querySelectorAll(".card.bg-new-card").forEach(el => {
+			el.classList.remove("bg-new-card");
+		});
 
-			cards.forEach(card => {
-				const k = cardKey(card);
-				lastResultsKeys.add(k);
-				pendingNewMap.delete(k);
+		insertNewCardsAnimated(cards, { staggerMs: 40 });
 
-				for (const set of seenPendingTerms.values()) set.delete(k);
+		cards.forEach(card => {
+			const k = cardKey(card);
+			lastResultsKeys.add(k);
+			pendingNewMap.delete(k);
 
-				setTimeout(() => {
-					card.classList.add("bg-new-card");
-				}, 350);
-			});
+			for (const set of seenPendingTerms.values()) set.delete(k);
 
-			if (!isMobile) updateTitle(pendingNewMap.size);
-		}
+			setTimeout(() => {
+				card.classList.add("bg-new-card");
+			}, 350);
+		});
+
+		if (!isMobile) updateTitle(pendingNewMap.size);
 	}
-
 
 	if (isMobile) {
 		let wasVisible = true;
 
-		async function handleReturnToPage(e) {
+		async function handleReturnToPage() {
 			if (!window.bgSearchEnabled) return;
 
 			const nowVisible = document.visibilityState === "visible";
 			if (!nowVisible || wasVisible) {
 				wasVisible = nowVisible;
-				return;
+				return; 
 			}
 			wasVisible = nowVisible;
 
@@ -179,16 +172,25 @@
 
 		document.addEventListener("visibilitychange", handleReturnToPage);
 		window.addEventListener("pageshow", handleReturnToPage);
+	} else {
+		setInterval(async () => {
+			if (window.bgSearchEnabled) {
+				await backgroundSearch();
+			}
+		}, REFRESH_INTERVAL);
+
+		document.addEventListener("visibilitychange", () => {
+			if (document.visibilityState === "visible" && pendingNewMap.size) {
+				showPendingNow([...pendingNewMap.values()]);
+			}
+		});
 	}
 
 	window.bgSearch = {
 		addActiveSearch: (term, catObj) => {
 			if (!window.bgSearchEnabled) return;
 			if (!activeSearches.some(s => s.term === term && s.catObj === catObj)) {
-				activeSearches.push({
-					term,
-					catObj
-				});
+				activeSearches.push({ term, catObj });
 			}
 		},
 		removeActiveSearch: (term, catObj) => {
