@@ -1,258 +1,200 @@
-<!DOCTYPE html>
-<html lang="da">
-<head>
-    <meta charset="UTF-8">
-    <title>Råt og Hvidt</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" href="favicon.png">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-</head>
-<body>
-<div class="page-container">
-    <h1>
-        <span class="title-highlight"><span id="rat">Råt</span> og <span id="hvidt">Hvidt</span></span>
-    </h1>
-    <form id="searchForm" class="controls">
-        <div class="input-wrapper">
-            <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
-            <svg id="searchSpinner" class="loading-border" viewBox="0 0 300 40" preserveAspectRatio="none">
-                <rect x="2" y="2" width="296" height="36" rx="6" ry="6" fill="none" stroke="#4caf50" stroke-width="5" stroke-linecap="round" />
-            </svg>
-        </div>
-        <div class="category-selector">
-            <button id="categoryButton" class="category-button" type="button">
-                <img src="sorting.svg" alt="" class="category-icon">
-            </button>
-            <div id="categoryMenu" class="category-menu" style="display: none;">
-                <ul>
-                    <li data-value="mobler">Møbler og indretning</li>
-                    <li data-value="dyr">Dyr og udstyr</li>
-                    <li data-value="kunst">Kunst og antik</li>
-                </ul>
-                <hr class="menu-divider" />
-                <label class="bg-toggle">
-                    Auto-opdatér
-                    <input type="checkbox" id="bgToggle" checked>
-                </label>
-            </div>
-        </div>
-    </form>
-    <div id="grid"></div>
-</div>
-
-<script src="scripts/gg-search.js"></script>
-<script src="scripts/dba-search.js"></script>
-<script src="scripts/fremviser.js"></script>
-<script src="scripts/bg.js"></script>
-
-<script>
 (() => {
-    function cardKey(card) {
-        return card.dataset.id || card.dataset.key;
-    }
+	let activeSearches = [];
+	let lastResultsKeys = new Set();
+	let pendingNewMap = new Map();
+	const originalTitle = document.title;
+	const REFRESH_INTERVAL = 5 * 60 * 1000;
+	const seenPendingTerms = new Map();
 
-    const form = document.getElementById("searchForm");
-    const input = document.getElementById("searchTerm");
-    const spinner = document.getElementById("searchSpinner");
-    const grid = document.getElementById("grid");
-    const categoryButton = document.getElementById("categoryButton");
-    const categoryMenu = document.getElementById("categoryMenu");
-    const bgToggle = document.getElementById("bgToggle");
+	const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    let selectedCategory = 'mobler';
-    window.bgSearchEnabled = true;
+	function cardKey(card) {
+		return card.dataset.id || card.dataset.key;
+	}
 
-    const BATCH_SIZE = 30;
-    let isFirstSearch = true;
-    window.allCards = [];
-    let currentIndex = 0;
+	function makeKeysFromCards(cards) {
+		const keys = new Set();
+		cards.forEach(card => keys.add(cardKey(card)));
+		return keys;
+	}
 
-    const categories = {
-        'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78' },
-        'dyr': { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77' },
-        'kunst': { ggSlug: '/antikviteter-og-kunst', ggTitle: 'antikviteter og kunst', dbaCat: '0.76' }
-    };
+	function updateTitle(count) {
+		if (!isMobile) {
+			document.title = count > 0 ? `(${count}) ${originalTitle}` : originalTitle;
+		}
+	}
 
-    const defaultLi = categoryMenu.querySelector('li[data-value="mobler"]');
-    if (defaultLi) defaultLi.classList.add('active');
+	function mergeUniqueByKey(newCards, existingCards) {
+		const seen = new Set();
+		const out = [];
+		const combined = [...newCards, ...existingCards];
 
-    if (bgToggle) {
-        bgToggle.addEventListener("change", (e) => {
-            window.bgSearchEnabled = e.target.checked;
-            console.log("Baggrundssøgning:", window.bgSearchEnabled ? "TIL" : "FRA");
-            if (!window.bgSearchEnabled && window.bgSearch) {
-                window.bgSearch.clear();
-            }
-        });
-    }
+		combined.forEach(card => {
+			const k = cardKey(card);
+			if (!seen.has(k)) {
+				seen.add(k);
+				out.push(card);
+			}
+		});
 
-    function showNoResults(term) {
-        if (window.allCards.length === 0) {
-            grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
-        }
-    }
+		return out;
+	}
 
-    function sortAllCards() {
-        window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
-    }
+	function insertNewCardsAnimated(cards, opts = {}) {
+		const grid = document.getElementById("grid");
+		const baseDelay = opts.baseDelay || 0;
+		const staggerMs = opts.staggerMs || 40;
+		const maxStaggerCards = 20;
 
-    function renderNextBatch() {
-        const nextBatch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
-        nextBatch.forEach(card => grid.appendChild(card));
-        currentIndex += nextBatch.length;
-    }
+		cards.forEach((card, i) => {
+			card.classList.add('new-card');
+			let delay = baseDelay;
+			if (cards.length <= maxStaggerCards) delay += i * staggerMs;
+			card.style.animationDelay = `${delay}ms`;
+			grid.prepend(card);
 
-    function handleScroll() {
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
-            renderNextBatch();
-        }
-    }
+			const animationDuration = 500;
+			setTimeout(() => {
+				card.classList.remove('new-card');
+				card.style.animationDelay = '';
+			}, animationDuration + delay);
+		});
+	}
 
-    window.sortAndRender = function() {
-        sortAllCards();
-        grid.innerHTML = "";
-        currentIndex = 0;
-        renderNextBatch();
-        window.addEventListener('scroll', handleScroll);
-    }
+	async function backgroundSearch() {
+		if (!window.bgSearchEnabled || !activeSearches.length) return;
+		if (!Array.isArray(window.allCards)) window.allCards = [];
 
-    categoryButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        const isVisible = categoryMenu.style.display === 'block';
-        categoryMenu.style.display = isVisible ? 'none' : 'block';
-    });
+		window.startSpinner();
 
-    document.addEventListener('click', (e) => {
-        if (!categoryButton.contains(e.target) && !categoryMenu.contains(e.target)) {
-            categoryMenu.style.display = 'none';
-        }
-    });
+		const newCardsThisRun = [];
+		const seenKeysThisRun = new Set();
 
-    input.addEventListener("focus", function() { this.select(); });
+		try {
+			for (const {
+					term,
+					catObj
+				}
+				of activeSearches) {
+				if (!seenPendingTerms.has(term)) seenPendingTerms.set(term, new Set());
 
-    categoryMenu.querySelectorAll('li').forEach(li => {
-        li.addEventListener('click', () => {
-            selectedCategory = li.dataset.value;
-            categoryMenu.querySelectorAll('li').forEach(item => item.classList.remove('active'));
-            li.classList.add('active');
-            categoryMenu.style.display = 'none';
-            const term = input.value.trim();
-            if (term) {
-                input.disabled = true;
-                spinner.classList.add("active");
-                form.requestSubmit();
-            }
-        });
-    });
+				try {
+					const tempAllCards = [...window.allCards];
+					window.allCards = [];
 
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const term = input.value.trim();
-        if (!term) return;
-        const catObj = categories[selectedCategory];
+					await Promise.all([
+						window.hentOgVisGG(term, catObj, true),
+						window.hentOgVisDBA(term, catObj.dbaCat, true)
+					]);
 
-        input.disabled = true;
-        spinner.classList.add("active");
+					const temp = [...window.allCards];
+					const seenTerm = seenPendingTerms.get(term);
 
-        if (isFirstSearch) { grid.innerHTML = ""; isFirstSearch = false; }
-        window.allCards = [];
-        window.totalAds = 0;
-        window.loadedAds = 0;
-        currentIndex = 0;
-        window.removeEventListener('scroll', handleScroll);
+					temp.forEach(card => {
+						const k = cardKey(card);
+						if (!k) return;
+						if (lastResultsKeys.has(k) || seenKeysThisRun.has(k) || pendingNewMap.has(k) || seenTerm.has(k)) return;
 
-        if (window.bgSearch) { window.bgSearch.clear(); }
+						seenKeysThisRun.add(k);
+						pendingNewMap.set(k, card);
+						newCardsThisRun.push(card);
+						seenTerm.add(k);
+					});
 
-        try {
-            await Promise.all([
-                window.hentOgVisGG(term, catObj, false),
-                window.hentOgVisDBA(term, catObj.dbaCat, false)
-            ]);
+					window.allCards = mergeUniqueByKey(temp, tempAllCards);
 
-            await new Promise(resolve => setTimeout(resolve, 0));
+				} catch (err) {
+					console.error(`Fejl i baggrundssøgning for "${term}":`, err);
+				}
+			}
 
-            window.loadedAds = window.totalAds;
-            window.sortAndRender();
+			if (!newCardsThisRun.length) {
+				if (!isMobile) updateTitle(pendingNewMap.size);
+				return;
+			}
 
-            if (window.bgSearchEnabled && window.bgSearch) {
-                window.bgSearch.addActiveSearch(term, catObj);
-                window.bgSearch.setBaseline(); 
-            }
+			if (document.visibilityState === "visible") {
+				showPendingNow(newCardsThisRun);
+			} else {
+				if (!isMobile) updateTitle(pendingNewMap.size);
+			}
+		} finally {
+			window.stopSpinner();
+		}
+	}
 
-            showNoResults(term);
+	function showPendingNow(cards) {
+		insertNewCardsAnimated(cards, {
+			staggerMs: 40
+		});
+		cards.forEach(card => {
+			const k = cardKey(card);
+			lastResultsKeys.add(k);
+			pendingNewMap.delete(k);
 
-        } catch (err) {
-            console.error("Fejl i søgning:", err);
-        } finally {
-            input.disabled = false;
-            spinner.classList.remove("active");
-        }
-    });
+			for (const set of seenPendingTerms.values()) set.delete(k);
+		});
+		if (!isMobile) updateTitle(pendingNewMap.size);
+	}
 
-    function insertNewCardsAnimated(newCards) {
-        newCards.forEach(card => {
-            card.classList.add('new-card');
-            grid.prepend(card);
-            requestAnimationFrame(() => { card.classList.remove('new-card'); });
-        });
-    }
+	if (isMobile) {
+		function handleReturnToPage() {
+			if (document.visibilityState === "visible" && window.bgSearchEnabled) {
+				if (pendingNewMap.size || activeSearches.length) {
+					backgroundSearch().then(() => {
+						showPendingNow([...pendingNewMap.values()]);
+					});
+				}
+			}
+		}
 
-    function magicSpan(id, terms, displayTerm) {
-        const span = document.getElementById(id);
-        if (!span) return;
+		document.addEventListener("visibilitychange", handleReturnToPage);
+		window.addEventListener("pageshow", handleReturnToPage);
+	} else {
+		setInterval(async () => {
+			if (window.bgSearchEnabled) {
+				await backgroundSearch();
+			}
+		}, REFRESH_INTERVAL);
 
-        span.addEventListener('click', async () => {
-            const catObj = categories[selectedCategory];
-            input.value = "";
-            input.disabled = true;
-            spinner.classList.add("active");
-            window.allCards = [];
-            window.totalAds = 0;
-            window.loadedAds = 0;
-            currentIndex = 0;
-            window.removeEventListener('scroll', handleScroll);
+		document.addEventListener("visibilitychange", () => {
+			if (document.visibilityState === "visible" && pendingNewMap.size) {
+				showPendingNow([...pendingNewMap.values()]);
+			}
+		});
+	}
 
-            try {
-                if (window.bgSearchEnabled && window.bgSearch) {
-                    window.bgSearch.clear(); 
-                    terms.forEach(term => window.bgSearch.addActiveSearch(term, catObj));
-                }
 
-                for (const term of terms) {
-                    await window.hentOgVisGG(term, catObj, true);
-                    await window.hentOgVisDBA(term, catObj.dbaCat, true);
-                }
-
-                const seenKeys = new Set();
-                window.allCards = window.allCards.filter(card => {
-                    const key = cardKey(card);
-                    if (seenKeys.has(key)) return false;
-                    seenKeys.add(key);
-                    return true;
-                });
-
-                insertNewCardsAnimated(window.allCards);
-                window.loadedAds = window.totalAds = window.allCards.length;
-                window.sortAndRender();
-                showNoResults(displayTerm);
-
-                if (window.bgSearchEnabled && window.bgSearch) {
-                    window.bgSearch.setBaseline();
-                }
-
-            } catch (err) {
-                console.error("Fejl i magicSpan-søgning:", err);
-            } finally {
-                input.disabled = false;
-                spinner.classList.remove("active");
-            }
-        });
-    }
-
-    magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig"], "gode sager");
-    magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander"], "generelle sager");
-
+	window.bgSearch = {
+		addActiveSearch: (term, catObj) => {
+			if (!window.bgSearchEnabled) return;
+			if (!activeSearches.some(s => s.term === term && s.catObj === catObj)) {
+				activeSearches.push({
+					term,
+					catObj
+				});
+			}
+		},
+		removeActiveSearch: (term, catObj) => {
+			activeSearches = activeSearches.filter(s => !(s.term === term && s.catObj === catObj));
+		},
+		setBaseline: () => {
+			if (!window.bgSearchEnabled) return;
+			if (!Array.isArray(window.allCards)) window.allCards = [];
+			lastResultsKeys = makeKeysFromCards(window.allCards);
+			pendingNewMap.clear();
+			seenPendingTerms.clear();
+			updateTitle(0);
+			console.log("Baseline sat med", lastResultsKeys.size, "elementer");
+		},
+		pendingCount: () => pendingNewMap.size,
+		clear: () => {
+			activeSearches = [];
+			lastResultsKeys.clear();
+			pendingNewMap.clear();
+			seenPendingTerms.clear();
+			updateTitle(0);
+			console.log("bgSearch er nulstillet");
+		}
+	};
 })();
-</script>
-</body>
-</html>
