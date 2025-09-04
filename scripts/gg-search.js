@@ -257,7 +257,9 @@ function parseGGDate(str) {
 
 				card.innerHTML = `
 					<button class="info-btn" data-id="${id}">i</button>
-					<img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
+					<div class="card-image-wrapper">
+					    <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
+					</div>
 					<div class="gg-badge">GG</div>
 					<div class="card-content">
 						<h3>${title}</h3>
