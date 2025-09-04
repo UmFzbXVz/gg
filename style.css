@@ -1,7 +1,7 @@
 html {
   font-size: 14px;
-    -webkit-text-size-adjust: 100%; 
-  text-size-adjust: 100%;
+  -webkit-text-size-adjust: none; 
+  text-size-adjust: none;
 }
 
 body {
@@ -177,7 +177,7 @@ input {
 
 .card-content h3 {
   margin: 0 0 auto 0;
-  font-size: clamp(0.9rem, 0.8vw, 1rem);
+  font-size: clamp(0.9rem, 0.95rem, 1rem);
   font-weight: 600;
 }
 
@@ -186,7 +186,7 @@ input {
   justify-content: space-between;
   align-items: center;
   margin-top: auto;
-  font-size: clamp(0.75rem, 1vw, 0.95rem);
+  font-size: clamp(0.75rem, 0.85, 0.95rem);
   gap: 8px;
   margin-top: auto;
   white-space: nowrap;
@@ -199,7 +199,7 @@ input {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #ccc;
-  font-size: clamp(0.75rem, 0.9vw, 0.9rem);
+  font-size: clamp(0.75rem, 0.85rem, 0.9rem);
 }
 
 .location .city,
@@ -212,7 +212,7 @@ input {
   text-align: left;
   font-weight: bold;
   color: #d9534f;
-  font-size: clamp(0.9rem, 1vw, 1rem);
+  font-size: clamp(0.9rem, 0.95rem, 1rem);
 }
 
 .toggle-container {
