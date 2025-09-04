@@ -1,297 +1,889 @@
-const danishMonths = {
-	'jan': 0,
-	'feb': 1,
-	'mar': 2,
-	'apr': 3,
-	'maj': 4,
-	'jun': 5,
-	'jul': 6,
-	'aug': 7,
-	'sep': 8,
-	'okt': 9,
-	'nov': 10,
-	'dec': 11
-};
-
-const danishWeekdays = {
-	'søn': 0,
-	'man': 1,
-	'tir': 2,
-	'ons': 3,
-	'tor': 4,
-	'fre': 5,
-	'lør': 6
-};
-
-function parseGGDate(str) {
-	if (!str) return 0;
-	const now = new Date();
-	let date = new Date(now);
-
-	if (str === 'i dag') {
-		date.setHours(0, 0, 0, 0);
-		return date.getTime();
-	} else if (str === 'i går') {
-		date.setDate(date.getDate() - 1);
-		date.setHours(0, 0, 0, 0);
-		return date.getTime();
-	}
-
-	const weekdayMatch = str.match(/^([a-zæøå]+)\.?$/i);
-	if (weekdayMatch) {
-		const abbr = weekdayMatch[1].toLowerCase();
-		const weekday = danishWeekdays[abbr];
-		if (weekday !== undefined) {
-			let target = new Date(now);
-			target.setHours(0, 0, 0, 0);
-
-			let diff = now.getDay() - weekday;
-			if (diff <= 0) {
-				diff += 7;
-			}
-			target.setDate(now.getDate() - diff);
-			return target.getTime();
-		}
-	}
-
-	const match = str.match(/^(\d+)\.\s*(\w+)\.?\s*(\d+)?\.?$/);
-	if (match) {
-		const day = parseInt(match[1]);
-		const monthAbbr = match[2].toLowerCase();
-		const month = danishMonths[monthAbbr];
-		if (month === undefined) return 0;
-
-		let year = match[3] ? parseInt(match[3]) : now.getFullYear();
-		date = new Date(year, month, day, 0, 0, 0, 0);
-
-		if (!match[3] && date > now) {
-			date.setFullYear(year - 1);
-		}
-		return date.getTime();
-	}
-
-	return 0;
+html {
+  font-size: 14px;
 }
 
-(() => {
-	const PROXY = "https://corsproxy.io/?";
-	const API_URL = "https://api.guloggratis.dk/graphql";
-	const HEADERS = {
-		"accept": "*/*",
-		"accept-encoding": "gzip, deflate",
-		"accept-language": "en-US,en;q=0.9",
-		"apollo-require-preflight": "true",
-		"content-type": "application/json",
-		"origin": "https://www.guloggratis.dk",
-		"referer": "https://www.guloggratis.dk/",
-		"user-agent": "Dalvik/2.1.0 (Linux; U; Android 15; SM-E366B Build/TQ3A.250901.001) GGApp/8.4.4 EmbeddedBrowser",
-		"x-client-idfa": "granted",
-		"x-client-type": "android",
-		"x-client-version": "8.4.4",
-		"x-requested-with": "dk.guloggratis"
-	};
+body {
+  font-family: sans-serif;
+  background-color: #1e1e1e;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #eee;
+}
 
-	const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) { redirect(url: $currentUrl) search(filters: $filters, pagination: $pagination) { pagination { total hasPrevious hasNext __typename } availableCategories { title url count __typename } listings { id title description url price { text raw __typename } primaryImage { url(size: Listing320) __typename } city zipcode createdAt(dateFormat: RELATIVE_SHORT) } }}`;
-	const GET_LISTING_QUERY = `query GetListing($id: ID!) { listing(id: $id) { id title url description categoryId externalLink status viewsCount draftFinishedAt expiredAt productType favoritesCount isWeaponContent isTransactionEnabled metaTitle metaDescription isFixedPrice isInBasket isShippingAvailable transactionData { transactionId __typename } price { raw text type __typename } originalPrice images { sortOrder small: url(size: Listing640) medium: url(size: Listing1280) bigPictureSmall: url(size: Listing640x640) bigPictureMedium: url(size: Listing1280x1280) bigPictureLarge: url(size: Listing2560x2560) __typename } user { id displayName isBusiness mitIdValidatedAt isReachableByMessage isTransactionEnabled isSafepayAuthenticated status avatar { url(size: Avatar75) __typename } subscription { userId __typename } memberSince: createdAt(dateFormat: RELATIVE_LONG) availableFrom availableTo onlineListingsCount business { isBannerOwnershipActive isNoFollowEnabled isGenericExternalLinkTextEnabled isPromotionsEnabled isReachableByMail website websiteText profileText __typename } displayAddress city zipcode createdAt transactionHandInTime isFollowing receivedRatings { amount average __typename } followersCount __typename } displayAddress phones { id masked __typename } categories { id title url __typename } leafCategory { id title url featureTags isPublished __typename } listingFields { field { id isSeo title slug isBookable sortOrder parentFieldId __typename } fieldOption { slug title __typename } value fullValue displayGroup { id title sortOrder __typename } __typename } __typename } }`;
-	const GET_USER_PROFILE_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) { redirect(url: $currentUrl) search(filters: $filters, pagination: $pagination) { hash seoTitle seoDescription title isWeaponContent category { id title url description isPublished icon parent { title url parent { title url __typename } __typename } __typename } availableCategories { title url count __typename } seoFilters { title values __typename } metaCategories listings { id title isNew description url externalLink price { text raw __typename } originalPrice isTransactionEnabled productType primaryImage { url(size: Listing320) __typename } images { id url(size: Listing160) largeUrl: url(size: Listing640x640) small: url(size: Listing160) xlarge: url(size: Listing1280x1280) __typename } createdAt(dateFormat: RELATIVE_SHORT) address city zipcode userId user { id avatar { url(size: Avatar75) __typename } displayName mitIdValidatedAt isBusiness isSafepayAuthenticated isReachableByMessage __typename } isWeaponContent __typename } galleryListings(filters: $filters) { id title price { raw text __typename } primaryImage { url(size: Listing320) __typename } url user { displayName avatar { url(size: Avatar75) __typename } isBusiness __typename } isWeaponContent __typename } pagination { total hasPrevious hasNext __typename } seoLinks { title slug options { title slug __typename } __typename } userProfile { id displayName phones { id masked __typename } avatar { url(size: Avatar150) __typename } subscription { userId __typename } zipcode city mitIdValidatedAt isBusiness memberSince: createdAt(dateFormat: RELATIVE_LONG) createdAt(dateFormat: ABSOLUTE_DATE_YEAR) availableFrom availableTo business { isBannerOwnershipActive isNoFollowEnabled isGenericExternalLinkTextEnabled isPromotionsEnabled isReachableByMail website websiteText profileText __typename } status transactionHandInTime isTransactionEnabled isSafepayAuthenticated isFollowing receivedRatings { amount average __typename } followersCount __typename } __typename } }`;
+.page-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
 
-	let currentPage = 1;
-	let currentTerm = "";
-	let hasNextPage = false;
-	let isLoading = false;
+h1 {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #333;
+  font-size: 1.5em;
+}
 
-	const grid = document.getElementById("grid");
+h1 .title-highlight {
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
 
-	async function hentSide(page, term, categorySlug) {
-		const body = {
-			operationName: "Search",
-			variables: {
-				category: categorySlug,
-				filters: {
-					area: ["oestjylland", "vestogmidtjylland", "nordjylland", "sydjylland"],
-					categoryFields: [],
-					listingTypes: ["Sell"],
-					sorting: "LastCreated",
-					term: term,
-					userType: "Private",
-					weapons: true
-				},
-				pagination: {
-					perPage: 60,
-					page: page
-				},
-				currentUrl: "/s"
-			},
-			query: GRAPHQL_QUERY
-		};
-		const res = await fetch(PROXY + API_URL, {
-			method: "POST",
-			headers: HEADERS,
-			body: JSON.stringify(body)
-		});
-		if (!res.ok) throw new Error(`Fejl ved hentning af side ${page}: ${res.status}`);
-		return res.json();
-	}
+h1 .gg-highlight {
+  color: #faf286;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
 
+h1 .dba-highlight {
+  color: #00098a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
 
-	async function showSellerInfo(listingId) {
-		try {
-			const listingBody = {
-				operationName: "GetListing",
-				variables: {
-					id: listingId
-				},
-				query: GET_LISTING_QUERY
-			};
-			const listingRes = await fetch(PROXY + API_URL, {
-				method: "POST",
-				headers: HEADERS,
-				body: JSON.stringify(listingBody)
-			});
-			const listingData = await listingRes.json();
-			const user = listingData?.data?.listing?.user;
-			if (!user) return;
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 30;
+}
 
-			const profileBody = {
-				operationName: "Search",
-				variables: {
-					filters: {
-						weapons: true,
-						categoryFields: [],
-						userIds: [user.id]
-					},
-					pagination: {
-						perPage: 36,
-						page: 1
-					},
-					currentUrl: ""
-				},
-				query: GET_USER_PROFILE_QUERY
-			};
-			const profileRes = await fetch(PROXY + API_URL, {
-				method: "POST",
-				headers: HEADERS,
-				body: JSON.stringify(profileBody)
-			});
-			const profileData = await profileRes.json();
-			const search = profileData?.data?.search;
-			if (!search) return;
+input {
+  padding: clamp(8px, 1.5vw, 14px) clamp(12px, 2vw, 20px);
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+  width: clamp(200px, 50vw, 400px);
+  text-align: center;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
 
-			const userProfile = search.userProfile;
-			const listings = search.listings || [];
-			const addresses = [...new Set(listings.map(l => l.address).filter(Boolean))];
-			let fullAddress = '';
-			if (addresses.length && userProfile.zipcode && userProfile.city) fullAddress = `${addresses[0]}, ${userProfile.zipcode} ${userProfile.city}`;
-			const mapsLink = fullAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}` : '';
+.no-results {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.2rem;
+  color: #666;
+  min-height: 50vh;
+  grid-column: 1 / -1;
+}
 
-			const modal = document.createElement('div');
-			modal.className = 'modal';
-			modal.innerHTML = `
-                <div class="modal-content">
-                    <h2>Sælgers information</h2><p>Navn:<strong>
-                    <a href="https://www.guloggratis.dk/bruger/${userProfile.id}" target="_blank" rel="noopener noreferrer">${userProfile.displayName || 'Ukendt'}</a></strong></p>
-                    <p>Medlem siden: <strong>${userProfile.memberSince || 'Ukendt'}</strong></p>
-                    <p>By: <strong>${userProfile.city || ''} ${userProfile.zipcode || ''}</strong></p>
-                    ${fullAddress ? `<p class="address-line">Adresse: <img class="maps-icon" src="https://www.merrimackvalleyglass.com/wp-content/uploads/2020/07/1200px-Google_Maps_icon_2020.svg_.png" alt="Google Maps"><strong><a href="${mapsLink}" target="_blank" rel="noopener noreferrer">${fullAddress}</a></strong></p>` : ''}
-                    <button class="close-btn">Luk</button>
-                </div>`;
-			document.body.appendChild(modal);
-			modal.querySelector('.close-btn').addEventListener('click', () => modal.remove());
-			modal.addEventListener('click', e => {
-				if (e.target === modal) modal.remove();
-			});
-		} catch (err) {
-			console.error('Fejl ved hentning af sælgerinfo:', err);
-		}
-	}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
 
-	grid.addEventListener('click', async (e) => {
-		if (e.target.classList.contains('info-btn')) {
-			e.preventDefault();
-			e.stopPropagation();
-			await showSellerInfo(e.target.dataset.id);
-		}
-	});
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
 
+.category-selector {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
 
-	async function hentOgVisSide(page, catObj) {
-		if (isLoading) return;
-		isLoading = true;
-		try {
-			const data = await hentSide(page, currentTerm, catObj.ggSlug);
-			const searchData = data?.data?.search || {};
-			hasNextPage = searchData?.pagination?.hasNext;
+.loading-border {
+  display: none;
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+  pointer-events: none;
+  z-index: 1;
+}
 
-			if (page === 1) {
-				const categories = searchData.availableCategories || [];
-				const targetCategory = categories.find(cat => cat.title.toLowerCase() === catObj.ggTitle.toLowerCase());
-				if (targetCategory) {
-					const total = Math.min(targetCategory.count, 300);
-					window.totalAds += total;
-				}
-			}
+.loading-border.active {
+  display: block;
+}
 
-			const listings = searchData.listings || [];
-			const remaining = 300 - window.loadedAds;
-			const toShow = listings.slice(0, remaining);
+.loading-border rect {
+  stroke-dasharray: 20 644;
+  animation: dash 1.5s linear infinite;
+}
 
-			toShow.forEach(({
-				id,
-				title,
-				price,
-				url,
-				primaryImage,
-				city,
-				zipcode,
-				createdAt
-			}) => {
-				const card = document.createElement("a");
-				card.className = "card";
-				card.href = "https://www.guloggratis.dk" + url;
-				card.target = "_blank";
-				card.rel = "noopener noreferrer";
-				card.dataset.source = "gg";
-				card.dataset.id = id;
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 10px;
+  box-sizing: border-box;
+  align-items: start;
+}
 
-				const location = [city, zipcode].filter(Boolean).join(" ") || "";
+.card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-decoration: none;
+  color: inherit;
+  opacity: 0;
+  animation: fadeInCard 0.3s ease forwards;
+  will-change: transform;
+  position: relative;
+  height: 100%;
+}
 
-				card.innerHTML = `
-					<button class="info-btn" data-id="${id}">i</button>
-					<div class="card-image-wrapper">
-					    <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
-					</div>
-					<div class="gg-badge">GG</div>
-					<div class="card-content">
-						<h3>${title}</h3>
-						<div class="card-footer">
-							<div class="price">${price?.text || "Ingen pris"}</div>
-							<div class="city">${location}</div>
-						</div>
-					</div>
-				`;
+.card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #ddd;
+  flex-shrink: 0;
+  border-radius: 0;
+}
 
-				const parsedTimestamp = parseGGDate(createdAt);
-				card.dataset.timestamp = parsedTimestamp;
-				window.allCards.push(card);
-			});
+.card-image-wrapper {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  flex-shrink: 0;
+}
 
-			window.loadedAds += toShow.length;
-		} catch (err) {
-			console.error("Fejl:", err.message);
-		} finally {
-			isLoading = false;
-		}
-	}
+.card-image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; 
+  display: block;
+}
 
-	window.hentOgVisGG = async function(term, catObj, isBackground = false) {
-		currentTerm = term;
-		currentPage = 1;
-		hasNextPage = true;
+.card-content {
+  padding: 4px 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  color: white;
+}
 
-		const maxPages = isBackground ? 1 : 7;
-		while (hasNextPage && currentPage <= maxPages && window.allCards.length < 300) {
-			await hentOgVisSide(currentPage, catObj);
-			currentPage++;
-		}
-	};
-})();
+.card-content h3 {
+  margin: 0 0 auto 0;
+  font-size: clamp(0.9rem, 0.8vw, 1rem);
+  font-weight: 600;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  font-size: clamp(0.75rem, 1vw, 0.95rem);
+  gap: 8px;
+  margin-top: auto;
+  white-space: nowrap;
+}
+
+.location {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #ccc;
+  font-size: clamp(0.75rem, 0.9vw, 0.9rem);
+}
+
+.location .city,
+.location .zip {
+  margin-right: 4px;
+  flex-shrink: 1;
+}
+
+.price {
+  text-align: left;
+  font-weight: bold;
+  color: #d9534f;
+  font-size: clamp(0.9rem, 1vw, 1rem);
+}
+
+.toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 28px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slide {
+  position: relative;
+  min-width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #4caf50;
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
+.slide .google-icon {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+  z-index: 5;
+}
+
+.slide .google-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.slide .google-icon:hover {
+  transform: scale(1.3);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.toggle-label {
+  font-size: clamp(0.9rem, 1.5vw, 1rem);
+  color: #333;
+  cursor: pointer;
+}
+
+.info-btn {
+  position: absolute;
+  top: 36px;
+  right: 8px;
+  background: white;
+  color: #007bff;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.info-btn:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+.gg-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(250, 242, 134, 0.8);
+  color: #000;
+  font-weight: bold;
+  padding: 2px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dba-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  color: rgb(0, 9, 138);
+  font-weight: bold;
+  padding: 2px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(30, 30, 30, 0.4);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 10px;
+}
+
+.modal-content {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #eee;
+  padding: 20px;
+  border-radius: 16px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  color: #faf286;
+  font-weight: 700;
+  font-size: 1.4rem;
+  text-align: center;
+}
+
+.modal-content p {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 1rem;
+  color: #ddd;
+  font-weight: 500;
+}
+
+.modal-content .address-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modal-content .maps-icon {
+  width: 1em;
+  height: auto;
+  max-width: 20px;
+  transition: transform 0.2s ease;
+}
+
+.modal-content a {
+  color: #eee;
+  text-decoration: none;
+}
+
+.modal-content a:hover {
+  text-decoration: underline;
+}
+
+.close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #faf286;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-top: 10px;
+  width: 100%;
+  font-weight: 600;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.category-button {
+  padding: clamp(8px, 1.5vw, 14px) clamp(12px, 2vw, 20px);
+  background: transparent;
+  cursor: pointer;
+  border: none;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  width: auto;
+  fill: white;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.category-icon {
+  width: 24px;
+  height: 24px;
+  transform: scaleX(-1);
+  color: white;
+}
+
+.category-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  min-width: 200px;
+}
+
+.category-menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.category-menu li {
+  padding: 10px 20px;
+  cursor: pointer;
+  color: #333;
+}
+
+.category-menu li:hover {
+  background: #f0f0f0;
+}
+
+.category-menu li.active {
+  font-weight: bold;
+}
+
+.bg-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  color: #333;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.3s ease;
+}
+
+.bg-toggle:hover {
+  background: #f0f0f0;
+}
+
+.bg-toggle input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 44px;
+  height: 24px;
+  background: #ccc;
+  border-radius: 24px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.bg-toggle input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  top: 2px;
+  left: 2px;
+  background: #fff;
+  border-radius: 50%;
+  transition: left 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.bg-toggle input[type="checkbox"]:checked {
+  background: #4caf50;
+}
+
+.bg-toggle input[type="checkbox"]:checked::before {
+  left: 22px;
+}
+
+.card.bg-new-card {
+  position: relative;
+  z-index: 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card.bg-new-card::after {
+  content: "NY";
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #4caf50;
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.7rem;
+  padding: 3px 7px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: 0 0 6px 2px rgba(76, 175, 80, 0.6);
+  animation: pulseShadowToBorder 3s ease-in-out infinite;
+  text-transform: uppercase;
+}
+
+.card.bg-new-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+}
+
+.ad-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  animation: fadeInModal 0.35s ease forwards;
+}
+
+.ad-modal-content {
+  width: 80vw;
+  max-width: 1000px;
+  height: 80vh;
+  background: rgba(30, 30, 30, 0.9);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  color: #eee;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  transform: translateY(20px) scale(0.95);
+  opacity: 0;
+  animation: popInModal 0.35s ease forwards;
+}
+
+.ad-modal.closing {
+  animation: fadeOutModal 0.3s ease forwards;
+}
+
+.ad-modal.closing .ad-modal-content {
+  animation: popOutModal 0.3s ease forwards;
+}
+
+.image-slider {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: #000;
+}
+
+.slide-indicator {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.slider-inner {
+  display: flex;
+  height: 100%;
+  transition: transform 0.3s ease;
+}
+
+.slide {
+  min-width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  padding: 15px 20px;
+  cursor: pointer;
+  font-size: 1.5rem;
+  z-index: 10;
+}
+
+.left-arrow {
+  left: 10px;
+}
+
+.right-arrow {
+  right: 10px;
+}
+
+.ad-info {
+  padding: 20px;
+  text-align: center;
+  overflow-y: auto;
+}
+
+.ad-title {
+  font-size: 1.2rem;
+  margin: 0 0 10px 0;
+}
+
+.ad-price {
+  font-size: 1.2rem;
+  color: #d9534f;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.ad-description {
+  text-align: center;
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+  font-size: clamp(0.8rem, 1vw, 1.2rem);
+  color: #ddd;
+  max-height: calc(1.5em * 5);
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  padding-right: 4px;
+  padding: 4px;
+}
+
+.ad-location {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #ccc;
+}
+
+.ad-divider {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  margin: 12px auto;
+  width: 80%;
+}
+
+.menu-divider {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(0, 0, 0, 0.3),
+    transparent
+  );
+  margin: 12px auto;
+  width: 80%;
+}
+
+.original-link {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  color: white;
+  font-weight: bold;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.original-link:hover {
+  text-decoration: underline;
+}
+
+.close-modal {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #eee;
+  font-size: 2rem;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.close-modal:hover {
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  input {
+    font-size: 16px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  #grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .card img {
+    aspect-ratio: 16 / 9;
+  }
+  .card-footer,
+  .location {
+    white-space: normal;
+  }
+  .card-content {
+    padding: 8px;
+  }
+  .price {
+    font-size: 1rem;
+  }
+  .location {
+    font-size: 0.8rem;
+  }
+}
+
+.card.new-card {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+  animation: fadeInCard 0.35s cubic-bezier(0, 0, 0, 1) forwards;
+}
+
+@keyframes pulseShadowToBorder {
+  0% {
+    box-shadow: 0 0 6px 2px rgba(76, 175, 80, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(76, 175, 80, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 6px 2px rgba(76, 175, 80, 0.6);
+  }
+}
+
+@keyframes fadeInCard {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -664;
+  }
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOutModal {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes popInModal {
+  from {
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes popOutModal {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+  }
+}
+
+@keyframes popInCard {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
