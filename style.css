@@ -129,7 +129,7 @@ input {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  border-radius: 0 0 12px 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
@@ -149,6 +149,7 @@ input {
   object-fit: cover;
   background: #ddd;
   flex-shrink: 0;
+  border-radius: 0;
 }
 
 .card-content {
@@ -555,7 +556,7 @@ input:checked + .slider:before {
 
 .card.bg-new-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 18px rgba(76, 175, 80, 0.4);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
 }
 
 .ad-modal {
