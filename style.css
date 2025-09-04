@@ -145,7 +145,6 @@ input {
 
 .card img {
   width: 100%;
-  aspect-ratio: 4 / 3;
   object-fit: cover;
   background: #ddd;
   flex-shrink: 0;
@@ -780,6 +779,11 @@ input:checked + .slider:before {
 }
 
 @media (max-width: 480px) {
+  @supports (contain: paint) and (not (-moz-appearance: none)) {
+    .card-image-wrapper img {
+      height: 100%;
+    }
+  }
   .card img {
     aspect-ratio: 16 / 9;
   }
