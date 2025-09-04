@@ -47,7 +47,9 @@ const MAX_RESULTS = 600;
 		const priceText = formatPrice(doc.price?.amount, doc.price?.currency_code);
 
 		card.innerHTML = `
-            <img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" />
+		    <div class="card-image-wrapper">
+                <img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" />
+            </div>
             <div class="dba-badge">dba</div>
             <div class="card-content">
                 <h3>${doc.heading || ""}</h3>
