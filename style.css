@@ -114,13 +114,14 @@ input {
 
 #grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, calc(25% - 12px)));
-  max-width: 1200px;
-  justify-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 16px;
   width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 0 10px;
   box-sizing: border-box;
+  align-items: start;
 }
 
 .card {
@@ -139,6 +140,7 @@ input {
   animation: fadeInCard 0.3s ease forwards;
   will-change: transform;
   position: relative;
+  height: 100%;
 }
 
 .card img {
@@ -146,6 +148,7 @@ input {
   aspect-ratio: 4 / 3;
   object-fit: cover;
   background: #ddd;
+  flex-shrink: 0;
 }
 
 .card-content {
