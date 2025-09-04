@@ -531,22 +531,31 @@ input:checked + .slider:before {
 .card.bg-new-card {
   position: relative;
   z-index: 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .card.bg-new-card::after {
-  content: "";
+  content: "NY";
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 0 0 12px 12px;
+  top: 10px;
+  left: 10px;
+  background: #4caf50;
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.7rem;
+  padding: 3px 7px;
+  border-radius: 4px;
   pointer-events: none;
-  z-index: 1;
-  background: transparent;
-  box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5);
-  animation: pulseShadowToBorder 3s ease-in-out forwards;
-  will-change: box-shadow, border;
+  z-index: 2;
+  box-shadow: 0 0 6px 2px rgba(76, 175, 80, 0.6);
+  animation: pulseShadowToBorder 3s ease-in-out infinite;
+  text-transform: uppercase;
+}
+
+.card.bg-new-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 18px rgba(76, 175, 80, 0.4);
 }
 
 .ad-modal {
@@ -782,24 +791,13 @@ input:checked + .slider:before {
 
 @keyframes pulseShadowToBorder {
   0% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5);
-    border: none;
-  }
-  25% {
-    box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.5);
-    border: none;
+    box-shadow: 0 0 6px 2px rgba(76, 175, 80, 0.6);
   }
   50% {
-    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.5);
-    border: none;
-  }
-  75% {
-    box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.5);
-    border: none;
+    box-shadow: 0 0 12px 4px rgba(76, 175, 80, 0.8);
   }
   100% {
-    box-shadow: none;
-    border: 1px solid #4caf50;
+    box-shadow: 0 0 6px 2px rgba(76, 175, 80, 0.6);
   }
 }
 
