@@ -781,11 +781,17 @@ input:checked + .slider:before {
 }
 
 @media (max-width: 480px) {
-  @supports (contain: paint) and (not (-moz-appearance: none)) {
-    .card-image-wrapper img {
-      height: 100%;
-    }
+@supports (contain: paint) and (not (-moz-appearance: none)) {
+  .card-image-wrapper img {
+    height: 100%;
   }
+  .card-content h3,
+  .location,
+  .price {
+    transform: scale(0.9);
+  }
+}
+
   .card img {
     aspect-ratio: 16 / 9;
   }
