@@ -8,6 +8,8 @@
 
 	const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
+	let bgIntervalId = null;
+
 	function cardKey(card) {
 		return card.dataset.id || card.dataset.key;
 	}
@@ -173,11 +175,16 @@
 		document.addEventListener("visibilitychange", handleReturnToPage);
 		window.addEventListener("pageshow", handleReturnToPage);
 	} else {
-		setInterval(async () => {
-			if (window.bgSearchEnabled) {
-				await backgroundSearch();
-			}
-		}, REFRESH_INTERVAL);
+		// desktop: interval
+		function startBgInterval() {
+			if (bgIntervalId) clearInterval(bgIntervalId);
+			bgIntervalId = setInterval(async () => {
+				if (window.bgSearchEnabled) {
+					await backgroundSearch();
+				}
+			}, REFRESH_INTERVAL);
+		}
+		startBgInterval();
 
 		document.addEventListener("visibilitychange", () => {
 			if (document.visibilityState === "visible" && pendingNewMap.size) {
@@ -187,15 +194,19 @@
 	}
 
 	window.bgSearch = {
+		_pausedSearches: [],
+
 		addActiveSearch: (term, catObj) => {
 			if (!window.bgSearchEnabled) return;
 			if (!activeSearches.some(s => s.term === term && s.catObj === catObj)) {
 				activeSearches.push({ term, catObj });
 			}
 		},
+
 		removeActiveSearch: (term, catObj) => {
 			activeSearches = activeSearches.filter(s => !(s.term === term && s.catObj === catObj));
 		},
+
 		setBaseline: () => {
 			if (!window.bgSearchEnabled) return;
 			if (!Array.isArray(window.allCards)) window.allCards = [];
@@ -205,14 +216,38 @@
 			updateTitle(0);
 			console.log("Baseline sat med", lastResultsKeys.size, "elementer");
 		},
+
 		pendingCount: () => pendingNewMap.size,
+
 		clear: () => {
+			window.bgSearch._pausedSearches = activeSearches.slice();
 			activeSearches = [];
 			lastResultsKeys.clear();
 			pendingNewMap.clear();
 			seenPendingTerms.clear();
 			updateTitle(0);
-			console.log("bgSearch er nulstillet");
+			console.log("bgSearch er nulstillet (pauset", window.bgSearch._pausedSearches.length, "søgninger)");
+		},
+
+		resume: () => {
+			if (!window.bgSearchEnabled) return;
+
+			if (Array.isArray(window.bgSearch._pausedSearches) && window.bgSearch._pausedSearches.length) {
+				activeSearches = window.bgSearch._pausedSearches;
+				window.bgSearch._pausedSearches = [];
+			}
+
+			if (!Array.isArray(window.allCards)) window.allCards = [];
+			lastResultsKeys = makeKeysFromCards(window.allCards);
+			pendingNewMap.clear();
+			seenPendingTerms.clear();
+			updateTitle(0);
+
+			if (!isMobile) startBgInterval();
+
+			backgroundSearch().catch(console.error);
+
+			console.log("bgSearch er genoptaget; aktive søgninger:", activeSearches.length);
 		}
 	};
 })();
