@@ -22,6 +22,7 @@ const MAX_RESULTS = 600;
 
 	function formatPrice(amount, currency) {
 		if (typeof amount !== "number") return "";
+		if (amount === 0) return "Gives væk";
 		let formatted = amount.toLocaleString("da-DK");
 		return currency === "DKK" ? `${formatted} kr.` : `${formatted} ${currency || ""}`;
 	}
