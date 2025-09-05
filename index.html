@@ -94,6 +94,8 @@
 			console.log("Baggrundssøgning:", window.bgSearchEnabled ? "TIL" : "FRA");
 			if (!window.bgSearchEnabled && window.bgSearch) {
 				window.bgSearch.clear();
+			} else if (window.bgSearchEnabled && window.bgSearch) {
+				window.bgSearch.resume();
 			}
 		});
 	}
