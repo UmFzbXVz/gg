@@ -64,7 +64,8 @@
     }
 
     async function backgroundSearch() {
-        if (!window.bgSearchEnabled || !activeSearches.length) return;
+        const bgEnabled = document.getElementById("bgToggle").checked;
+        if (!bgEnabled || !activeSearches.length) return;
         if (!Array.isArray(window.allCards)) window.allCards = [];
 
         window.startSpinner();
@@ -151,7 +152,8 @@
         let wasVisible = true;
 
         async function handleReturnToPage() {
-            if (!window.bgSearchEnabled) return;
+            const bgEnabled = document.getElementById("bgToggle").checked;
+            if (!bgEnabled) return;
 
             const nowVisible = document.visibilityState === "visible";
             if (!nowVisible || wasVisible) {
@@ -178,7 +180,8 @@
         function startBgInterval() {
             if (bgIntervalId) clearInterval(bgIntervalId);
             bgIntervalId = setInterval(async () => {
-                if (window.bgSearchEnabled) {
+                const bgEnabled = document.getElementById("bgToggle").checked;
+                if (bgEnabled) {
                     await backgroundSearch();
                 }
             }, REFRESH_INTERVAL);
@@ -196,7 +199,8 @@
         _pausedSearches: [],
 
         addActiveSearch: function(term, catObj) {
-            if (!window.bgSearchEnabled) return;
+            const bgEnabled = document.getElementById("bgToggle").checked;
+            if (!bgEnabled) return;
             if (!activeSearches.some(s => s.term === term && s.catObj === catObj)) {
                 activeSearches.push({ term, catObj });
             }
@@ -207,7 +211,8 @@
         },
 
         setBaseline: function() {
-            if (!window.bgSearchEnabled) return;
+            const bgEnabled = document.getElementById("bgToggle").checked;
+            if (!bgEnabled) return;
             if (!Array.isArray(window.allCards)) window.allCards = [];
             lastResultsKeys = makeKeysFromCards(window.allCards);
             pendingNewMap.clear();
@@ -231,7 +236,8 @@
         },
 
         resume: function() {
-            if (!window.bgSearchEnabled) return;
+            const bgEnabled = document.getElementById("bgToggle").checked;
+            if (!bgEnabled) return;
 
             if (Array.isArray(this._pausedSearches) && this._pausedSearches.length) {
                 activeSearches = this._pausedSearches;
