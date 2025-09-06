@@ -51,56 +51,6 @@
         return card.dataset.id || card.dataset.key;
     }
 
-    const form = document.getElementById("searchForm");
-    const input = document.getElementById("searchTerm");
-    const spinner = document.getElementById("searchSpinner");
-    const grid = document.getElementById("grid");
-    const categoryButton = document.getElementById("categoryButton");
-    const categoryMenu = document.getElementById("categoryMenu");
-    const bgToggle = document.getElementById("bgToggle");
-
-    let selectedCategory = 'mobler';
-    window.bgSearchEnabled = true;
-    window.pendingBgSearches = []; 
-
-    const BATCH_SIZE = 30;
-    let isFirstSearch = true;
-    window.allCards = [];
-    let currentIndex = 0;
-
-    const categories = {
-        'mobler': {
-            ggSlug: '/mobler',
-            ggTitle: 'møbler',
-            dbaCat: '0.78'
-        },
-        'dyr': {
-            ggSlug: '/dyr-og-tilbehor',
-            ggTitle: 'dyr og tilbehør',
-            dbaCat: '0.77'
-        },
-        'kunst': {
-            ggSlug: '/antikviteter-og-kunst',
-            ggTitle: 'antikviteter og kunst',
-            dbaCat: '0.76'
-        }
-    };
-
-    const defaultLi = categoryMenu.querySelector('li[data-value="mobler"]');
-    if (defaultLi) defaultLi.classList.add('active');
-
-    if (bgToggle) {
-        bgToggle.addEventListener("change", (e) => {
-            window.bgSearchEnabled = e.target.checked;
-            console.log("Baggrundssøgning:", window.bgSearchEnabled ? "TIL" : "FRA");
-            if (!window.bgSearchEnabled && window.bgSearch) {
-                window.bgSearch.clear();
-            } else if (window.bgSearchEnabled && window.bgSearch) {
-                window.bgSearch.resume();
-            }
-        });
-    }
-
     function showNoResults(term) {
         if (window.allCards.length === 0) {
             grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
@@ -118,7 +68,7 @@
     }
 
     function handleScroll() {
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
             renderNextBatch();
         }
     }
@@ -129,6 +79,117 @@
         currentIndex = 0;
         renderNextBatch();
         window.addEventListener('scroll', handleScroll);
+    };
+
+    function insertNewCardsAnimated(newCards) {
+        newCards.forEach(card => {
+            card.classList.add('new-card');
+            grid.prepend(card);
+            requestAnimationFrame(() => {
+                card.classList.remove('new-card');
+            });
+        });
+    }
+
+    function magicSpan(id, terms, displayTerm) {
+        const span = document.getElementById(id);
+        if (!span) return;
+
+        span.addEventListener('click', async () => {
+            const catObj = categories[selectedCategory];
+            input.value = "";
+            input.disabled = true;
+            spinner.classList.add("active");
+            window.allCards = [];
+            window.totalAds = 0;
+            window.loadedAds = 0;
+            currentIndex = 0;
+            window.removeEventListener('scroll', handleScroll);
+
+            try {
+                const bgEnabled = bgToggle.checked;
+                if (bgEnabled && window.bgSearch) {
+                    window.bgSearch.clear();
+                    terms.forEach(term => window.bgSearch.addActiveSearch(term, catObj));
+                }
+
+                for (const term of terms) {
+                    await window.hentOgVisGG(term, catObj, true);
+                    await window.hentOgVisDBA(term, catObj.dbaCat, true);
+                }
+
+                const seenKeys = new Set();
+                window.allCards = window.allCards.filter(card => {
+                    const key = cardKey(card);
+                    if (seenKeys.has(key)) return false;
+                    seenKeys.add(key);
+                    return true;
+                });
+
+                insertNewCardsAnimated(window.allCards);
+                window.loadedAds = window.totalAds = window.allCards.length;
+                window.sortAndRender();
+                showNoResults(displayTerm);
+
+                if (bgEnabled && window.bgSearch) {
+                    window.bgSearch.setBaseline();
+                } else {
+                    window.pendingBgSearches = terms.map(term => ({ term, catObj }));
+                    if (window.bgSearch) window.bgSearch.clear();
+                }
+            } catch (err) {
+                console.error("Fejl i magicSpan-søgning:", err);
+            } finally {
+                input.disabled = false;
+                spinner.classList.remove("active");
+            }
+        });
+    }
+
+    window.startSpinner = function() {
+        if (spinner) spinner.classList.add("active");
+        input.disabled = true;
+    };
+
+    window.stopSpinner = function() {
+        if (spinner) spinner.classList.remove("active");
+        input.disabled = false;
+    };
+
+    const form = document.getElementById("searchForm");
+    const input = document.getElementById("searchTerm");
+    const spinner = document.getElementById("searchSpinner");
+    const grid = document.getElementById("grid");
+    const categoryButton = document.getElementById("categoryButton");
+    const categoryMenu = document.getElementById("categoryMenu");
+    const bgToggle = document.getElementById("bgToggle");
+
+    let selectedCategory = 'mobler';
+    window.pendingBgSearches = [];
+    const BATCH_SIZE = 30;
+    let isFirstSearch = true;
+    window.allCards = [];
+    let currentIndex = 0;
+
+    const categories = {
+        'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78' },
+        'dyr': { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77' },
+        'kunst': { ggSlug: '/antikviteter-og-kunst', ggTitle: 'antikviteter og kunst', dbaCat: '0.76' }
+    };
+
+    const defaultLi = categoryMenu.querySelector('li[data-value="mobler"]');
+    if (defaultLi) defaultLi.classList.add('active');
+
+    if (bgToggle) {
+        bgToggle.addEventListener("change", (e) => {
+            const enabled = e.target.checked;
+            console.log("Baggrundssøgning:", enabled ? "TIL" : "FRA");
+            if (!enabled && window.bgSearch) {
+                window.bgSearch.clear();
+            } else if (enabled && window.bgSearch) {
+                window.bgSearch.resume();
+            }
+        });
     }
 
     categoryButton.addEventListener('click', (e) => {
@@ -196,7 +257,8 @@
             window.loadedAds = window.totalAds;
             window.sortAndRender();
 
-            if (window.bgSearchEnabled && window.bgSearch) {
+            const bgEnabled = bgToggle.checked;
+            if (bgEnabled && window.bgSearch) {
                 window.bgSearch.addActiveSearch(term, catObj);
                 window.bgSearch.setBaseline();
             } else {
@@ -204,7 +266,6 @@
             }
 
             showNoResults(term);
-
         } catch (err) {
             console.error("Fejl i søgning:", err);
         } finally {
@@ -213,88 +274,8 @@
         }
     });
 
-    function insertNewCardsAnimated(newCards) {
-        newCards.forEach(card => {
-            card.classList.add('new-card');
-            grid.prepend(card);
-            requestAnimationFrame(() => {
-                card.classList.remove('new-card');
-            });
-        });
-    }
-
-    function magicSpan(id, terms, displayTerm) {
-        const span = document.getElementById(id);
-        if (!span) return;
-
-        span.addEventListener('click', async () => {
-            const catObj = categories[selectedCategory];
-            input.value = "";
-            input.disabled = true;
-            spinner.classList.add("active");
-            window.allCards = [];
-            window.totalAds = 0;
-            window.loadedAds = 0;
-            currentIndex = 0;
-            window.removeEventListener('scroll', handleScroll);
-
-            try {
-                if (window.bgSearchEnabled && window.bgSearch) {
-                    window.bgSearch.clear();
-                    terms.forEach(term => window.bgSearch.addActiveSearch(term, catObj));
-                }
-
-                for (const term of terms) {
-                    await window.hentOgVisGG(term, catObj, true);
-                    await window.hentOgVisDBA(term, catObj.dbaCat, true);
-                }
-
-                const seenKeys = new Set();
-                window.allCards = window.allCards.filter(card => {
-                    const key = cardKey(card);
-                    if (seenKeys.has(key)) return false;
-                    seenKeys.add(key);
-                    return true;
-                });
-
-                insertNewCardsAnimated(window.allCards);
-                window.loadedAds = window.totalAds = window.allCards.length;
-                window.sortAndRender();
-                showNoResults(displayTerm);
-
-                if (window.bgSearchEnabled && window.bgSearch) {
-                    window.bgSearch.setBaseline();
-                } else {
-                    window.pendingBgSearches = terms.map(term => ({ term, catObj }));
-                    if (window.bgSearch) window.bgSearch.clear();  
-                }
-
-            } catch (err) {
-                console.error("Fejl i magicSpan-søgning:", err);
-            } finally {
-                input.disabled = false;
-                spinner.classList.remove("active");
-            }
-        });
-    }
-
     magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig"], "gode sager");
     magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander"], "generelle sager");
-
-    window.startSpinner = function() {
-        const spinner = document.getElementById("searchSpinner");
-        const input = document.getElementById("searchTerm");
-        if (spinner) spinner.classList.add("active");
-        input.disabled = true;
-    };
-
-    window.stopSpinner = function() {
-        const spinner = document.getElementById("searchSpinner");
-        const input = document.getElementById("searchTerm");
-        if (spinner) spinner.classList.remove("active");
-        input.disabled = false;
-    };
-
 })();
 </script>
 </body>
