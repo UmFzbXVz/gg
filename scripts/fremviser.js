@@ -178,7 +178,9 @@
 
 		updateSlide();
 
-		history.pushState({ modalOpen: true }, "", window.location.href);
+		history.pushState({
+			modalOpen: true
+		}, "", window.location.href);
 		const handlePop = () => {
 			if (modal.isConnected) closeModal();
 		};
@@ -210,30 +212,31 @@
 
 	grid.addEventListener('click', async (e) => {
 		const card = e.target.closest('.card');
-		if (card && !e.target.classList.contains('info-btn')) {
-			e.preventDefault();
-			e.stopPropagation();
+		if (!card || e.target.classList.contains('info-btn')) return;
 
-			const isGG = !!card.querySelector('.gg-badge');
-			const isDBA = !!card.querySelector('.dba-badge');
+		e.preventDefault();
+		e.stopPropagation();
 
-			if (!isGG && !isDBA) return;
+		const isGG = !!card.querySelector('.gg-badge');
+		const isDBA = !!card.querySelector('.dba-badge');
+		const isReshopper = !!card.querySelector('.reshopper-badge');
 
-			const originalUrl = card.href;
-			const title = card.querySelector('h3')?.innerText || 'Ukendt titel';
-			const price = card.querySelector('.price')?.innerText || 'Ingen pris';
-			const location = card.querySelector('.city')?.innerText || 'Ukendt placering';
-			let description = '';
-			let images = [];
+		const originalUrl = card.href;
+		const title = card.querySelector('h3')?.innerText || 'Ukendt titel';
+		const price = card.querySelector('.price')?.innerText || 'Ingen pris';
+		let location = card.querySelector('.city')?.innerText || 'Ukendt placering';
+		let description = '';
+		let images = [];
 
-			if (isGG) {
-				const id = card.querySelector('.info-btn')?.dataset.id;
-				if (!id) return;
-
+		if (isGG) {
+			const id = card.querySelector('.info-btn')?.dataset.id;
+			if (id) {
 				try {
 					const body = {
 						operationName: "GetListing",
-						variables: { id },
+						variables: {
+							id
+						},
 						query: GET_LISTING_QUERY
 					};
 					const res = await fetch(PROXY + API_URL, {
@@ -251,12 +254,17 @@
 					console.error('Fejl ved hentning af GG annonce:', err);
 					description = 'Fejl ved indlæsning.';
 				}
-			} else if (isDBA) {
-				images = JSON.parse(card.dataset.images || '[]');
-				description = await getDbaDescription(originalUrl);
 			}
-
-			openAdModal(title, description, price, location, images, originalUrl);
+		} else if (isDBA) {
+			images = JSON.parse(card.dataset.images || '[]');
+			description = await getDbaDescription(originalUrl);
+		} else if (isReshopper) {
+			images = JSON.parse(card.dataset.images || '[]');
+			description = card.dataset.description || 'Ingen beskrivelse tilgængelig.';
+			location = card.dataset.seller || 'Ukendt sælger';
 		}
+
+		openAdModal(title, description, price, location, images, originalUrl);
 	});
+
 })();
