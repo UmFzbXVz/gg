@@ -3,7 +3,7 @@
 	let lastResultsKeys = new Set();
 	let pendingNewMap = new Map();
 	const originalTitle = document.title;
-	const REFRESH_INTERVAL = 1 * 30 * 1000;
+	const REFRESH_INTERVAL = 5 * 60 * 1000;
 	const seenPendingTerms = new Map();
 
 	const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
