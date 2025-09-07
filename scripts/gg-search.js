@@ -91,6 +91,11 @@ function parseGGDate(str) {
 		"x-requested-with": "dk.guloggratis"
 	};
 
+	const AREA_GROUPS = {
+		jylland: ["oestjylland", "vestogmidtjylland", "nordjylland", "sydjylland"],
+		sydsjaellandlollandfalstermoen: ["sydsjaellandlollandfalstermoen"]
+	};
+
 	const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) { redirect(url: $currentUrl) search(filters: $filters, pagination: $pagination) { pagination { total hasPrevious hasNext __typename } availableCategories { title url count __typename } listings { id title description url price { text raw __typename } primaryImage { url(size: Listing320) __typename } city zipcode createdAt(dateFormat: RELATIVE_SHORT) } }}`;
 	const GET_LISTING_QUERY = `query GetListing($id: ID!) { listing(id: $id) { id title url description categoryId externalLink status viewsCount draftFinishedAt expiredAt productType favoritesCount isWeaponContent isTransactionEnabled metaTitle metaDescription isFixedPrice isInBasket isShippingAvailable transactionData { transactionId __typename } price { raw text type __typename } originalPrice images { sortOrder small: url(size: Listing640) medium: url(size: Listing1280) bigPictureSmall: url(size: Listing640x640) bigPictureMedium: url(size: Listing1280x1280) bigPictureLarge: url(size: Listing2560x2560) __typename } user { id displayName isBusiness mitIdValidatedAt isReachableByMessage isTransactionEnabled isSafepayAuthenticated status avatar { url(size: Avatar75) __typename } subscription { userId __typename } memberSince: createdAt(dateFormat: RELATIVE_LONG) availableFrom availableTo onlineListingsCount business { isBannerOwnershipActive isNoFollowEnabled isGenericExternalLinkTextEnabled isPromotionsEnabled isReachableByMail website websiteText profileText __typename } displayAddress city zipcode createdAt transactionHandInTime isFollowing receivedRatings { amount average __typename } followersCount __typename } displayAddress phones { id masked __typename } categories { id title url __typename } leafCategory { id title url featureTags isPublished __typename } listingFields { field { id isSeo title slug isBookable sortOrder parentFieldId __typename } fieldOption { slug title __typename } value fullValue displayGroup { id title sortOrder __typename } __typename } __typename } }`;
 	const GET_USER_PROFILE_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) { redirect(url: $currentUrl) search(filters: $filters, pagination: $pagination) { hash seoTitle seoDescription title isWeaponContent category { id title url description isPublished icon parent { title url parent { title url __typename } __typename } __typename } availableCategories { title url count __typename } seoFilters { title values __typename } metaCategories listings { id title isNew description url externalLink price { text raw __typename } originalPrice isTransactionEnabled productType primaryImage { url(size: Listing320) __typename } images { id url(size: Listing160) largeUrl: url(size: Listing640x640) small: url(size: Listing160) xlarge: url(size: Listing1280x1280) __typename } createdAt(dateFormat: RELATIVE_SHORT) address city zipcode userId user { id avatar { url(size: Avatar75) __typename } displayName mitIdValidatedAt isBusiness isSafepayAuthenticated isReachableByMessage __typename } isWeaponContent __typename } galleryListings(filters: $filters) { id title price { raw text __typename } primaryImage { url(size: Listing320) __typename } url user { displayName avatar { url(size: Avatar75) __typename } isBusiness __typename } isWeaponContent __typename } pagination { total hasPrevious hasNext __typename } seoLinks { title slug options { title slug __typename } __typename } userProfile { id displayName phones { id masked __typename } avatar { url(size: Avatar150) __typename } subscription { userId __typename } zipcode city mitIdValidatedAt isBusiness memberSince: createdAt(dateFormat: RELATIVE_LONG) createdAt(dateFormat: ABSOLUTE_DATE_YEAR) availableFrom availableTo business { isBannerOwnershipActive isNoFollowEnabled isGenericExternalLinkTextEnabled isPromotionsEnabled isReachableByMail website websiteText profileText __typename } status transactionHandInTime isTransactionEnabled isSafepayAuthenticated isFollowing receivedRatings { amount average __typename } followersCount __typename } __typename } }`;
@@ -99,16 +104,18 @@ function parseGGDate(str) {
 	let currentTerm = "";
 	let hasNextPage = false;
 	let isLoading = false;
+	let selectedAreas = getSelectedAreasFromUI();
 
 	const grid = document.getElementById("grid");
 
-	async function hentSide(page, term, categorySlug) {
+	async function hentSide(page, term, categorySlug, selectedAreas) {
+		const areasToUse = (Array.isArray(selectedAreas) && selectedAreas.length) ? selectedAreas : AREA_GROUPS.jylland.slice();
 		const body = {
 			operationName: "Search",
 			variables: {
 				category: categorySlug,
 				filters: {
-					area: ["oestjylland", "vestogmidtjylland", "nordjylland", "sydjylland"],
+					area: areasToUse,
 					categoryFields: [],
 					listingTypes: ["Sell"],
 					sorting: "LastCreated",
@@ -133,6 +140,18 @@ function parseGGDate(str) {
 		return res.json();
 	}
 
+	function getSelectedAreasFromUI() {
+		try {
+			const selected = [];
+			const jyllandBox = document.getElementById("locationJylland");
+			const sydBox = document.getElementById("locationSydsjaelland");
+			if (jyllandBox && jyllandBox.checked) selected.push(...AREA_GROUPS.jylland);
+			if (sydBox && sydBox.checked) selected.push(...AREA_GROUPS.sydsjaellandlollandfalstermoen);
+			return selected.length ? selected : AREA_GROUPS.jylland.slice();
+		} catch (e) {
+			return AREA_GROUPS.jylland.slice();
+		}
+	}
 
 	async function showSellerInfo(listingId) {
 		try {
@@ -214,11 +233,12 @@ function parseGGDate(str) {
 	});
 
 
-	async function hentOgVisSide(page, catObj) {
+	async function hentOgVisSide(page, catObj, selectedAreas) {
 		if (isLoading) return;
 		isLoading = true;
 		try {
-			const data = await hentSide(page, currentTerm, catObj.ggSlug);
+			const data = await hentSide(page, currentTerm, catObj.ggSlug, selectedAreas);
+
 			const searchData = data?.data?.search || {};
 			hasNextPage = searchData?.pagination?.hasNext;
 
@@ -283,15 +303,28 @@ function parseGGDate(str) {
 		}
 	}
 
-	window.hentOgVisGG = async function(term, catObj, isBackground = false) {
+	window.hentOgVisGG = async function(term, catObj, selectedRegionKeyOrArray = null, isBackground = false) {
 		currentTerm = term;
 		currentPage = 1;
 		hasNextPage = true;
 
+		if (Array.isArray(selectedRegionKeyOrArray) && selectedRegionKeyOrArray.length) {
+			selectedAreas = [];
+			selectedRegionKeyOrArray.forEach(item => {
+				if (AREA_GROUPS[item]) selectedAreas.push(...AREA_GROUPS[item]);
+				else selectedAreas.push(item);
+			});
+		} else if (typeof selectedRegionKeyOrArray === "string" && AREA_GROUPS[selectedRegionKeyOrArray]) {
+			selectedAreas = AREA_GROUPS[selectedRegionKeyOrArray].slice();
+		} else {
+			selectedAreas = getSelectedAreasFromUI();
+		}
+
 		const maxPages = isBackground ? 1 : 7;
 		while (hasNextPage && currentPage <= maxPages && window.allCards.length < 300) {
-			await hentOgVisSide(currentPage, catObj);
+			await hentOgVisSide(currentPage, catObj, selectedAreas);
 			currentPage++;
 		}
 	};
+
 })();
