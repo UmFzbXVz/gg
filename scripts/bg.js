@@ -88,7 +88,7 @@
 					window.allCards = [];
 
 					await Promise.all([
-						window.hentOgVisGG(term, catObj, true),
+						window.hentOgVisGG(term, catObj, null, true),
 						window.hentOgVisDBA(term, catObj.dbaCat, true),
 						window.hentOgVisReshopper?.(term, true)
 					]);
