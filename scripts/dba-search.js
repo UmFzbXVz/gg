@@ -1,23 +1,26 @@
 const MAX_RESULTS = 600;
+const PROXY = "https://corsproxy.io/?";
 
 (() => {
 	const grid = document.getElementById("grid");
 	const API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON";
 	let isLoading = false;
-	let cityToZip = {};
 
-	async function loadPostnumre() {
-		try {
-			const res = await fetch("https://api.dataforsyningen.dk/postnumre");
-			const data = await res.json();
-			data.forEach(entry => {
-				const city = entry.navn.trim();
-				if (!cityToZip[city]) cityToZip[city] = [];
-				cityToZip[city].push(entry.nr);
-			});
-		} catch (err) {
-			console.error("Kunne ikke hente postnumre:", err);
+	const jylland = ["0.200006", "0.200005", "0.200007", "0.200008"];
+	const sydsjaellandOgOerne = ["0.200004"];
+
+	function getSelectedLocations() {
+		const selected = [];
+		const jyllandBox = document.getElementById("locationJylland");
+		const sydBox = document.getElementById("locationSydsjaelland");
+
+		if (jyllandBox && jyllandBox.checked) {
+			selected.push(...jylland);
 		}
+		if (sydBox && sydBox.checked) {
+			selected.push(...sydsjaellandOgOerne);
+		}
+		return selected.length > 0 ? selected : jylland;
 	}
 
 	function formatPrice(amount, currency) {
@@ -25,12 +28,6 @@ const MAX_RESULTS = 600;
 		if (amount === 0) return "Gives væk";
 		let formatted = amount.toLocaleString("da-DK");
 		return currency === "DKK" ? `${formatted} kr.` : `${formatted} ${currency || ""}`;
-	}
-
-	function getZipForCity(cityName) {
-		if (!cityName) return "";
-		const zips = cityToZip[cityName.trim()];
-		return zips && zips.length ? zips.join(", ") : "";
 	}
 
 	function makeCard(doc) {
@@ -43,7 +40,7 @@ const MAX_RESULTS = 600;
 		card.rel = "noopener noreferrer";
 
 		const location = doc.location || "";
-		const zip = getZipForCity(location);
+		const zip = window.getZipForCity(location);
 		const imageSrc = (doc.image_urls && doc.image_urls.length > 0) ? doc.image_urls[0] : "";
 		const priceText = formatPrice(doc.price?.amount, doc.price?.currency_code);
 
@@ -66,7 +63,6 @@ const MAX_RESULTS = 600;
 
 		card.dataset.timestamp = doc.timestamp || 0;
 		card.dataset.images = JSON.stringify(doc.image_urls || []);
-
 		card.dataset.key = `${doc.heading || ""}|${priceText}`;
 
 		return card;
@@ -77,12 +73,14 @@ const MAX_RESULTS = 600;
 		params.append("q", term);
 		params.append("category", category);
 		params.append("sort", "PUBLISHED_DESC");
-		["0.200006", "0.200005", "0.200007", "0.200008"].forEach(loc => params.append("location", loc));
+
+		getSelectedLocations().forEach(loc => params.append("location", loc));
+
 		params.append("dealer_segment", "1");
 		["1", "2"].forEach(tt => params.append("trade_type", tt));
 		params.append("page", page);
 
-		const res = await fetch(`${API_URL}?${params.toString()}`);
+		const res = await fetch(`${PROXY}${API_URL}?${params.toString()}`);
 		if (!res.ok) throw new Error(`HTTP-fejl ${res.status}`);
 		const data = await res.json();
 
@@ -101,8 +99,6 @@ const MAX_RESULTS = 600;
 		isLoading = true;
 
 		try {
-			if (Object.keys(cityToZip).length === 0) await loadPostnumre();
-
 			let currentPage = 1;
 			const firstPageData = await fetchDBAPage(currentPage, term, category);
 			const totalResults = Math.min(firstPageData.totalResults, MAX_RESULTS);
