@@ -101,7 +101,7 @@
     <div class="ad-info">
         <h2 class="ad-title">${title}</h2>
         <div class="ad-price">${price}</div>
-        <hr class="ad-divider">  <!-- ALTID divider efter pris -->
+        <hr class="ad-divider">
         ${hasDescription ? `<div class="ad-description">${description}</div><hr class="ad-divider">` : ""}
         <div class="ad-location">${location}</div>
     </div>
