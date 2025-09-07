@@ -21,6 +21,7 @@
 		const firstImageUrl = firstImageObj?.url || "";
 		const priceText = formatPrice(item.priceInHundreds, item.currency);
 		const sellerText = item.user?.userPublicName || "Ukendt";
+		const descriptionText = (item.extendedDescription || item.description || "").trim();
 
 		card.innerHTML = `
         <div class="card-image-wrapper">
@@ -60,6 +61,7 @@
 		card.dataset.key = `${item.brandOrTitle}|${priceText}`;
 		card.dataset.source = "reshopper";
 		card.dataset.seller = sellerText;
+		card.dataset.description = descriptionText || "Ingen beskrivelse tilgængelig.";
 
 		return card;
 	}
