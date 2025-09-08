@@ -74,236 +74,282 @@
 
     <script>
         (() => {
-            const form = document.getElementById("searchForm");
-            const input = document.getElementById("searchTerm");
-            const spinner = document.getElementById("searchSpinner");
-            const grid = document.getElementById("grid");
-            const categoryButton = document.getElementById("categoryButton");
-            const categoryMenu = document.getElementById("categoryMenu");
-            const bgToggle = document.getElementById("bgToggle");
+        	const form = document.getElementById("searchForm");
+        	const input = document.getElementById("searchTerm");
+        	const spinner = document.getElementById("searchSpinner");
+        	const grid = document.getElementById("grid");
+        	const categoryButton = document.getElementById("categoryButton");
+        	const categoryMenu = document.getElementById("categoryMenu");
+        	const bgToggle = document.getElementById("bgToggle");
 
-            let selectedCategory = 'mobler';
-            const BATCH_SIZE = 30;
-            let currentIndex = 0;
-            let isFirstSearch = true;
-            window.allCards = [];
-            window.pendingBgSearches = [];
+        	let selectedCategory = 'mobler';
+        	const BATCH_SIZE = 30;
+        	let currentIndex = 0;
+        	let isFirstSearch = true;
+        	window.allCards = [];
+        	window.pendingBgSearches = [];
 
-            const categories = {
-                'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78', reshopperFacetValue: 'Home' },
-                'dyr': { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77', reshopperFacetValue: null },
-                'kunst': { ggSlug: '/antikviteter-og-kunst', ggTitle: 'antikviteter og kunst', dbaCat: '0.76', reshopperFacetValue: null },
-                'toejogboern': { ggSlug: '/born', ggTitle: 'børn', dbaCat: '0.68', reshopperFacetValue: 'Kids' },
-            };
+        	const categories = {
+        		'mobler': {
+        			ggSlug: '/mobler',
+        			ggTitle: 'møbler',
+        			dbaCat: '0.78',
+        			reshopperFacetValue: 'Home'
+        		},
+        		'dyr': {
+        			ggSlug: '/dyr-og-tilbehor',
+        			ggTitle: 'dyr og tilbehør',
+        			dbaCat: '0.77',
+        			reshopperFacetValue: null
+        		},
+        		'kunst': {
+        			ggSlug: '/antikviteter-og-kunst',
+        			ggTitle: 'antikviteter og kunst',
+        			dbaCat: '0.76',
+        			reshopperFacetValue: null
+        		},
+        		'toejogboern': {
+        			ggSlug: '/born',
+        			ggTitle: 'børn',
+        			dbaCat: '0.68',
+        			reshopperFacetValue: 'Kids'
+        		},
+        	};
 
-            const cardKey = (card) => card.dataset.id || card.dataset.key;
+        	const cardKey = (card) => card.dataset.id || card.dataset.key;
 
-            const showNoResults = (term) => {
-                if (window.allCards.length === 0) {
-                    grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
-                }
-            };
+        	const showNoResults = (term) => {
+        		if (window.allCards.length === 0) {
+        			grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
+        		}
+        	};
 
-            const sortAllCards = () => {
-                window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
-            };
+        	const sortAllCards = () => {
+        		window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
+        	};
 
-            const renderNextBatch = () => {
-                const nextBatch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
-                nextBatch.forEach(card => grid.appendChild(card));
-                currentIndex += nextBatch.length;
-            };
+        	const renderNextBatch = () => {
+        		const nextBatch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
+        		nextBatch.forEach(card => grid.appendChild(card));
+        		currentIndex += nextBatch.length;
+        	};
 
-            const handleScroll = () => {
-                if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
-                    renderNextBatch();
-                }
-            };
+        	const handleScroll = () => {
+        		if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
+        			renderNextBatch();
+        		}
+        	};
 
-            window.sortAndRender = () => {
-                sortAllCards();
-                grid.innerHTML = "";
-                currentIndex = 0;
-                renderNextBatch();
-                window.addEventListener('scroll', handleScroll);
-            };
+        	window.sortAndRender = () => {
+        		sortAllCards();
+        		grid.innerHTML = "";
+        		currentIndex = 0;
+        		renderNextBatch();
+        		window.addEventListener('scroll', handleScroll);
+        	};
 
-            const insertNewCardsAnimated = (newCards) => {
-                newCards.forEach(card => {
-                    card.classList.add('new-card');
-                    grid.prepend(card);
-                    requestAnimationFrame(() => card.classList.remove('new-card'));
-                });
-            };
+        	const insertNewCardsAnimated = (newCards) => {
+        		newCards.forEach(card => {
+        			card.classList.add('new-card');
+        			grid.prepend(card);
+        			requestAnimationFrame(() => card.classList.remove('new-card'));
+        		});
+        	};
 
-            window.startSpinner = () => { spinner.classList.add("active"); input.disabled = true; };
-            window.stopSpinner = () => { spinner.classList.remove("active"); input.disabled = false; };
+        	window.startSpinner = () => {
+        		spinner.classList.add("active");
+        		input.disabled = true;
+        	};
+        	window.stopSpinner = () => {
+        		spinner.classList.remove("active");
+        		input.disabled = false;
+        	};
 
-            const magicSpan = (id, terms, displayTerm) => {
-                const span = document.getElementById(id);
-                if (!span) return;
+        	const magicSpan = (id, terms, displayTerm) => {
+        		const span = document.getElementById(id);
+        		if (!span) return;
 
-                span.addEventListener('click', async () => {
-                    const catObj = categories[selectedCategory];
-                    input.value = "";
-                    input.disabled = true;
-                    spinner.classList.add("active");
-                    window.allCards = [];
-                    window.totalAds = 0;
-                    window.loadedAds = 0;
-                    currentIndex = 0;
-                    window.removeEventListener('scroll', handleScroll);
+        		span.addEventListener('click', async () => {
+        			const catObj = categories[selectedCategory];
+        			input.value = "";
+        			input.disabled = true;
+        			spinner.classList.add("active");
+        			window.allCards = [];
+        			window.totalAds = 0;
+        			window.loadedAds = 0;
+        			currentIndex = 0;
+        			window.removeEventListener('scroll', handleScroll);
 
-                    try {
-                        const bgEnabled = bgToggle.checked;
-                        if (bgEnabled && window.bgSearch) {
-                            window.bgSearch.clear();
-                            terms.forEach(term => window.bgSearch.addActiveSearch(term, catObj));
-                        }
+        			try {
+        				const bgEnabled = bgToggle.checked;
+        				if (bgEnabled && window.bgSearch) {
+        					window.bgSearch.clear();
+        					terms.forEach(term => window.bgSearch.addActiveSearch(term, catObj));
+        				}
 
-                        for (const term of terms) {
-                            await window.hentOgVisGG(term, catObj, true);
-                            await window.hentOgVisDBA(term, catObj.dbaCat, true);
-                            await window.hentOgVisReshopper(term, true, catObj.reshopperFacetValue);
-                        }
+        				for (const term of terms) {
+        					await window.hentOgVisGG(term, catObj, true);
+        					await window.hentOgVisDBA(term, catObj.dbaCat, true);
+        					await window.hentOgVisReshopper(term, true, catObj.reshopperFacetValue);
+        				}
 
-                        const seenKeys = new Set();
-                        window.allCards = window.allCards.filter(card => {
-                            const key = cardKey(card);
-                            if (seenKeys.has(key)) return false;
-                            seenKeys.add(key);
-                            return true;
-                        });
+        				const seenKeys = new Set();
+        				window.allCards = window.allCards.filter(card => {
+        					const key = cardKey(card);
+        					if (seenKeys.has(key)) return false;
+        					seenKeys.add(key);
+        					return true;
+        				});
 
-                        insertNewCardsAnimated(window.allCards);
-                        window.loadedAds = window.totalAds = window.allCards.length;
-                        window.sortAndRender();
-                        showNoResults(displayTerm);
+        				insertNewCardsAnimated(window.allCards);
+        				window.loadedAds = window.totalAds = window.allCards.length;
+        				window.sortAndRender();
+        				showNoResults(displayTerm);
 
-                        if (bgEnabled && window.bgSearch) {
-                            window.bgSearch.setBaseline();
-                        } else {
-                            window.pendingBgSearches = terms.map(term => ({ term, catObj }));
-                            if (window.bgSearch) window.bgSearch.clear();
-                        }
-                    } catch (err) {
-                        console.error("Fejl i magicSpan-søgning:", err);
-                    } finally {
-                        input.disabled = false;
-                        spinner.classList.remove("active");
-                    }
-                });
-            };
+        				if (bgEnabled && window.bgSearch) {
+        					window.bgSearch.setBaseline();
+        				} else {
+        					window.pendingBgSearches = terms.map(term => ({
+        						term,
+        						catObj
+        					}));
+        					if (window.bgSearch) window.bgSearch.clear();
+        				}
+        			} catch (err) {
+        				console.error("Fejl i magicSpan-søgning:", err);
+        			} finally {
+        				input.disabled = false;
+        				spinner.classList.remove("active");
+        			}
+        		});
+        	};
 
-            const defaultLi = categoryMenu.querySelector('ul:first-of-type > li[data-value="mobler"]');
-            if (defaultLi) defaultLi.classList.add('active');
+        	const defaultLi = categoryMenu.querySelector('ul:first-of-type > li[data-value="mobler"]');
+        	if (defaultLi) defaultLi.classList.add('active');
 
-            categoryButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                categoryMenu.style.display = categoryMenu.style.display === 'block' ? 'none' : 'block';
-            });
+        	const overlay = document.createElement('div');
+        	overlay.className = 'menu-overlay';
 
-            document.addEventListener('click', (e) => {
-                if (!categoryButton.contains(e.target) && !categoryMenu.contains(e.target)) {
-                    categoryMenu.style.display = 'none';
-                }
-            });
+        	categoryButton.addEventListener('click', (e) => {
+        		e.preventDefault();
+        		if (categoryMenu.style.display === 'block') {
+        			categoryMenu.style.display = 'none';
+        			if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        		} else {
+        			categoryMenu.style.display = 'block';
+        			document.body.appendChild(overlay);
+        		}
+        	});
 
-            input.addEventListener("focus", function () { this.select(); });
+        	overlay.addEventListener('click', () => {
+        		categoryMenu.style.display = 'none';
+        		if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        	});
 
-            categoryMenu.querySelectorAll('ul:first-of-type > li').forEach(li => {
-                li.addEventListener('click', (e) => {
-                    selectedCategory = li.dataset.value;
-                    categoryMenu.querySelectorAll('ul:first-of-type > li').forEach(item => item.classList.remove('active'));
-                    li.classList.add('active');
-                    categoryMenu.style.display = 'none';
-                    if (input.value.trim()) form.requestSubmit();
-                    e.stopPropagation();
-                });
-            });
 
-            document.querySelectorAll('.location-selector input[type="checkbox"]').forEach(checkbox => {
-                checkbox.addEventListener('click', (e) => e.stopPropagation());
-                checkbox.addEventListener('change', () => {
-                    if (input.value.trim()) form.requestSubmit();
-                });
-            });
+        	input.addEventListener("focus", function() {
+        		this.select();
+        	});
 
-            form.addEventListener("submit", async (e) => {
-                e.preventDefault();
-                const term = input.value.trim();
-                if (!term) return;
+        	categoryMenu.querySelectorAll('ul:first-of-type > li').forEach(li => {
+        		li.addEventListener('click', (e) => {
+        			selectedCategory = li.dataset.value;
+        			categoryMenu.querySelectorAll('ul:first-of-type > li').forEach(item => item.classList.remove('active'));
+        			li.classList.add('active');
+        			categoryMenu.style.display = 'none';
+        			if (input.value.trim()) form.requestSubmit();
+        			e.stopPropagation();
+        		});
+        	});
 
-                const catObj = categories[selectedCategory];
-                input.disabled = true;
-                spinner.classList.add("active");
+        	document.querySelectorAll('.location-selector input[type="checkbox"]').forEach(checkbox => {
+        		checkbox.addEventListener('click', (e) => e.stopPropagation());
+        		checkbox.addEventListener('change', () => {
+        			if (input.value.trim()) form.requestSubmit();
+        		});
+        	});
 
-                if (isFirstSearch) { grid.innerHTML = ""; isFirstSearch = false; }
-                window.allCards = [];
-                window.totalAds = 0;
-                window.loadedAds = 0;
-                currentIndex = 0;
-                window.removeEventListener('scroll', handleScroll);
+        	form.addEventListener("submit", async (e) => {
+        		e.preventDefault();
+        		const term = input.value.trim();
+        		if (!term) return;
 
-                if (window.bgSearch) window.bgSearch.clear();
+        		const catObj = categories[selectedCategory];
+        		input.disabled = true;
+        		spinner.classList.add("active");
 
-                try {
-                    await Promise.all([
-                        window.hentOgVisGG(term, catObj, false),
-                        window.hentOgVisDBA(term, catObj.dbaCat, false),
-                        window.hentOgVisReshopper(term, true, catObj.reshopperFacetValue)
-                    ]);
+        		if (isFirstSearch) {
+        			grid.innerHTML = "";
+        			isFirstSearch = false;
+        		}
+        		window.allCards = [];
+        		window.totalAds = 0;
+        		window.loadedAds = 0;
+        		currentIndex = 0;
+        		window.removeEventListener('scroll', handleScroll);
 
-                    await new Promise(resolve => setTimeout(resolve, 0));
-                    window.loadedAds = window.totalAds;
-                    window.sortAndRender();
+        		if (window.bgSearch) window.bgSearch.clear();
 
-                    if (bgToggle.checked && window.bgSearch) {
-                        window.bgSearch.addActiveSearch(term, catObj);
-                        window.bgSearch.setBaseline();
-                    } else {
-                        window.pendingBgSearches = [{ term, catObj }];
-                    }
+        		try {
+        			await Promise.all([
+        				window.hentOgVisGG(term, catObj, false),
+        				window.hentOgVisDBA(term, catObj.dbaCat, false),
+        				window.hentOgVisReshopper(term, true, catObj.reshopperFacetValue)
+        			]);
 
-                    showNoResults(term);
-                } catch (err) {
-                    console.error("Fejl i søgning:", err);
-                } finally {
-                    input.disabled = false;
-                    spinner.classList.remove("active");
-                }
-            });
+        			await new Promise(resolve => setTimeout(resolve, 0));
+        			window.loadedAds = window.totalAds;
+        			window.sortAndRender();
 
-            magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig"], "gode sager");
-            magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander"], "generelle sager");
+        			if (bgToggle.checked && window.bgSearch) {
+        				window.bgSearch.addActiveSearch(term, catObj);
+        				window.bgSearch.setBaseline();
+        			} else {
+        				window.pendingBgSearches = [{
+        					term,
+        					catObj
+        				}];
+        			}
+
+        			showNoResults(term);
+        		} catch (err) {
+        			console.error("Fejl i søgning:", err);
+        		} finally {
+        			input.disabled = false;
+        			spinner.classList.remove("active");
+        		}
+        	});
+
+        	magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig"], "gode sager");
+        	magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander"], "generelle sager");
         })();
 
         (() => {
-            const PROXY = "https://corsproxy.io/?";
-            window.cityToZip = {};
+        	const PROXY = "https://corsproxy.io/?";
+        	window.cityToZip = {};
 
-            async function loadPostnumre() {
-                try {
-                    const res = await fetch(`${PROXY}https://api.dataforsyningen.dk/postnumre`);
-                    const data = await res.json();
-                    data.forEach(entry => {
-                        const city = entry.navn.trim();
-                        if (!window.cityToZip[city]) window.cityToZip[city] = [];
-                        window.cityToZip[city].push(entry.nr);
-                    });
-                    console.log("Postnumre hentet:", Object.keys(window.cityToZip).length);
-                } catch (err) {
-                    console.error("Kunne ikke hente postnumre:", err);
-                }
-            }
+        	async function loadPostnumre() {
+        		try {
+        			const res = await fetch(`${PROXY}https://api.dataforsyningen.dk/postnumre`);
+        			const data = await res.json();
+        			data.forEach(entry => {
+        				const city = entry.navn.trim();
+        				if (!window.cityToZip[city]) window.cityToZip[city] = [];
+        				window.cityToZip[city].push(entry.nr);
+        			});
+        			console.log("Postnumre hentet:", Object.keys(window.cityToZip).length);
+        		} catch (err) {
+        			console.error("Kunne ikke hente postnumre:", err);
+        		}
+        	}
 
-            window.getZipForCity = (cityName) => {
-                if (!cityName) return "";
-                const zips = window.cityToZip[cityName.trim()];
-                return zips && zips.length ? zips.join(", ") : "";
-            };
+        	window.getZipForCity = (cityName) => {
+        		if (!cityName) return "";
+        		const zips = window.cityToZip[cityName.trim()];
+        		return zips && zips.length ? zips.join(", ") : "";
+        	};
 
-            loadPostnumre();
+        	loadPostnumre();
         })();
     </script>
 </body>
