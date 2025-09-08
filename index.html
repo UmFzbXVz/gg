@@ -39,16 +39,22 @@
                         <li data-value="kunst">Kunst og antik</li>
                     </ul>
                     <hr class="menu-divider" />
-                    <fieldset class="location-selector">
-                        <legend>Områder</legend>
-                        <label>
-                            <input type="checkbox" id="locationJylland" value="jylland" checked>Jylland
-                        </label>
-                        <label>
-                            <input type="checkbox" id="locationSydsjaelland" value="sydsjaelland-og-oerne">
-                            Sydsjælland og øerne
-                        </label>
-                    </fieldset>
+                    <div class="location-selector">
+                        <div class="category-menu-title">Områder</div>
+                        <ul>
+                            <li>
+                                <label>
+                                    <input type="checkbox" id="locationJylland" value="jylland" checked>Jylland
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" id="locationSydsjaelland" value="sydsjaelland-og-oerne">
+                                    Sydsj. og øerne
+                                </label>
+                            </li>
+                        </ul>
+                    </div>
                     <hr class="menu-divider" />
                     <label class="bg-toggle"> Auto-opdatér
                         <input type="checkbox" id="bgToggle" checked>
@@ -189,7 +195,7 @@
                 });
             };
 
-            const defaultLi = categoryMenu.querySelector('li[data-value="mobler"]');
+            const defaultLi = categoryMenu.querySelector('ul:first-of-type > li[data-value="mobler"]');
             if (defaultLi) defaultLi.classList.add('active');
 
             categoryButton.addEventListener('click', (e) => {
@@ -205,17 +211,19 @@
 
             input.addEventListener("focus", function () { this.select(); });
 
-            categoryMenu.querySelectorAll('li').forEach(li => {
-                li.addEventListener('click', () => {
+            categoryMenu.querySelectorAll('ul:first-of-type > li').forEach(li => {
+                li.addEventListener('click', (e) => {
                     selectedCategory = li.dataset.value;
-                    categoryMenu.querySelectorAll('li').forEach(item => item.classList.remove('active'));
+                    categoryMenu.querySelectorAll('ul:first-of-type > li').forEach(item => item.classList.remove('active'));
                     li.classList.add('active');
                     categoryMenu.style.display = 'none';
                     if (input.value.trim()) form.requestSubmit();
+                    e.stopPropagation();
                 });
             });
 
             document.querySelectorAll('.location-selector input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('click', (e) => e.stopPropagation());
                 checkbox.addEventListener('change', () => {
                     if (input.value.trim()) form.requestSubmit();
                 });
