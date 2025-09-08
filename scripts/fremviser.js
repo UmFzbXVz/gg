@@ -65,7 +65,7 @@
 
 	function openAdModal(title, description, price, location, images, originalUrl) {
 		if (images.length === 0) {
-			images = [''];
+			images = ['data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23666"/%3E%3Ctext x="50" y="50" font-size="12" text-anchor="middle" dy=".35em" fill="%23ccc"%3EIngen billede%3C/text%3E%3C/svg%3E'];
 		}
 
 		const modal = document.createElement('div');
@@ -78,7 +78,7 @@
 				const googleUrl = `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}`;
 				html += `
     <div class="slide">
-        <img src="${src}" alt="${title}">
+        <img src="${src}" alt="${title}" loading="lazy"> 
         <a href="${googleUrl}" target="_blank" rel="noopener noreferrer" class="google-icon" title="Søg dette billede på Google">
             <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20" height="20" alt="Google Lens">
         </a>
