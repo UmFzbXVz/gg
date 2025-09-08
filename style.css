@@ -487,6 +487,15 @@ input:checked + .slider:before {
   min-width: 200px;
 }
 
+.category-menu-title {
+  font-weight: bold;
+  margin-bottom: 6px;
+  margin-top: 6px;
+  color: #333;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
 .category-menu ul {
   list-style: none;
   padding: 0;
@@ -504,7 +513,20 @@ input:checked + .slider:before {
 }
 
 .category-menu li.active {
-  font-weight: bold;
+  position: relative; 
+  font-weight: normal;
+}
+
+.category-menu li.active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 12px;   
+  right: 12px;  
+  border: 1px solid #4caf50;
+  border-radius: 4px;
+  pointer-events: none; 
 }
 
 .location-selector {
@@ -520,6 +542,7 @@ input:checked + .slider:before {
 }
 
 .location-selector legend {
+  text-align: center;
   font-weight: bold;
   margin-bottom: 6px;
   color: #333;
@@ -570,6 +593,13 @@ input:checked + .slider:before {
 
 .location-selector input[type="checkbox"]:checked::after {
   display: block;
+}
+
+.category-menu-title,
+.location-selector legend {
+  display: block;
+  text-align: center;
+  width: 100%;
 }
 
 .bg-toggle {
@@ -811,9 +841,9 @@ input:checked + .slider:before {
   height: 1px;
   background: linear-gradient(
     to right,
-    rgba(0, 0, 0, 0.3) 0%,
-    rgba(0, 0, 0, 0.3) 70%, 
-    transparent 95% 
+    transparent,
+    rgba(0, 0, 0, 0.3),
+    transparent
   );
   margin: 12px auto;
   width: 80%;
