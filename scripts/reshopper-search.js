@@ -5,9 +5,26 @@
 	function formatPrice(amountInHundreds, currency) {
 		if (!amountInHundreds) return "";
 		let amount = amountInHundreds / 100;
-		return currency === "dkk" ?
-			`${amount.toLocaleString("da-DK")} kr.` :
-			`${amount} ${currency || ""}`;
+		return currency === "dkk"
+			? `${amount.toLocaleString("da-DK")} kr.`
+			: `${amount} ${currency || ""}`;
+	}
+
+	function getHighestQualityImages(images = []) {
+		const bestImages = {};
+
+		images.forEach(img => {
+			const fileId = img.fileId;
+			if (!fileId) return;
+
+			const pixels = (img.width || 0) * (img.height || 0);
+
+			if (!bestImages[fileId] || pixels > bestImages[fileId].pixels) {
+				bestImages[fileId] = { ...img, pixels };
+			}
+		});
+
+		return Object.values(bestImages).map(img => img.url);
 	}
 
 	function makeCard(item) {
@@ -17,8 +34,9 @@
 		card.target = "_blank";
 		card.rel = "noopener noreferrer";
 
-		const firstImageObj = item.images && item.images.length ? item.images[0] : null;
-		const firstImageUrl = firstImageObj?.url || "";
+		const bestImageUrls = getHighestQualityImages(item.images);
+		const firstImageUrl = bestImageUrls.length ? bestImageUrls[0] : "";
+
 		const priceText = formatPrice(item.priceInHundreds, item.currency);
 		const sellerText = item.user?.userPublicName || "Ukendt";
 		const descriptionText = (item.extendedDescription || item.description || "").trim();
@@ -53,11 +71,11 @@
 		const h3 = card.querySelector("h3");
 		h3.style.fontSize = h3.textContent.length > 40 ? "0.8rem" : "1rem";
 
-		card.dataset.timestamp = firstImageObj && firstImageObj.timeUploaded ?
-			new Date(firstImageObj.timeUploaded).getTime() :
-			0;
+		card.dataset.timestamp = item.images?.[0]?.timeUploaded
+			? new Date(item.images[0].timeUploaded).getTime()
+			: 0;
 
-		card.dataset.images = JSON.stringify(item.images.map(img => img.url));
+		card.dataset.images = JSON.stringify(bestImageUrls);
 		card.dataset.key = `${item.brandOrTitle}|${priceText}`;
 		card.dataset.source = "reshopper";
 		card.dataset.seller = sellerText;
@@ -76,47 +94,17 @@
 	) {
 		const API_URL = "https://app.reshopper.com/web/items/faceted";
 		const payload = {
-			facets: [{
-					type: "segment",
-					facetCount: 3,
-					values: segmentValue ? [segmentValue] : undefined
-				},
-				{
-					type: "condition",
-					facetCount: 5
-				},
-				{
-					type: "gender",
-					facetCount: 3
-				},
-				{
-					type: "category",
-					facetCount: 20
-				},
-				{
-					type: "size",
-					facetCount: 40
-				},
-				{
-					type: "brandOrTitle",
-					facetCount: 100
-				},
-				{
-					type: "age",
-					facetCount: 20
-				},
-				{
-					type: "shopType",
-					facetCount: 4
-				},
-				{
-					type: "retailShop",
-					facetCount: 10
-				},
-				{
-					type: "isShippingOffered",
-					facetCount: 3
-				}
+			facets: [
+				{ type: "segment", facetCount: 3, values: segmentValue ? [segmentValue] : undefined },
+				{ type: "condition", facetCount: 5 },
+				{ type: "gender", facetCount: 3 },
+				{ type: "category", facetCount: 20 },
+				{ type: "size", facetCount: 40 },
+				{ type: "brandOrTitle", facetCount: 100 },
+				{ type: "age", facetCount: 20 },
+				{ type: "shopType", facetCount: 4 },
+				{ type: "retailShop", facetCount: 10 },
+				{ type: "isShippingOffered", facetCount: 3 }
 			],
 			query,
 			pageSize,
@@ -151,7 +139,6 @@
 		if (!res.ok) throw new Error(`HTTP-fejl ${res.status}`);
 		return res.json();
 	}
-
 
 	window.hentOgVisReshopper = async function(term = "", bgMode = false, segmentValue = undefined) {
 		if (segmentValue === null) {
@@ -190,5 +177,4 @@
 			isLoading = false;
 		}
 	};
-
 })();
