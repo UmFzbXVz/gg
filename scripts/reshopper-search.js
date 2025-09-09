@@ -153,7 +153,7 @@
 	}
 
 
-	window.hentOgVisReshopper = async function(term = "", bgMode = false, segmentValue = null) {
+	window.hentOgVisReshopper = async function(term = "", bgMode = false, segmentValue = undefined) {
 		if (segmentValue === null) {
 			console.log("Reshopper-søgning ignoreret pga. null-segment");
 			return;
@@ -169,9 +169,11 @@
 
 			const firstData = await fetchReshopperPage(offset, term, pageSize, null, null, segmentValue);
 			const totalResults = Math.min(firstData.totalHits || 0, MAX_RESULTS);
+			window.totalAds += totalResults;
 
 			firstData.items.forEach(item => window.allCards.push(makeCard(item)));
 			totalFetched += firstData.items.length;
+			window.loadedAds += firstData.items.length;
 
 			const numPages = bgMode ? 1 : Math.ceil(totalResults / pageSize);
 
@@ -180,6 +182,7 @@
 				const pageData = await fetchReshopperPage(offset, term, pageSize, null, null, segmentValue);
 				pageData.items.forEach(item => window.allCards.push(makeCard(item)));
 				totalFetched += pageData.items.length;
+				window.loadedAds += pageData.items.length;
 			}
 		} catch (err) {
 			console.error("Fejl Reshopper:", err);
@@ -187,4 +190,5 @@
 			isLoading = false;
 		}
 	};
+
 })();
