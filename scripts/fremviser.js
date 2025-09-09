@@ -78,7 +78,7 @@
 				const googleUrl = `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}`;
 				html += `
     <div class="slide">
-        <img src="${src}" alt="${title}" loading="lazy"> 
+        <img src="${src}" alt="${title}"> 
         <a href="${googleUrl}" target="_blank" rel="noopener noreferrer" class="google-icon" title="Søg dette billede på Google">
             <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20" height="20" alt="Google Lens">
         </a>
