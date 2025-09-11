@@ -188,7 +188,8 @@ input {
 }
 
 .card-content {
-  padding: 4px 10px;
+  padding: 2px 10px;
+  padding-top: 5px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -197,7 +198,7 @@ input {
 
 .card-content h3 {
   margin: 0 0 auto 0;
-  font-size: clamp(2vw, 2.5vw, 3vw);
+  font-size: clamp(0.7rem, 0.8rem, 0.95rem);
   font-weight: 600;
 }
 
@@ -206,9 +207,8 @@ input {
   justify-content: space-between;
   align-items: center;
   margin-top: auto;
-  font-size: clamp(0.7rem, 0.8, 0.95rem);
+  font-size: clamp(0.7rem, 0.8rem, 0.95rem);
   gap: 8px;
-  margin-top: auto;
   white-space: nowrap;
 }
 
@@ -227,15 +227,14 @@ input {
   flex-wrap: nowrap;
   white-space: nowrap;
   color: #ccc;
-  font-size: clamp(1vw, 2.5vw, 3.5vw);
+  font-size: clamp(0.7rem, 2vw, 0.9rem);
 }
 
 .location .city,
-.location .zip,
-.price {
+.location .zip {
   margin-right: 4px;
   flex-shrink: 1;
-  font-size: clamp(1.5vw, 3vw, 4vw);
+  font-size: clamp(0.7rem, 2vw, 0.9rem);
 }
 
 .price {
@@ -244,6 +243,7 @@ input {
   color: #d9534f;
   flex-wrap: nowrap;
   white-space: nowrap;
+  font-size: clamp(0.8rem, 2vw, 1rem);
 }
 
 .toggle-container {
@@ -936,9 +936,6 @@ input:checked + .slider:before {
   .card-footer,
   .location {
     white-space: normal;
-  }
-  .card-content {
-    padding: 8px;
   }
   .price {
     font-size: clamp(1.5vw, 3vw, 4vw);
