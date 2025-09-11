@@ -235,7 +235,7 @@ input {
 .price {
   margin-right: 4px;
   flex-shrink: 1;
-  font-size: clamp(1vw, 3vw, 4vw);
+  font-size: clamp(1.5vw, 3vw, 4vw);
 }
 
 .price {
@@ -941,7 +941,7 @@ input:checked + .slider:before {
     padding: 8px;
   }
   .price {
-    font-size: clamp(1vw, 3vw, 4vw);
+    font-size: clamp(1.5vw, 3vw, 4vw);
   }
   .location {
     font-size: 0.8rem;
