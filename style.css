@@ -197,7 +197,7 @@ input {
 
 .card-content h3 {
   margin: 0 0 auto 0;
-  font-size: clamp(1vw, 2vw, 3vw);
+  font-size: clamp(2vw, 2.5vw, 3vw);
   font-weight: 600;
 }
 
@@ -227,7 +227,7 @@ input {
   flex-wrap: nowrap;
   white-space: nowrap;
   color: #ccc;
-  font-size: clamp(1vw, 2vw, 3vw);
+  font-size: clamp(1vw, 2.5vw, 3.5vw);
 }
 
 .location .city,
@@ -235,7 +235,7 @@ input {
 .price {
   margin-right: 4px;
   flex-shrink: 1;
-  font-size: clamp(1vw, 2vw, 3vw);
+  font-size: clamp(1vw, 3vw, 4vw);
 }
 
 .price {
@@ -941,7 +941,7 @@ input:checked + .slider:before {
     padding: 8px;
   }
   .price {
-    font-size: clamp(1vw, 2vw, 3vw);
+    font-size: clamp(1vw, 3vw, 4vw);
   }
   .location {
     font-size: 0.8rem;
