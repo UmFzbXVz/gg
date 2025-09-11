@@ -198,7 +198,7 @@ input {
 
 .card-content h3 {
   margin: 0 0 auto 0;
-  font-size: clamp(0.7rem, 0.8rem, 0.95rem);
+  font-size: clamp(0.7rem, 0.88rem, 1rem);
   font-weight: 600;
 }
 
@@ -462,10 +462,6 @@ input:checked + .slider:before {
   text-decoration: none;
 }
 
-.modal-content a:hover {
-  text-decoration: underline;
-}
-
 .close-btn {
   background: rgba(255, 255, 255, 0.1);
   color: #faf286;
@@ -539,10 +535,6 @@ input:checked + .slider:before {
   color: #333;
 }
 
-.category-menu li:hover {
-  background: #f0f0f0;
-}
-
 .category-menu li.active {
   position: relative;
   font-weight: normal;
@@ -577,10 +569,6 @@ input:checked + .slider:before {
   padding: 10px 20px;
   cursor: pointer;
   color: #333;
-}
-
-.location-selector li:hover {
-  background: #f0f0f0;
 }
 
 .location-selector label {
@@ -639,10 +627,6 @@ input:checked + .slider:before {
   cursor: pointer;
   user-select: none;
   transition: background 0.3s ease;
-}
-
-.bg-toggle:hover {
-  background: #f0f0f0;
 }
 
 .bg-toggle input[type="checkbox"] {
@@ -890,10 +874,6 @@ input:checked + .slider:before {
   font-weight: bold;
   text-decoration: none;
   font-size: 0.9rem;
-}
-
-.original-link:hover {
-  text-decoration: underline;
 }
 
 .close-modal {
