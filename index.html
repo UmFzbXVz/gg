@@ -130,6 +130,21 @@
 
 	const cardKey = (card) => card.dataset.id || card.dataset.key;
 
+	grid.addEventListener("click", (e) => {
+		const card = e.target.closest(".card");
+		if (!card) return;
+
+		if (e.ctrlKey || e.metaKey) {
+			const href = card.href;
+			if (href) window.open(href, "_blank");
+
+			e.preventDefault();
+			e.stopPropagation();
+			e.stopImmediatePropagation();
+			return false;
+		}
+	}, true);
+
 	const showNoResults = (term) => {
 		if (window.allCards.length === 0) {
 			grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
