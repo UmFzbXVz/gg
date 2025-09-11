@@ -59,7 +59,6 @@ const PROXY = "https://corsproxy.io/?";
         `;
 
         const h3 = card.querySelector("h3");
-        h3.style.fontSize = h3.textContent.length > 40 ? "0.8rem" : "1rem";
 
         card.dataset.timestamp = doc.timestamp || 0;
         card.dataset.images = JSON.stringify(doc.image_urls || []);
