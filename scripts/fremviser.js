@@ -32,6 +32,17 @@
 
 	const grid = document.getElementById("grid");
 
+	function decodeUnicodeEscapes(str) {
+		if (!str) return "";
+		str = str.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex) =>
+			String.fromCodePoint(parseInt(hex, 16))
+		);
+		str = str.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
+			String.fromCharCode(parseInt(hex, 16))
+		);
+		return str;
+	}
+
 	async function getDbaDescription(url) {
 		try {
 			const res = await fetch(PROXY + encodeURIComponent(url));
@@ -44,7 +55,7 @@
 				try {
 					const data = JSON.parse(ldJsonEl.textContent);
 					if (data && data.description) {
-						return data.description.trim();
+						return decodeUnicodeEscapes(data.description.trim());
 					}
 				} catch (err) {
 					console.warn("Kunne ikke parse JSON-LD for DBA annonce:", err);
@@ -53,7 +64,7 @@
 
 			const descEl = htmlDoc.querySelector('.vip-description-text');
 			if (descEl) {
-				return descEl.innerText.trim();
+				return decodeUnicodeEscapes(descEl.innerText.trim());
 			}
 
 			return 'Ingen beskrivelse tilgængelig.';
@@ -64,6 +75,10 @@
 	}
 
 	function openAdModal(title, description, price, location, images, originalUrl) {
+		title = decodeUnicodeEscapes(title);
+		description = decodeUnicodeEscapes(description);
+		location = decodeUnicodeEscapes(location);
+
 		if (images.length === 0) {
 			images = ['data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23666"/%3E%3Ctext x="50" y="50" font-size="12" text-anchor="middle" dy=".35em" fill="%23ccc"%3EIngen billede%3C/text%3E%3C/svg%3E'];
 		}
@@ -178,9 +193,7 @@
 
 		updateSlide();
 
-		history.pushState({
-			modalOpen: true
-		}, "", window.location.href);
+		history.pushState({ modalOpen: true }, "", window.location.href);
 		const handlePop = () => {
 			if (modal.isConnected) closeModal();
 		};
@@ -199,9 +212,7 @@
 				if (history.state && history.state.modalOpen) {
 					history.back();
 				}
-			}, {
-				once: true
-			});
+			}, { once: true });
 		};
 
 		modal.querySelector('.close-modal').addEventListener('click', closeModal);
@@ -222,7 +233,7 @@
 		const isReshopper = !!card.querySelector('.reshopper-badge');
 
 		const originalUrl = card.href;
-		const title = card.querySelector('h3')?.innerText || 'Ukendt titel';
+		let title = card.querySelector('h3')?.innerText || 'Ukendt titel';
 		const price = card.querySelector('.price')?.innerText || 'Ingen pris';
 		let location = card.querySelector('.city')?.innerText || 'Ukendt placering';
 		let description = '';
@@ -234,9 +245,7 @@
 				try {
 					const body = {
 						operationName: "GetListing",
-						variables: {
-							id
-						},
+						variables: { id },
 						query: GET_LISTING_QUERY
 					};
 					const res = await fetch(PROXY + API_URL, {
@@ -247,7 +256,7 @@
 					const data = await res.json();
 					const listing = data?.data?.listing;
 					if (listing) {
-						description = listing.description || 'Ingen beskrivelse.';
+						description = decodeUnicodeEscapes(listing.description || 'Ingen beskrivelse.');
 						images = listing.images?.map(img => img.medium || img.small || '') || [];
 					}
 				} catch (err) {
@@ -260,8 +269,8 @@
 			description = await getDbaDescription(originalUrl);
 		} else if (isReshopper) {
 			images = JSON.parse(card.dataset.images || '[]');
-			description = card.dataset.description || 'Ingen beskrivelse tilgængelig.';
-			location = card.dataset.seller || 'Ukendt sælger';
+			description = decodeUnicodeEscapes(card.dataset.description || 'Ingen beskrivelse tilgængelig.');
+			location = decodeUnicodeEscapes(card.dataset.seller || 'Ukendt sælger');
 		}
 
 		openAdModal(title, description, price, location, images, originalUrl);
