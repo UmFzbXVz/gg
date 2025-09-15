@@ -135,7 +135,7 @@ const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/ra
 			const perPageAPI = 60;
 			const firstPageDocs = firstPageData.bapDocs;
 			firstPageDocs.forEach(doc => {
-				const tempKey = `${doc.heading || ""}|${formatPrice(doc.price?.amount, doc.price?.currency_code)}`;
+				const tempKey = doc.id;
 				if (window.seenAdKeys.has(tempKey)) return;
 				const card = makeCard(doc);
 				card.dataset.key = tempKey;
@@ -148,7 +148,7 @@ const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/ra
 			for (currentPage = 2; currentPage <= numPages && window.allCards.length < window.totalAds; currentPage++) {
 				const pageData = await fetchDBAPage(currentPage, term, category);
 				pageData.bapDocs.forEach(doc => {
-					const tempKey = `${doc.heading || ""}|${formatPrice(doc.price?.amount, doc.price?.currency_code)}`;
+					const tempKey = doc.id;
 					if (window.seenAdKeys.has(tempKey)) return;
 					const card = makeCard(doc);
 					card.dataset.key = tempKey;
