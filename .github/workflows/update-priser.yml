@@ -2,7 +2,7 @@ name: Opdater priser
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/30 * * * *'   
   workflow_dispatch:
 
 jobs:
@@ -26,6 +26,13 @@ jobs:
     - name: Kør dba.py
       run: |
         python scripts/dba.py
+        # Sikrer at docs/ findes
+        mkdir -p docs
+        # Hvis filen ikke blev oprettet af dba.py, opret tom gzip-fil
+        if [ ! -f docs/priser.json.gz ]; then
+          echo "{}" | gzip > docs/priser.json.gz
+        fi
+        ls -l docs/
 
     - name: Commit og push opdateret priser.json.gz
       run: |
