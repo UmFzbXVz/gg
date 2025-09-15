@@ -8,17 +8,24 @@ const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/ra
 	let isLoading = false;
 
 	async function loadPriceData() {
-		const res = await fetch(PRICE_FILE);
-		if (!res.ok) throw new Error(`Kunne ikke hente ${PRICE_FILE}`);
+		try {
+			console.log("Forsøger at hente price data fra:", PRICE_FILE);
+			const res = await fetch(PRICE_FILE);
+			console.log("Fetch status:", res.status);
+			if (!res.ok) throw new Error(`Kunne ikke hente ${PRICE_FILE} (status ${res.status})`);
 
-		const ds = new DecompressionStream("gzip");
-		const decompressed = res.body.pipeThrough(ds);
-		const text = await new Response(decompressed).text();
-		return JSON.parse(text);
+			const arrayBuffer = await res.arrayBuffer();
+			const decompressed = pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
+			const data = JSON.parse(decompressed);
+			console.log("Indlæst priceData med", Object.keys(data).length, "annoncer");
+			return data;
+		} catch (err) {
+			console.error("Fejl ved loadPriceData:", err);
+			return {}; 
+		}
 	}
 
 	window.priceData = await loadPriceData();
-	console.log("Indlæst priceData med", Object.keys(window.priceData).length, "annoncer");
 
 	const jylland = ["0.200006", "0.200005", "0.200007", "0.200008"];
 	const sydsjaellandOgOerne = ["0.200004"];
