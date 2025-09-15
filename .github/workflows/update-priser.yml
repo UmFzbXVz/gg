@@ -8,6 +8,8 @@ on:
 jobs:
   update-priser:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write 
 
     steps:
       - name: Tjekk repo ud
