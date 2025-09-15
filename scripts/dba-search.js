@@ -9,19 +9,19 @@ const PRICE_FILE = "./docs/priser.json.gz";
 
 	async function loadPriceData() {
 		try {
-			console.log("Forsøger at hente price data fra:", PRICE_FILE);
 			const res = await fetch(PRICE_FILE);
-			console.log("Fetch status:", res.status);
 			if (!res.ok) throw new Error(`Kunne ikke hente ${PRICE_FILE} (status ${res.status})`);
 
 			const arrayBuffer = await res.arrayBuffer();
-			const decompressed = pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
+			const decompressed = pako.ungzip(new Uint8Array(arrayBuffer), {
+				to: 'string'
+			});
 			const data = JSON.parse(decompressed);
 			console.log("Indlæst priceData med", Object.keys(data).length, "annoncer");
 			return data;
 		} catch (err) {
 			console.error("Fejl ved loadPriceData:", err);
-			return {}; 
+			return {};
 		}
 	}
 
@@ -85,18 +85,19 @@ const PRICE_FILE = "./docs/priser.json.gz";
 			const currentPrice = doc.price?.amount;
 
 			if (typeof currentPrice === "number" && typeof firstPrice === "number" && firstPrice !== 0) {
-				let diffPercent = Math.round((currentPrice - firstPrice) / firstPrice * 100);
-				if (diffPercent !== 0) {
-					const status = diffPercent > 0 ? "steget" : "faldet";
-					console.log(`Annonce ${adId} er ${status} med ${Math.abs(diffPercent)}%`);
+				const priceDiff = currentPrice - firstPrice;
+				if (priceDiff !== 0) {
+					const status = priceDiff > 0 ? "steget" : "faldet";
+					console.log(`Annonce ${adId} er ${status} med ${Math.abs(priceDiff)} kr.`);
 
-					const percentBadge = document.createElement("div");
-					percentBadge.className = `price-change-badge ${diffPercent > 0 ? "steget" : "faldet"}`;
-					percentBadge.textContent = `${diffPercent > 0 ? '+' : ''}${diffPercent}%`;
-					card.querySelector(".card-image-wrapper").appendChild(percentBadge);
+					const diffBadge = document.createElement("div");
+					diffBadge.className = `price-change-badge ${priceDiff > 0 ? "steget" : "faldet"}`;
+					diffBadge.textContent = `${priceDiff > 0 ? '+' : ''}${priceDiff.toLocaleString("da-DK")} kr.`;
+					card.querySelector(".card-image-wrapper").appendChild(diffBadge);
 				}
 			}
 		}
+
 
 		return card;
 	}
