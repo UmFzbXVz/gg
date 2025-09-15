@@ -3,9 +3,8 @@
 	let lastResultsKeys = new Set();
 	let pendingNewMap = new Map();
 	const originalTitle = document.title;
-	const REFRESH_INTERVAL = 5 * 60 * 1000;
+	const REFRESH_INTERVAL = 5* 60 * 1000;
 	const seenPendingTerms = new Map();
-
 	const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 	let bgIntervalId = null;
@@ -118,6 +117,11 @@
 				return;
 			}
 
+			newCardsThisRun.forEach(card => {
+				const k = cardKey(card);
+				window.seenAdKeys.add(k);
+			});
+
 			if (document.visibilityState === "visible") {
 				showPendingNow(newCardsThisRun);
 			} else {
@@ -144,6 +148,7 @@
 		cards.forEach(card => {
 			const k = cardKey(card);
 			lastResultsKeys.add(k);
+			window.seenAdKeys.add(k);
 			pendingNewMap.delete(k);
 
 			for (const set of seenPendingTerms.values()) set.delete(k);
@@ -226,6 +231,7 @@
 			if (!bgEnabled) return;
 			if (!Array.isArray(window.allCards)) window.allCards = [];
 			lastResultsKeys = makeKeysFromCards(window.allCards);
+			window.seenAdKeys = new Set(lastResultsKeys);
 			pendingNewMap.clear();
 			seenPendingTerms.clear();
 			updateTitle(0);
@@ -240,6 +246,7 @@
 			this._pausedSearches = activeSearches.slice();
 			activeSearches = [];
 			lastResultsKeys.clear();
+			window.seenAdKeys.clear();
 			pendingNewMap.clear();
 			seenPendingTerms.clear();
 			updateTitle(0);
@@ -262,6 +269,7 @@
 
 			if (!Array.isArray(window.allCards)) window.allCards = [];
 			lastResultsKeys = makeKeysFromCards(window.allCards);
+			window.seenAdKeys = new Set(lastResultsKeys);
 			pendingNewMap.clear();
 			seenPendingTerms.clear();
 			updateTitle(0);
