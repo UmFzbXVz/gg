@@ -1,12 +1,10 @@
 const MAX_RESULTS = 600;
 const PROXY = "https://corsproxy.io/?";
 const PRICE_FILE = "./docs/priser.json.gz";
-
 (async () => {
 	const grid = document.getElementById("grid");
 	const API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON";
 	let isLoading = false;
-
 	async function loadPriceData() {
 		try {
 			const res = await fetch(PRICE_FILE);
@@ -60,18 +58,18 @@ const PRICE_FILE = "./docs/priser.json.gz";
 		const priceText = formatPrice(doc.price?.amount, doc.price?.currency_code);
 
 		card.innerHTML = `
-			<div class="card-image-wrapper">
-				<img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" />
-			</div>
-			<div class="dba-badge">dba</div>
-			<div class="card-content">
-				<h3>${doc.heading || ""}</h3>
-				<div class="card-footer">
-					<div class="price">${priceText}</div>
-					<div class="city">${location}${zip ? " " + zip : ""}</div>
-				</div>
-			</div>
-		`;
+        <div class="card-image-wrapper">
+            <img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" />
+        </div>
+        <div class="dba-badge">dba</div>
+        <div class="card-content">
+            <h3>${doc.heading || ""}</h3>
+            <div class="card-footer">
+                <div class="price">${priceText}</div>
+                <div class="city">${location}${zip ? " " + zip : ""}</div>
+            </div>
+        </div>
+    `;
 
 		card.dataset.timestamp = doc.timestamp || 0;
 		card.dataset.images = JSON.stringify(doc.image_urls || []);
@@ -97,8 +95,6 @@ const PRICE_FILE = "./docs/priser.json.gz";
 				}
 			}
 		}
-
-
 		return card;
 	}
 
@@ -138,13 +134,27 @@ const PRICE_FILE = "./docs/priser.json.gz";
 
 			const perPageAPI = 60;
 			const firstPageDocs = firstPageData.bapDocs;
-			firstPageDocs.forEach(doc => window.allCards.push(makeCard(doc)));
+			firstPageDocs.forEach(doc => {
+				const tempKey = `${doc.heading || ""}|${formatPrice(doc.price?.amount, doc.price?.currency_code)}`;
+				if (window.seenAdKeys.has(tempKey)) return;
+				const card = makeCard(doc);
+				card.dataset.key = tempKey;
+				window.allCards.push(card);
+				window.seenAdKeys.add(tempKey);
+			});
 			window.loadedAds += firstPageDocs.length;
 
 			const numPages = bgMode ? 1 : Math.ceil(totalResults / perPageAPI);
 			for (currentPage = 2; currentPage <= numPages && window.allCards.length < window.totalAds; currentPage++) {
 				const pageData = await fetchDBAPage(currentPage, term, category);
-				pageData.bapDocs.forEach(doc => window.allCards.push(makeCard(doc)));
+				pageData.bapDocs.forEach(doc => {
+					const tempKey = `${doc.heading || ""}|${formatPrice(doc.price?.amount, doc.price?.currency_code)}`;
+					if (window.seenAdKeys.has(tempKey)) return;
+					const card = makeCard(doc);
+					card.dataset.key = tempKey;
+					window.allCards.push(card);
+					window.seenAdKeys.add(tempKey);
+				});
 				window.loadedAds += pageData.bapDocs.length;
 			}
 		} catch (err) {
