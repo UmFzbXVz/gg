@@ -95,6 +95,7 @@
 	let isFirstSearch = true;
 	window.allCards = [];
 	window.pendingBgSearches = [];
+	window.seenAdKeys = new Set();
 
 	const categories = {
 		'mobler': {
@@ -207,6 +208,7 @@
 			window.loadedAds = 0;
 			currentIndex = 0;
 			window.removeEventListener('scroll', handleScroll);
+			window.seenAdKeys.clear();
 
 			try {
 				const bgEnabled = bgToggle.checked;
@@ -315,6 +317,7 @@
 		window.loadedAds = 0;
 		currentIndex = 0;
 		window.removeEventListener('scroll', handleScroll);
+		window.seenAdKeys.clear();
 
 		if (window.bgSearch) window.bgSearch.clear();
 
