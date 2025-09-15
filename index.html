@@ -218,8 +218,8 @@
 				}
 
 				for (const term of terms) {
-					await window.hentOgVisGG(term, catObj, true);
-					await window.hentOgVisDBA(term, catObj.dbaCat, true);
+					await window.hentOgVisGG(term, catObj, false);
+					await window.hentOgVisDBA(term, catObj.dbaCat, false);
 					await window.hentOgVisReshopper(term, true, catObj.reshopperFacetValue);
 				}
 
