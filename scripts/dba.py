@@ -1,6 +1,6 @@
 const MAX_RESULTS = 600;
 const PROXY = "https://corsproxy.io/?";
-const PRICE_FILE = "./docs/priser.json.gz";
+const PRICE_FILE = "/gg/docs/priser.json.gz";
 
 (async () => {
 	const grid = document.getElementById("grid");
@@ -8,18 +8,13 @@ const PRICE_FILE = "./docs/priser.json.gz";
 	let isLoading = false;
 
 	async function loadPriceData() {
-		try {
-			const res = await fetch(PRICE_FILE);
-			if (!res.ok) throw new Error(`Kunne ikke hente ${PRICE_FILE}`);
+		const res = await fetch(PRICE_FILE);
+		if (!res.ok) throw new Error(`Kunne ikke hente ${PRICE_FILE}`);
 
-			const arrayBuffer = await res.arrayBuffer();
-
-			const decompressed = pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
-			return JSON.parse(decompressed);
-		} catch (err) {
-			console.error("Fejl ved loadPriceData:", err);
-			return {};
-		}
+		const ds = new DecompressionStream("gzip");
+		const decompressed = res.body.pipeThrough(ds);
+		const text = await new Response(decompressed).text();
+		return JSON.parse(text);
 	}
 
 	window.priceData = await loadPriceData();
