@@ -232,6 +232,36 @@ function parseGGDate(str) {
 		}
 	});
 
+	function makeCard(listing) {
+		const card = document.createElement("a");
+		card.className = "card";
+		card.href = "https://www.guloggratis.dk" + listing.url;
+		card.target = "_blank";
+		card.rel = "noopener noreferrer";
+		card.dataset.source = "gg";
+		card.dataset.id = listing.id;
+
+		const location = [listing.city, listing.zipcode].filter(Boolean).join(" ") || "";
+
+		card.innerHTML = `
+                    <button class="info-btn" data-id="${listing.id}">i</button>
+                    <div class="card-image-wrapper">
+                        <img loading="lazy" src="${listing.primaryImage?.url || ''}" alt="${listing.title}" />
+                    </div>
+                    <div class="gg-badge">GG</div>
+                    <div class="card-content">
+                        <h3>${listing.title}</h3>
+                        <div class="card-footer">
+                            <div class="price">${listing.price?.text || "Ingen pris"}</div>
+                            <div class="city">${location}</div>
+                        </div>
+                    </div>
+                `;
+
+		const parsedTimestamp = parseGGDate(listing.createdAt);
+		card.dataset.timestamp = parsedTimestamp;
+		return card;
+	}
 
 	async function hentOgVisSide(page, catObj, selectedAreas) {
 		if (isLoading) return;
@@ -251,44 +281,13 @@ function parseGGDate(str) {
 			const remaining = 300 - window.loadedAds;
 			const toShow = listings.slice(0, remaining);
 
-			toShow.forEach(({
-				id,
-				title,
-				price,
-				url,
-				primaryImage,
-				city,
-				zipcode,
-				createdAt
-			}) => {
-				const card = document.createElement("a");
-				card.className = "card";
-				card.href = "https://www.guloggratis.dk" + url;
-				card.target = "_blank";
-				card.rel = "noopener noreferrer";
-				card.dataset.source = "gg";
-				card.dataset.id = id;
-
-				const location = [city, zipcode].filter(Boolean).join(" ") || "";
-
-				card.innerHTML = `
-                    <button class="info-btn" data-id="${id}">i</button>
-                    <div class="card-image-wrapper">
-                        <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
-                    </div>
-                    <div class="gg-badge">GG</div>
-                    <div class="card-content">
-                        <h3>${title}</h3>
-                        <div class="card-footer">
-                            <div class="price">${price?.text || "Ingen pris"}</div>
-                            <div class="city">${location}</div>
-                        </div>
-                    </div>
-                `;
-
-				const parsedTimestamp = parseGGDate(createdAt);
-				card.dataset.timestamp = parsedTimestamp;
+			toShow.forEach(listing => {
+				const tempKey = listing.id;
+				if (window.seenAdKeys.has(tempKey)) return;
+				const card = makeCard(listing);
+				card.dataset.key = tempKey;
 				window.allCards.push(card);
+				window.seenAdKeys.add(tempKey);
 			});
 
 			window.loadedAds += toShow.length;
