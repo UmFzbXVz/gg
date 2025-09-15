@@ -188,14 +188,7 @@
 			const totalResults = Math.min(firstData.totalHits || 0, MAX_RESULTS);
 			window.totalAds += totalResults;
 
-			firstData.items.forEach(item => {
-				const tempKey = `${item.brandOrTitle}|${formatPrice(item.priceInHundreds, item.currency)}`;
-				if (window.seenAdKeys.has(tempKey)) return;
-				const card = makeCard(item);
-				card.dataset.key = tempKey;
-				window.allCards.push(card);
-				window.seenAdKeys.add(tempKey);
-			});
+			firstData.items.forEach(item => window.allCards.push(makeCard(item)));
 			totalFetched += firstData.items.length;
 			window.loadedAds += firstData.items.length;
 
@@ -204,14 +197,7 @@
 			for (let page = 1; page < numPages && totalFetched < totalResults; page++) {
 				offset = page * pageSize;
 				const pageData = await fetchReshopperPage(offset, term, pageSize, null, null, segmentValue);
-				pageData.items.forEach(item => {
-					const tempKey = `${item.brandOrTitle}|${formatPrice(item.priceInHundreds, item.currency)}`;
-					if (window.seenAdKeys.has(tempKey)) return;
-					const card = makeCard(item);
-					card.dataset.key = tempKey;
-					window.allCards.push(card);
-					window.seenAdKeys.add(tempKey);
-				});
+				pageData.items.forEach(item => window.allCards.push(makeCard(item)));
 				totalFetched += pageData.items.length;
 				window.loadedAds += pageData.items.length;
 			}
