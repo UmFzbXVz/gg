@@ -8,7 +8,7 @@ import time
 from tqdm import tqdm
 
 API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON"
-PRISER_FILE_GZ = "priser.json.gz"
+PRISER_FILE_GZ = "docs/priser.json.gz"
 MAX_PAGES = 50
 MAX_RETRIES = 3
 RETRY_SLEEP = 10
