@@ -2,11 +2,11 @@ name: Opdater priser
 
 on:
   schedule:
-    - cron: '*/30 * * * *'   
+    - cron: '*/30 * * * *'  
   workflow_dispatch:
 
 jobs:
-  build:
+  update-priser:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,13 +26,6 @@ jobs:
     - name: Kør dba.py
       run: |
         python scripts/dba.py
-        # Sikrer at docs/ findes
-        mkdir -p docs
-        # Hvis filen ikke blev oprettet af dba.py, opret tom gzip-fil
-        if [ ! -f docs/priser.json.gz ]; then
-          echo "{}" | gzip > docs/priser.json.gz
-        fi
-        ls -l docs/
 
     - name: Commit og push opdateret priser.json.gz
       run: |
@@ -41,3 +34,5 @@ jobs:
         git add docs/priser.json.gz
         git diff --staged --quiet || git commit -m "Automatisk opdatering af priser.json.gz"
         git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
