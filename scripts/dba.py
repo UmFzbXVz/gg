@@ -5,19 +5,12 @@ import os
 import math
 import concurrent.futures
 import time
-from tqdm import tqdm
 
 API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON"
 PRISER_FILE_GZ = "docs/priser.json.gz"
 MAX_PAGES = 50
 MAX_RETRIES = 3
 RETRY_SLEEP = 10
-CHECKPOINT_INTERVAL = 5
-CUSTOM_TERMS = [
-    "Østervig", "Wikkelsø", "Wegner", "Vodder", "palisander", "sofa",
-    "stol", "lænestol", "hvilestol", "bord", "skrivebord", "sofabord",
-    "jason", "rolschau", "glostrup møbelfabrik", "brande møbelindustri", "skænk"
-]
 
 def load_priser():
     if os.path.exists(PRISER_FILE_GZ):
@@ -28,7 +21,7 @@ def load_priser():
 def save_priser(priser):
     with gzip.open(PRISER_FILE_GZ, "wt", encoding="utf-8", compresslevel=9) as f:
         json.dump(priser, f, ensure_ascii=False, separators=(",", ":"))
-    print(f"priser.json.gz opdateret med {len(priser)} annoncer")
+    print(f"Gemte priser.json.gz med {len(priser)} annoncer")
 
 def update_history(priser, doc):
     ad_id = str(doc["ad_id"])
@@ -36,13 +29,12 @@ def update_history(priser, doc):
     timestamp = doc.get("timestamp")
 
     history = priser.get(ad_id, [])
-
     latest_version = history[-1] if history else None
 
     if latest_version:
         last_price = latest_version[2]
         if last_price == current_price:
-            return False  
+            return False
         version = latest_version[0] + 1
     else:
         version = 1
@@ -79,10 +71,10 @@ def fetch_dba_page(page, term="*", category=None, locations=None):
             totalResults = data.get("metadata", {}).get("result_size", {}).get("match_count", 0)
             return {"bapDocs": docs, "totalResults": totalResults}
         except Exception as e:
-            print(f"Fejl på side {page} for '{term}' (forsøg {attempt}/{MAX_RETRIES}): {e}")
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_SLEEP)
             else:
+                print(f"Side {page} for '{term}' fejlede permanent: {e}")
                 raise e
 
 def fetch_term(priser, term="*", category=None, locations=None):
@@ -101,7 +93,7 @@ def fetch_term(priser, term="*", category=None, locations=None):
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         futures = {executor.submit(fetch_dba_page, page, term, category, locations): page for page in pages_to_fetch}
-        for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc=f"Henter '{term}'"):
+        for future in concurrent.futures.as_completed(futures):
             page = futures[future]
             try:
                 result = future.result()
@@ -113,7 +105,6 @@ def fetch_term(priser, term="*", category=None, locations=None):
 
     retries = 0
     while failed_pages and retries < MAX_RETRIES:
-        print(f"Genprøver {len(failed_pages)} fejlede sider for '{term}' (forsøg {retries+1}/{MAX_RETRIES}) ...")
         time.sleep(RETRY_SLEEP)
         current_failed = []
         for page in failed_pages:
@@ -131,17 +122,12 @@ def fetch_term(priser, term="*", category=None, locations=None):
 
 if __name__ == "__main__":
     priser = load_priser()
-    print(f"Indlæst priser.json.gz med {len(priser)} annoncer")
+    print(f"Indlæst {len(priser)} annoncer fra priser.json.gz")
 
-    total_updated = 0
-
-    total_updated += fetch_term(priser, "*")
-
-    for term in CUSTOM_TERMS:
-        total_updated += fetch_term(priser, term)
+    total_updated = fetch_term(priser, "*")
 
     if total_updated > 0:
         save_priser(priser)
-        print(f"{total_updated} annoncer opdateret med ny version")
+        print(f"{total_updated} annoncer opdateret")
     else:
-        print("Ingen nye versioner fundet – priser.json.gz uændret")
+        print("Ingen ændringer fundet")
