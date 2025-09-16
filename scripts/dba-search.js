@@ -90,7 +90,7 @@ const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/ra
 
 					const diffBadge = document.createElement("div");
 					diffBadge.className = `price-change-badge ${priceDiff > 0 ? "steget" : "faldet"}`;
-					diffBadge.textContent = `${Math.abs(priceDiff).toLocaleString("da-DK")} kr.`;
+					diffBadge.innerHTML = `${priceDiff > 0 ? '<span class="arrow-up">▲</span>' : '<span class="arrow-down">▼</span>'} ${Math.abs(priceDiff).toLocaleString("da-DK")} kr.`;
 					card.querySelector(".card-image-wrapper").appendChild(diffBadge);
 				}
 			}
