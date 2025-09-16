@@ -96,6 +96,14 @@
 	window.allCards = [];
 	window.pendingBgSearches = [];
 	window.seenAdKeys = new Set();
+	
+	function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
 
 	const categories = {
 		'mobler': {
@@ -174,7 +182,7 @@
 		grid.innerHTML = "";
 		currentIndex = 0;
 		renderNextBatch();
-		window.addEventListener('scroll', handleScroll);
+		window.addEventListener('scroll', debounce(handleScroll, 100));
 	};
 
 	const insertNewCardsAnimated = (newCards) => {
@@ -218,8 +226,8 @@
 				}
 
 				for (const term of terms) {
-					await window.hentOgVisGG(term, catObj, false);
-					await window.hentOgVisDBA(term, catObj.dbaCat, false);
+					await window.hentOgVisGG(term, catObj, true);
+					await window.hentOgVisDBA(term, catObj.dbaCat, true);
 					await window.hentOgVisReshopper(term, true, catObj.reshopperFacetValue);
 				}
 
