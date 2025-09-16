@@ -1,6 +1,7 @@
-const MAX_RESULTS = 600;
+const MAX_RESULTS = 300;
 const PROXY = "https://corsproxy.io/?";
-const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/raw/refs/heads/main/docs/priser.json.gz");
+const PRICE_FILE = "./docs/priser.json.gz";
+
 (async () => {
 	const grid = document.getElementById("grid");
 	const API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON";
