@@ -315,8 +315,8 @@ function parseGGDate(str) {
 			selectedAreas = getSelectedAreasFromUI();
 		}
 
-		const maxPages = isBackground ? 1 : 7;
-		while (hasNextPage && currentPage <= maxPages && window.allCards.length < 300) {
+		const maxPages = isBackground ? 1 : 4;
+		while (hasNextPage && currentPage <= maxPages && window.allCards.length < 200) {
 			await hentOgVisSide(currentPage, catObj, selectedAreas);
 			currentPage++;
 		}
