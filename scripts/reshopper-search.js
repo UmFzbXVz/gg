@@ -31,9 +31,10 @@
 	}
 
 	function makeCard(item) {
+	    console.log(item);
 		const card = document.createElement("a");
 		card.className = "card";
-		card.href = `https://reshopper.com/da/item/${item.brandOrTitle.replace(/\s+/g, '-').toLowerCase()}/${item.id}`;
+		card.href = `https://reshopper.com/da/item/${item.description.replace(/\s+/g, '-').toLowerCase()}/${item.id}`;
 		card.target = "_blank";
 		card.rel = "noopener noreferrer";
 
@@ -46,7 +47,7 @@
 
 		card.innerHTML = `
         <div class="card-image-wrapper">
-          <img loading="lazy" src="${firstImageUrl}" alt="${item.brandOrTitle}" />
+          <img loading="lazy" src="${firstImageUrl}" alt="${item.description}" />
           <div class="reshopper-badge">
             <svg width="24" height="24" viewBox="0 0 1200 1203" xmlns="http://www.w3.org/2000/svg">
               <g fill="none" stroke="none" stroke-width="1">
@@ -63,7 +64,7 @@
           </div>
         </div>
         <div class="card-content">
-          <h3>${item.brandOrTitle}</h3>
+          <h3>${item.description}</h3>
           <div class="card-footer">
             <div class="price">${priceText}</div>
             <div class="seller">${sellerText}</div>
