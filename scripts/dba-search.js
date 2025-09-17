@@ -1,6 +1,6 @@
 const MAX_RESULTS = 300;
 const PROXY = "https://corsproxy.io/?";
-const PRICE_FILE = "./docs/priser.json.gz";
+const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/raw/refs/heads/main/docs/priser.json.gz");
 
 (async () => {
 	const grid = document.getElementById("grid");
@@ -91,8 +91,11 @@ const PRICE_FILE = "./docs/priser.json.gz";
 
 					const diffBadge = document.createElement("div");
 					diffBadge.className = `price-change-badge ${priceDiff > 0 ? "steget" : "faldet"}`;
-					diffBadge.innerHTML = `${priceDiff > 0 ? '<span class="arrow-up">▲</span>' : '<span class="arrow-down">▼</span>'} ${Math.abs(priceDiff).toLocaleString("da-DK")} kr.`;
+					diffBadge.innerHTML = `${priceDiff > 0 ? '<span class="arrow-up">△</span>' : '<span class="arrow-down">▽</span>'} ${Math.abs(priceDiff).toLocaleString("da-DK")} kr.`;
 					card.querySelector(".card-image-wrapper").appendChild(diffBadge);
+					
+					card.dataset.priceDiff = priceDiff;
+                    card.dataset.priceDiffStatus = status; 
 				}
 			}
 		}
