@@ -46,11 +46,69 @@
 		const baseDelay = opts.baseDelay || 0;
 		const staggerMs = opts.staggerMs || 40;
 		const maxStaggerCards = 20;
+		const totalCards = cards.length;
 
-		cards.forEach((card, i) => {
+		function applyBorders() {
+			const grid = document.getElementById("grid");
+			const allCards = Array.from(grid.children);
+
+			allCards.forEach(card => {
+				card.classList.remove('border-top', 'border-bottom', 'border-left', 'border-right');
+				card.style.borderBottomLeftRadius = '';
+				card.style.borderBottomRightRadius = '';
+			});
+			const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length || 1;
+
+			const positions = cards.map((_, i) => {
+				const revIndex = totalCards - 1 - i;
+				return {
+					i,
+					revIndex,
+					row: Math.floor(revIndex / cols),
+					col: revIndex % cols
+				};
+			});
+
+			const newCardPositions = new Set(positions.map(p => `${p.row},${p.col}`));
+
+			cards.forEach((card, idx) => {
+				card.classList.remove('border-top', 'border-bottom', 'border-left', 'border-right');
+				card.style.borderBottomLeftRadius = '';
+				card.style.borderBottomRightRadius = '';
+
+				const {
+					row,
+					col
+				} = positions[idx];
+
+				const hasBelow = newCardPositions.has(`${row + 1},${col}`);
+				const hasRight = newCardPositions.has(`${row},${col + 1}`);
+
+				if (!hasBelow) card.classList.add('border-bottom');
+				if (!hasRight) card.classList.add('border-right');
+				if (col === 0) card.classList.add('border-left');
+				if (row === 0) card.classList.add('border-top');
+
+				card.style.borderBottomLeftRadius = hasBelow || newCardPositions.has(`${row},${col - 1}`) ? '0' : '12px';
+				card.style.borderBottomRightRadius = hasBelow || hasRight ? '0' : '12px';
+			});
+		}
+
+		function debounce(fn, delay = 100) {
+			let timer;
+			return () => {
+				clearTimeout(timer);
+				timer = setTimeout(fn, delay);
+			};
+		}
+
+		const debouncedApplyBorders = debounce(applyBorders, 150);
+		window.addEventListener('resize', debouncedApplyBorders);
+
+		cards.forEach((card, idx) => {
 			card.classList.add('new-card');
 			let delay = baseDelay;
-			if (cards.length <= maxStaggerCards) delay += i * staggerMs;
+			if (cards.length <= maxStaggerCards) delay += idx * staggerMs;
 			card.style.animationDelay = `${delay}ms`;
 			grid.prepend(card);
 
@@ -60,7 +118,11 @@
 				card.style.animationDelay = '';
 			}, animationDuration + delay);
 		});
+
+		applyBorders();
 	}
+
+
 
 	async function backgroundSearch() {
 		const bgEnabled = document.getElementById("bgToggle").checked;
