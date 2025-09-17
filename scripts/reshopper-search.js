@@ -31,7 +31,6 @@
 	}
 
 	function makeCard(item) {
-	    console.log(item);
 		const card = document.createElement("a");
 		card.className = "card";
 		card.href = `https://reshopper.com/da/item/${item.description.replace(/\s+/g, '-').toLowerCase()}/${item.id}`;
