@@ -91,31 +91,23 @@ function parseGGDate(str) {
 		"x-requested-with": "dk.guloggratis"
 	};
 
-	const AREA_GROUPS = {
-		jylland: ["oestjylland", "vestogmidtjylland", "nordjylland", "sydjylland"],
-		sydsjaellandlollandfalstermoen: ["sydsjaellandlollandfalstermoen"]
-	};
-
 	const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) { redirect(url: $currentUrl) search(filters: $filters, pagination: $pagination) { pagination { total hasPrevious hasNext __typename } availableCategories { title url count __typename } listings { id title description url price { text raw __typename } primaryImage { url(size: Listing320) __typename } city zipcode createdAt(dateFormat: RELATIVE_SHORT) } }}`;
 	const GET_LISTING_QUERY = `query GetListing($id: ID!) { listing(id: $id) { id title url description categoryId externalLink status viewsCount draftFinishedAt expiredAt productType favoritesCount isWeaponContent isTransactionEnabled metaTitle metaDescription isFixedPrice isInBasket isShippingAvailable transactionData { transactionId __typename } price { raw text type __typename } originalPrice images { sortOrder small: url(size: Listing640) medium: url(size: Listing1280) bigPictureSmall: url(size: Listing640x640) bigPictureMedium: url(size: Listing1280x1280) bigPictureLarge: url(size: Listing2560x2560) __typename } user { id displayName isBusiness mitIdValidatedAt isReachableByMessage isTransactionEnabled isSafepayAuthenticated status avatar { url(size: Avatar75) __typename } subscription { userId __typename } memberSince: createdAt(dateFormat: RELATIVE_LONG) availableFrom availableTo onlineListingsCount business { isBannerOwnershipActive isNoFollowEnabled isGenericExternalLinkTextEnabled isPromotionsEnabled isReachableByMail website websiteText profileText __typename } displayAddress city zipcode createdAt transactionHandInTime isFollowing receivedRatings { amount average __typename } followersCount __typename } displayAddress phones { id masked __typename } categories { id title url __typename } leafCategory { id title url featureTags isPublished __typename } listingFields { field { id isSeo title slug isBookable sortOrder parentFieldId __typename } fieldOption { slug title __typename } value fullValue displayGroup { id title sortOrder __typename } __typename } __typename } }`;
-	const GET_USER_PROFILE_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) { redirect(url: $currentUrl) search(filters: $filters, pagination: $pagination) { hash seoTitle seoDescription title isWeaponContent category { id title url description isPublished icon parent { title url parent { title url __typename } __typename } __typename } availableCategories { title url count __typename } seoFilters { title values __typename } metaCategories listings { id title isNew description url externalLink price { text raw __typename } originalPrice isTransactionEnabled productType primaryImage { url(size: Listing320) __typename } images { id url(size: Listing160) largeUrl: url(size: Listing640x640) small: url(size: Listing160) xlarge: url(size: Listing1280x1280) __typename } createdAt(dateFormat: RELATIVE_SHORT) address city zipcode userId user { id avatar { url(size: Avatar75) __typename } displayName mitIdValidatedAt isBusiness isSafepayAuthenticated isReachableByMessage __typename } isWeaponContent __typename } galleryListings(filters: $filters) { id title price { raw text __typename } primaryImage { url(size: Listing320) __typename } url user { displayName avatar { url(size: Avatar75) __typename } isBusiness __typename } isWeaponContent __typename } pagination { total hasPrevious hasNext __typename } seoLinks { title slug options { title slug __typename } __typename } userProfile { id displayName phones { id masked __typename } avatar { url(size: Avatar150) __typename } subscription { userId __typename } zipcode city mitIdValidatedAt isBusiness memberSince: createdAt(dateFormat: RELATIVE_LONG) createdAt(dateFormat: ABSOLUTE_DATE_YEAR) availableFrom availableTo business { isBannerOwnershipActive isNoFollowEnabled isGenericExternalLinkTextEnabled isPromotionsEnabled isReachableByMail website websiteText profileText __typename } status transactionHandInTime isTransactionEnabled isSafepayAuthenticated isFollowing receivedRatings { amount average __typename } followersCount __typename } __typename } }`;
 
 	let currentPage = 1;
 	let currentTerm = "";
 	let hasNextPage = false;
 	let isLoading = false;
-	let selectedAreas = getSelectedAreasFromUI();
 
 	const grid = document.getElementById("grid");
 
-	async function hentSide(page, term, categorySlug, selectedAreas) {
-		const areasToUse = (Array.isArray(selectedAreas) && selectedAreas.length) ? selectedAreas : AREA_GROUPS.jylland.slice();
+	async function hentSide(page, term, categorySlug) {
 		const body = {
 			operationName: "Search",
 			variables: {
 				category: categorySlug,
 				filters: {
-					area: areasToUse,
+					area: ["oestjylland", "vestogmidtjylland", "nordjylland", "sydjylland"],
 					categoryFields: [],
 					listingTypes: ["Sell"],
 					sorting: "LastCreated",
@@ -140,154 +132,56 @@ function parseGGDate(str) {
 		return res.json();
 	}
 
-	function getSelectedAreasFromUI() {
-		try {
-			const selected = [];
-			const jyllandBox = document.getElementById("locationJylland");
-			const sydBox = document.getElementById("locationSydsjaelland");
-			if (jyllandBox && jyllandBox.checked) selected.push(...AREA_GROUPS.jylland);
-			if (sydBox && sydBox.checked) selected.push(...AREA_GROUPS.sydsjaellandlollandfalstermoen);
-			return selected.length ? selected : AREA_GROUPS.jylland.slice();
-		} catch (e) {
-			return AREA_GROUPS.jylland.slice();
-		}
-	}
-
-	async function showSellerInfo(listingId) {
-		try {
-			const listingBody = {
-				operationName: "GetListing",
-				variables: {
-					id: listingId
-				},
-				query: GET_LISTING_QUERY
-			};
-			const listingRes = await fetch(PROXY + API_URL, {
-				method: "POST",
-				headers: HEADERS,
-				body: JSON.stringify(listingBody)
-			});
-			const listingData = await listingRes.json();
-			const user = listingData?.data?.listing?.user;
-			if (!user) return;
-
-			const profileBody = {
-				operationName: "Search",
-				variables: {
-					filters: {
-						weapons: true,
-						categoryFields: [],
-						userIds: [user.id]
-					},
-					pagination: {
-						perPage: 36,
-						page: 1
-					},
-					currentUrl: ""
-				},
-				query: GET_USER_PROFILE_QUERY
-			};
-			const profileRes = await fetch(PROXY + API_URL, {
-				method: "POST",
-				headers: HEADERS,
-				body: JSON.stringify(profileBody)
-			});
-			const profileData = await profileRes.json();
-			const search = profileData?.data?.search;
-			if (!search) return;
-
-			const userProfile = search.userProfile;
-			const listings = search.listings || [];
-			const addresses = [...new Set(listings.map(l => l.address).filter(Boolean))];
-			let fullAddress = '';
-			if (addresses.length && userProfile.zipcode && userProfile.city) fullAddress = `${addresses[0]}, ${userProfile.zipcode} ${userProfile.city}`;
-			const mapsLink = fullAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}` : '';
-
-			const modal = document.createElement('div');
-			modal.className = 'modal';
-			modal.innerHTML = `
-                <div class="modal-content">
-                    <h2>Sælgers information</h2><p>Navn:<strong>
-                    <a href="https://www.guloggratis.dk/bruger/${userProfile.id}" target="_blank" rel="noopener noreferrer">${userProfile.displayName || 'Ukendt'}</a></strong></p>
-                    <p>Medlem siden: <strong>${userProfile.memberSince || 'Ukendt'}</strong></p>
-                    <p>By: <strong>${userProfile.city || ''} ${userProfile.zipcode || ''}</strong></p>
-                    ${fullAddress ? `<p class="address-line">Adresse: <img class="maps-icon" src="https://www.merrimackvalleyglass.com/wp-content/uploads/2020/07/1200px-Google_Maps_icon_2020.svg_.png" alt="Google Maps"><strong><a href="${mapsLink}" target="_blank" rel="noopener noreferrer">${fullAddress}</a></strong></p>` : ''}
-                    <button class="close-btn">Luk</button>
-                </div>`;
-			document.body.appendChild(modal);
-			modal.querySelector('.close-btn').addEventListener('click', () => modal.remove());
-			modal.addEventListener('click', e => {
-				if (e.target === modal) modal.remove();
-			});
-		} catch (err) {
-			console.error('Fejl ved hentning af sælgerinfo:', err);
-		}
-	}
-
-	grid.addEventListener('click', async (e) => {
-		if (e.target.classList.contains('info-btn')) {
-			e.preventDefault();
-			e.stopPropagation();
-			await showSellerInfo(e.target.dataset.id);
-		}
-	});
-
-	function makeCard(listing) {
-		const card = document.createElement("a");
-		card.className = "card";
-		card.href = "https://www.guloggratis.dk" + listing.url;
-		card.target = "_blank";
-		card.rel = "noopener noreferrer";
-		card.dataset.source = "gg";
-		card.dataset.id = listing.id;
-
-		const location = [listing.city, listing.zipcode].filter(Boolean).join(" ") || "";
-
-		card.innerHTML = `
-                    <button class="info-btn" data-id="${listing.id}">i</button>
-                    <div class="card-image-wrapper">
-                        <img loading="lazy" src="${listing.primaryImage?.url || ''}" alt="${listing.title}" />
-                    </div>
-                    <div class="gg-badge">GG</div>
-                    <div class="card-content">
-                        <h3>${listing.title}</h3>
-                        <div class="card-footer">
-                            <div class="price">${listing.price?.text || "Ingen pris"}</div>
-                            <div class="city">${location}</div>
-                        </div>
-                    </div>
-                `;
-
-		const parsedTimestamp = parseGGDate(listing.createdAt);
-		card.dataset.timestamp = parsedTimestamp;
-		return card;
-	}
-
-	async function hentOgVisSide(page, catObj, selectedAreas) {
+	async function hentOgVisSide(page, catObj) {
 		if (isLoading) return;
 		isLoading = true;
 		try {
-			const data = await hentSide(page, currentTerm, catObj.ggSlug, selectedAreas);
-
+			const data = await hentSide(page, currentTerm, catObj.ggSlug);
 			const searchData = data?.data?.search || {};
 			hasNextPage = searchData?.pagination?.hasNext;
 
 			if (page === 1) {
-				const total = Math.min(searchData.pagination.total, 300);
-				window.totalAds += total;
+				const categories = searchData.availableCategories || [];
+				const targetCategory = categories.find(cat => cat.title.toLowerCase() === catObj.ggTitle.toLowerCase());
+				if (targetCategory) {
+					const total = Math.min(targetCategory.count, 300);
+					window.totalAds += total;
+				}
 			}
 
 			const listings = searchData.listings || [];
 			const remaining = 300 - window.loadedAds;
 			const toShow = listings.slice(0, remaining);
 
-			toShow.forEach(listing => {
-				const tempKey = listing.id;
-				if (window.seenAdKeys.has(tempKey)) return;
-				const card = makeCard(listing);
-				card.dataset.key = tempKey;
+			toShow.forEach(({
+				id,
+				title,
+				price,
+				url,
+				primaryImage,
+				city,
+				zipcode,
+				createdAt
+			}) => {
+				const card = document.createElement("a");
+				card.className = "card";
+				card.href = "https://www.guloggratis.dk" + url;
+				card.target = "_blank";
+				card.rel = "noopener noreferrer";
+				const location = [city, zipcode].filter(Boolean).join(" ") || "";
+				card.innerHTML = `
+                <button class="info-btn" data-id="${id}">i</button>
+                <img loading="lazy" src="${primaryImage?.url || ''}" alt="${title}" />
+                <div class="card-content">
+                    <h3>${title}</h3>
+                    <div class="price">${price?.text || "Ingen pris"}</div>
+                    <div class="city">${location}</div>
+                </div>
+                <div class="gg-badge">GG</div>
+            `;
+				const parsedTimestamp = parseGGDate(createdAt);
+				card.dataset.timestamp = parsedTimestamp;
 				window.allCards.push(card);
-				window.seenAdKeys.add(tempKey);
 			});
 
 			window.loadedAds += toShow.length;
@@ -298,28 +192,79 @@ function parseGGDate(str) {
 		}
 	}
 
-	window.hentOgVisGG = async function(term, catObj, selectedRegionKeyOrArray = null, isBackground = false) {
+
+	async function showSellerInfo(listingId) {
+		try {
+			const body = {
+				operationName: "GetListing",
+				variables: {
+					id: listingId
+				},
+				query: GET_LISTING_QUERY
+			};
+			const res = await fetch(PROXY + API_URL, {
+				method: "POST",
+				headers: HEADERS,
+				body: JSON.stringify(body)
+			});
+			const data = await res.json();
+			const listing = data?.data?.listing;
+			if (!listing || !listing.user) return;
+
+			const user = listing.user;
+			const phones = listing.phones || [];
+			const fullAddress = listing.displayAddress || `${user.city || ''} ${user.zipcode || ''}`;
+			const mapsLink = fullAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}` : '';
+
+			const modal = document.createElement('div');
+			modal.className = 'modal';
+			modal.innerHTML = `
+            <div class="modal-content">
+                <h2>Sælgers information</h2>
+                <p>Navn: <strong>
+                    <a href="https://www.guloggratis.dk/bruger/${user.id}" target="_blank" rel="noopener noreferrer">
+                        ${user.displayName || 'Ukendt'}
+                    </a>
+                </strong></p>
+                <p>Medlem siden: <strong>${user.memberSince || 'Ukendt'}</strong></p>
+                <p>By: <strong>${user.city || ''} ${user.zipcode || ''}</strong></p>
+                ${fullAddress ? `<p class="address-line">
+                    Adresse: <img class="maps-icon" src="https://www.merrimackvalleyglass.com/wp-content/uploads/2020/07/1200px-Google_Maps_icon_2020.svg_.png" alt="Google Maps">
+                    <strong><a href="${mapsLink}" target="_blank" rel="noopener noreferrer">${fullAddress}</a></strong>
+                </p>` : ''}
+                ${phones.length ? `<p>Telefon: <strong>${phones.map(p => p.masked).join(', ')}</strong></p>` : ''}
+                <button class="close-btn">Luk</button>
+            </div>
+        `;
+
+			document.body.appendChild(modal);
+			modal.querySelector('.close-btn').addEventListener('click', () => modal.remove());
+			modal.addEventListener('click', e => {
+				if (e.target === modal) modal.remove();
+			});
+
+		} catch (err) {
+			console.error('Fejl ved hentning af sælgerinfo:', err);
+		}
+	}
+
+
+	grid.addEventListener('click', async (e) => {
+		if (e.target.classList.contains('info-btn')) {
+			e.preventDefault();
+			e.stopPropagation();
+			await showSellerInfo(e.target.dataset.id);
+		}
+	});
+
+	window.hentOgVisGG = async function(term, catObj) {
 		currentTerm = term;
 		currentPage = 1;
 		hasNextPage = true;
 
-		if (Array.isArray(selectedRegionKeyOrArray) && selectedRegionKeyOrArray.length) {
-			selectedAreas = [];
-			selectedRegionKeyOrArray.forEach(item => {
-				if (AREA_GROUPS[item]) selectedAreas.push(...AREA_GROUPS[item]);
-				else selectedAreas.push(item);
-			});
-		} else if (typeof selectedRegionKeyOrArray === "string" && AREA_GROUPS[selectedRegionKeyOrArray]) {
-			selectedAreas = AREA_GROUPS[selectedRegionKeyOrArray].slice();
-		} else {
-			selectedAreas = getSelectedAreasFromUI();
-		}
-
-		const maxPages = isBackground ? 1 : 4;
-		while (hasNextPage && currentPage <= maxPages && window.allCards.length < 200) {
-			await hentOgVisSide(currentPage, catObj, selectedAreas);
+		while (hasNextPage && currentPage <= 7 && window.allCards.length < 300) {
+			await hentOgVisSide(currentPage, catObj);
 			currentPage++;
 		}
 	};
-
 })();
