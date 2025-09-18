@@ -257,14 +257,21 @@ function parseGGDate(str) {
 		}
 	});
 
-	window.hentOgVisGG = async function(term, catObj) {
+	window.hentOgVisGG = async function(term, catObj, maybeBgMode, maybeBgMode2) {
+		const bgMode = (typeof maybeBgMode2 === 'boolean') ? maybeBgMode2 :
+			(typeof maybeBgMode === 'boolean') ? maybeBgMode :
+			false;
+
 		currentTerm = term;
 		currentPage = 1;
 		hasNextPage = true;
 
-		while (hasNextPage && currentPage <= 7 && window.allCards.length < 300) {
+		const maxPages = bgMode ? 1 : 3;
+
+		while (hasNextPage && currentPage <= maxPages && window.allCards.length < 100) {
 			await hentOgVisSide(currentPage, catObj);
 			currentPage++;
 		}
 	};
+
 })();
