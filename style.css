@@ -374,6 +374,7 @@ input:checked + .slider:before {
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
+  z-index: 3;
 }
 
 .info-btn:hover {
@@ -862,6 +863,8 @@ input:checked + .slider:before {
   color: #ddd;
   flex: 0 0 30%;
   max-height: 30%;
+  max-width: 90%;
+  margin: 0 auto;
   overflow-y: auto;
   overflow-x: hidden;
   white-space: pre-wrap;
