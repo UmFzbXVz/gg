@@ -1,3 +1,5 @@
+const RESHOPPER_MAX = 100;
+
 (() => {
 	const PROXY = "https://corsproxy.io/?";
 	let isLoading = false;
@@ -185,7 +187,7 @@
 			let totalFetched = 0;
 
 			const firstData = await fetchReshopperPage(offset, term, pageSize, null, null, segmentValue);
-			const totalResults = Math.min(firstData.totalHits || 0, MAX_RESULTS);
+			const totalResults = Math.min(firstData.totalHits || 0, RESHOPPER_MAX);
 			window.totalAds += totalResults;
 
 			firstData.items.forEach(item => window.allCards.push(makeCard(item)));
@@ -207,4 +209,5 @@
 			isLoading = false;
 		}
 	};
+
 })();
