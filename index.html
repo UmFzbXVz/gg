@@ -96,14 +96,20 @@
 	window.allCards = [];
 	window.pendingBgSearches = [];
 	window.seenAdKeys = new Set();
-	
+
 	function debounce(func, wait) {
-  let timeout;
-  return function(...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
-}
+		let timeout;
+		return function(...args) {
+			clearTimeout(timeout);
+			timeout = setTimeout(() => func.apply(this, args), wait);
+		};
+	}
+
+	bgToggle.addEventListener("change", () => {
+		if (bgToggle.checked && window.bgSearch) {
+			window.bgSearch.resume();
+		}
+	});
 
 	const categories = {
 		'mobler': {
@@ -226,9 +232,9 @@
 				}
 
 				for (const term of terms) {
-					await window.hentOgVisGG(term, catObj, true);
-					await window.hentOgVisDBA(term, catObj.dbaCat, true);
-					await window.hentOgVisReshopper(term, true, catObj.reshopperFacetValue);
+					await window.hentOgVisGG(term, catObj, false);
+					await window.hentOgVisDBA(term, catObj.dbaCat, false);
+					await window.hentOgVisReshopper(term, false, catObj.reshopperFacetValue);
 				}
 
 				const seenKeys = new Set();
