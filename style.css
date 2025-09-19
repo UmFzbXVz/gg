@@ -1095,39 +1095,39 @@ input:checked + .slider:before {
 @keyframes pulsate-top {
   0%,
   100% {
-    border-top-color: rgba(76, 175, 80, 0.5);
+    border-top-color: rgba(76, 175, 80, 0.3);
   }
   50% {
-    border-top-color: rgba(76, 175, 80, 1);
+    border-top-color: rgba(76, 175, 80, 0.7);
   }
 }
 
 @keyframes pulsate-bottom {
   0%,
   100% {
-    border-bottom-color: rgba(76, 175, 80, 0.5);
+    border-bottom-color: rgba(76, 175, 80, 0.3);
   }
   50% {
-    border-bottom-color: rgba(76, 175, 80, 1);
+    border-bottom-color: rgba(76, 175, 80, 0.7);
   }
 }
 
 @keyframes pulsate-left {
   0%,
   100% {
-    border-left-color: rgba(76, 175, 80, 0.5);
+    border-left-color: rgba(76, 175, 80, 0.3);
   }
   50% {
-    border-left-color: rgba(76, 175, 80, 1);
+    border-left-color: rgba(76, 175, 80, 0.7);
   }
 }
 
 @keyframes pulsate-right {
   0%,
   100% {
-    border-right-color: rgba(76, 175, 80, 0.5);
+    border-right-color: rgba(76, 175, 80, 0.3);
   }
   50% {
-    border-right-color: rgba(76, 175, 80);
+    border-right-color: rgba(76, 175, 80, 0.7);
   }
 }
