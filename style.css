@@ -379,7 +379,6 @@ input:checked + .slider:before {
     text-align: center;
 }
 
-
 .toggle-label {
   font-size: clamp(0.9rem, 1.5vw, 1rem);
   color: #333;
@@ -871,6 +870,18 @@ input:checked + .slider:before {
   margin: 0 0 10px 0;
 }
 
+.ad-title-wrapper {
+  max-height: 60px; 
+  display: flex;
+  justify-content: center;
+}
+
+.ad-title-wrapper h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
 .ad-price {
   font-size: 1.3rem;
   color: #d9534f;
@@ -886,13 +897,14 @@ input:checked + .slider:before {
   white-space: pre-wrap;
   font-size: clamp(0.8rem, 1vw, 1.2rem);
   color: #ddd;
-  flex: 0 0 30%;
   max-height: 30%;
   overflow-y: auto;
   overflow-x: hidden;
   white-space: pre-wrap;
   padding-right: 4px;
   padding: 4px;
+  display: flex;
+  justify-content: center;
 }
 
 .ad-location {
