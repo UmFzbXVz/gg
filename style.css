@@ -149,8 +149,7 @@ input {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   text-decoration: none;
   color: inherit;
-  opacity: 0;
-  animation: fadeInCard 0.3s ease forwards;
+  opacity: 1;
   will-change: transform;
   position: relative;
   height: 100%;
@@ -170,20 +169,24 @@ input {
   border-top: 2px solid rgba(76, 175, 80, 0.7);
   border-top-left-radius: 0;
   border-top-right-radius: 0;
+  animation: pulsate-top 1.5s infinite ease-in-out; 
 }
 
 .border-bottom {
   border-bottom: 2px solid rgba(76, 175, 80, 0.7);
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
+  animation: pulsate-bottom 1.5s infinite ease-in-out;
 }
 
 .border-left {
   border-left: 2px solid rgba(76, 175, 80, 0.7);
+  animation: pulsate-left 1.5s infinite ease-in-out;
 }
 
 .border-right {
   border-right: 2px solid rgba(76, 175, 80, 0.7);
+  animation: pulsate-right 1.5s infinite ease-in-out;
 }
 
 .border-bottom.has-below.has-right {
@@ -993,18 +996,6 @@ input:checked + .slider:before {
   animation: fadeInCard 0.35s cubic-bezier(0, 0, 0, 1) forwards;
 }
 
-@keyframes pulseShadowToBorder {
-  0% {
-    box-shadow: 0 0 6px 2px rgba(76, 175, 80, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 12px 4px rgba(76, 175, 80, 0.8);
-  }
-  100% {
-    box-shadow: 0 0 6px 2px rgba(76, 175, 80, 0.6);
-  }
-}
-
 @keyframes fadeInCard {
   0% {
     opacity: 0;
@@ -1074,5 +1065,41 @@ input:checked + .slider:before {
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulsate-top {
+  0%, 100% {
+    border-top-color: rgba(76, 175, 80, 0.9);
+  }
+  50% {
+    border-top-color: rgba(76, 175, 80, 0.3); 
+  }
+}
+
+@keyframes pulsate-bottom {
+  0%, 100% {
+    border-bottom-color: rgba(76, 175, 80, 0.9);
+  }
+  50% {
+    border-bottom-color: rgba(76, 175, 80, 0.3);
+  }
+}
+
+@keyframes pulsate-left {
+  0%, 100% {
+    border-left-color: rgba(76, 175, 80, 0.9);
+  }
+  50% {
+    border-left-color: rgba(76, 175, 80, 0.3);
+  }
+}
+
+@keyframes pulsate-right {
+  0%, 100% {
+    border-right-color: rgba(76, 175, 80, 0.9);
+  }
+  50% {
+    border-right-color: rgba(76, 175, 80, 0.3);
   }
 }
