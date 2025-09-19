@@ -122,8 +122,6 @@
 		applyBorders();
 	}
 
-
-
 	async function backgroundSearch() {
 		const bgEnabled = document.getElementById("bgToggle").checked;
 		if (!bgEnabled || !activeSearches.length) return;
