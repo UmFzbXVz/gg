@@ -101,13 +101,29 @@ function parseGGDate(str) {
 
 	const grid = document.getElementById("grid");
 
+	const locationsGG = {
+		jylland: ["oestjylland", "vestogmidtjylland", "nordjylland", "sydjylland"],
+		sydsjaellandOgOerne: ["sydsjaelland", "bornholm"],
+		fyn: ["fyn"],
+		sjaelland: ["hovedstaden", "koebenhavnogomegn", "midtogoetsjaelland", "vestsjaelland"]
+	};
+
+	function getSelectedAreas() {
+		const selected = [];
+		if (document.getElementById("locationJylland")?.checked) selected.push(...locationsGG.jylland);
+		if (document.getElementById("locationSydsjaelland")?.checked) selected.push(...locationsGG.sydsjaellandOgOerne);
+		if (document.getElementById("locationFyn")?.checked) selected.push(...locationsGG.fyn);
+		if (document.getElementById("locationSjaelland")?.checked) selected.push(...locationsGG.sjaelland);
+		return selected.length ? selected : locationsGG.jylland;
+	}
+
 	async function hentSide(page, term, categorySlug) {
 		const body = {
 			operationName: "Search",
 			variables: {
 				category: categorySlug,
 				filters: {
-					area: ["oestjylland", "vestogmidtjylland", "nordjylland", "sydjylland"],
+					area: getSelectedAreas(),
 					categoryFields: [],
 					listingTypes: ["Sell"],
 					sorting: "LastCreated",
