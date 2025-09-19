@@ -4,6 +4,38 @@ const RESHOPPER_MAX = 100;
 	const PROXY = "https://corsproxy.io/?";
 	let isLoading = false;
 
+	const locationCoords = {
+		jylland: {
+			lat: 56.15,
+			lon: 10.20,
+			radius: 200
+		},
+		sydsjaellandOgOerne: {
+			lat: 55.24,
+			lon: 11.76,
+			radius: 60
+		},
+		fyn: {
+			lat: 55.40,
+			lon: 10.40,
+			radius: 50
+		},
+		sjaelland: {
+			lat: 55.68,
+			lon: 12.10,
+			radius: 100
+		}
+	};
+
+	function getSelectedLocationsRes() {
+		const selected = [];
+		if (document.getElementById("locationJylland")?.checked) selected.push('jylland');
+		if (document.getElementById("locationSydsjaelland")?.checked) selected.push('sydsjaellandOgOerne');
+		if (document.getElementById("locationFyn")?.checked) selected.push('fyn');
+		if (document.getElementById("locationSjaelland")?.checked) selected.push('sjaelland');
+		return selected.length ? selected : ['jylland'];
+	}
+
 	function formatPrice(amountInHundreds, currency) {
 		if (!amountInHundreds) return "";
 		let amount = amountInHundreds / 100;
@@ -182,27 +214,59 @@ const RESHOPPER_MAX = 100;
 		isLoading = true;
 
 		try {
-			let offset = 0;
-			const pageSize = 12;
+			const selectedLocs = getSelectedLocationsRes();
 			let totalFetched = 0;
+			let totalResults = 0;
+			const pageSize = 12;
+			const numPagesPerLoc = bgMode ? 1 : Math.ceil(RESHOPPER_MAX / pageSize);
 
-			const firstData = await fetchReshopperPage(offset, term, pageSize, null, null, segmentValue);
-			const totalResults = Math.min(firstData.totalHits || 0, RESHOPPER_MAX);
-			window.totalAds += totalResults;
+			for (const locKey of selectedLocs) {
+				const {
+					lat,
+					lon,
+					radius
+				} = locationCoords[locKey];
+				let offset = 0;
 
-			firstData.items.forEach(item => window.allCards.push(makeCard(item)));
-			totalFetched += firstData.items.length;
-			window.loadedAds += firstData.items.length;
+				const firstData = await fetchReshopperPage(offset, term, pageSize, {
+					lat,
+					lon
+				}, radius, segmentValue);
+				const locTotal = Math.min(firstData.totalHits || 0, RESHOPPER_MAX);
+				totalResults += locTotal;
+				window.totalAds += locTotal;
 
-			const numPages = bgMode ? 1 : Math.ceil(totalResults / pageSize);
+				firstData.items.forEach(item => {
+					if (totalFetched >= RESHOPPER_MAX) return;
+					const adId = item.id;
+					if (window.seenAdKeys.has(adId)) return;
+					window.allCards.push(makeCard(item));
+					window.seenAdKeys.add(adId);
+					totalFetched++;
+					window.loadedAds++;
+				});
 
-			for (let page = 1; page < numPages && totalFetched < totalResults; page++) {
-				offset = page * pageSize;
-				const pageData = await fetchReshopperPage(offset, term, pageSize, null, null, segmentValue);
-				pageData.items.forEach(item => window.allCards.push(makeCard(item)));
-				totalFetched += pageData.items.length;
-				window.loadedAds += pageData.items.length;
+				for (let page = 1; page < numPagesPerLoc && totalFetched < RESHOPPER_MAX; page++) {
+					offset = page * pageSize;
+					const pageData = await fetchReshopperPage(offset, term, pageSize, {
+						lat,
+						lon
+					}, radius, segmentValue);
+					pageData.items.forEach(item => {
+						if (totalFetched >= RESHOPPER_MAX) return;
+						const adId = item.id;
+						if (window.seenAdKeys.has(adId)) return;
+						window.allCards.push(makeCard(item));
+						window.seenAdKeys.add(adId);
+						totalFetched++;
+						window.loadedAds++;
+					});
+				}
+
+				if (totalFetched >= RESHOPPER_MAX) break;
 			}
+
+			totalResults = Math.min(totalResults, RESHOPPER_MAX);
 		} catch (err) {
 			console.error("Fejl Reshopper:", err);
 		} finally {
