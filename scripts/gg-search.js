@@ -103,9 +103,9 @@ function parseGGDate(str) {
 
 	const locationsGG = {
 		jylland: ["oestjylland", "vestogmidtjylland", "nordjylland", "sydjylland"],
-		sydsjaellandOgOerne: ["sydsjaelland", "bornholm"],
+		sydsjaellandOgOerne: ["sydsjaellandlollandfalstermoen"],
 		fyn: ["fyn"],
-		sjaelland: ["hovedstaden", "koebenhavnogomegn", "midtogoetsjaelland", "vestsjaelland"]
+		sjaelland: ["hovedstanden", "koebnhavnogomegn", "nordsjaelland", "vestsjaelland", "midtogoetsjaelland"]
 	};
 
 	function getSelectedAreas() {
@@ -208,7 +208,6 @@ function parseGGDate(str) {
 		}
 	}
 
-
 	async function showSellerInfo(listingId) {
 		try {
 			const body = {
@@ -263,7 +262,6 @@ function parseGGDate(str) {
 			console.error('Fejl ved hentning af sælgerinfo:', err);
 		}
 	}
-
 
 	grid.addEventListener('click', async (e) => {
 		if (e.target.classList.contains('info-btn')) {
