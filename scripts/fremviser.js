@@ -51,9 +51,7 @@
 					if (data && data.description) {
 						return decode(data.description.trim());
 					}
-				} catch {
-					// ignore JSON parse errors
-				}
+				} catch {}
 			}
 
 			const descEl = htmlDoc.querySelector('.vip-description-text');
@@ -77,17 +75,21 @@
 
 	function imageSlider(images, title) {
 		if (!images.length) {
-			images = [
-				'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#666"/><text x="50" y="50" font-size="12" text-anchor="middle" dy=".35em" fill="#ccc">Ingen billede</text></svg>'
-			];
+			return `
+        <div class="image-slider empty-slider">
+            <div class="slide empty-slide">
+                <span class="no-image-text">(ingen billeder)</span>
+            </div>
+        </div>`;
 		}
+
 		const slides = images.map(src => `
-			<div class="slide">
-				<img src="${src}" alt="${title}">
-				<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
-					<img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
-				</a>
-			</div>`).join("");
+        <div class="slide">
+            <img src="${src}" alt="${title}">
+            <a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
+            </a>
+        </div>`).join("");
 
 		const arrows = images.length > 1 ?
 			`<button class="arrow left-arrow"><</button><button class="arrow right-arrow">></button><div class="slide-indicator"></div>` :
@@ -95,6 +97,7 @@
 
 		return `<div class="image-slider"><div class="slider-inner">${slides}</div>${arrows}</div>`;
 	}
+
 
 	function openAdModal(title, description, price, location, images, originalUrl, priceDiff = 0) {
 		const modal = document.createElement("div");
