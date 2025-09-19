@@ -48,9 +48,7 @@
 			if (ldJsonEl) {
 				try {
 					const data = JSON.parse(ldJsonEl.textContent);
-					if (data && data.description) {
-						return decode(data.description.trim());
-					}
+					if (data && data.description) return decode(data.description.trim());
 				} catch {}
 			}
 
@@ -76,20 +74,20 @@
 	function imageSlider(images, title) {
 		if (!images.length) {
 			return `
-        <div class="image-slider empty-slider">
-            <div class="slide empty-slide">
-                <span class="no-image-text">(ingen billeder)</span>
-            </div>
-        </div>`;
+			<div class="image-slider empty-slider">
+				<div class="slide empty-slide">
+					<span class="no-image-text">(ingen billeder)</span>
+				</div>
+			</div>`;
 		}
 
 		const slides = images.map(src => `
-        <div class="slide">
-            <img src="${src}" alt="${title}">
-            <a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
-            </a>
-        </div>`).join("");
+			<div class="slide">
+				<img src="${src}" alt="${title}">
+				<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
+					<img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
+				</a>
+			</div>`).join("");
 
 		const arrows = images.length > 1 ?
 			`<button class="arrow left-arrow"><</button><button class="arrow right-arrow">></button><div class="slide-indicator"></div>` :
@@ -97,7 +95,6 @@
 
 		return `<div class="image-slider"><div class="slider-inner">${slides}</div>${arrows}</div>`;
 	}
-
 
 	function openAdModal(title, description, price, location, images, originalUrl, priceDiff = 0) {
 		const modal = document.createElement("div");
@@ -127,51 +124,53 @@
 		const indicator = modal.querySelector(".slide-indicator");
 
 		const updateSlide = () => {
-			inner.style.transform = `translateX(-${currentSlide * 100}%)`;
-			inner.style.transition = "transform 0.3s ease";
-			if (indicator) indicator.textContent = `${currentSlide + 1}/${images.length}`;
+			if (inner) {
+				inner.style.transform = `translateX(-${currentSlide * 100}%)`;
+				inner.style.transition = "transform 0.3s ease";
+				if (indicator) indicator.textContent = `${currentSlide + 1}/${images.length}`;
+			}
 		};
 
-		modal.querySelector(".left-arrow")?.addEventListener("click", () => {
-			currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
-			updateSlide();
-		});
-		modal.querySelector(".right-arrow")?.addEventListener("click", () => {
-			currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
-			updateSlide();
-		});
+		if (inner) {
+			modal.querySelector(".left-arrow")?.addEventListener("click", () => {
+				currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
+				updateSlide();
+			});
+			modal.querySelector(".right-arrow")?.addEventListener("click", () => {
+				currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
+				updateSlide();
+			});
 
-		let startX = 0,
-			endX = 0;
-		inner.addEventListener("touchstart", e => {
-			startX = e.touches[0].clientX;
-			inner.style.transition = "none";
-		});
-		inner.addEventListener("touchend", e => {
-			endX = e.changedTouches[0].clientX;
-			const diff = endX - startX;
-			if (Math.abs(diff) > 50) {
-				currentSlide = diff > 0 ? (currentSlide > 0 ? currentSlide - 1 : images.length - 1) : (currentSlide < images.length - 1 ? currentSlide + 1 : 0);
-			}
-			updateSlide();
-		});
+			let startX = 0, endX = 0;
+			inner.addEventListener("touchstart", e => {
+				startX = e.touches[0].clientX;
+				inner.style.transition = "none";
+			});
+			inner.addEventListener("touchend", e => {
+				endX = e.changedTouches[0].clientX;
+				const diff = endX - startX;
+				if (Math.abs(diff) > 50) {
+					currentSlide = diff > 0 ? (currentSlide > 0 ? currentSlide - 1 : images.length - 1)
+											: (currentSlide < images.length - 1 ? currentSlide + 1 : 0);
+				}
+				updateSlide();
+			});
+		}
 
 		const keyHandler = e => {
-			if (e.key === "ArrowLeft") currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
-			if (e.key === "ArrowRight") currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
+			if (inner && images.length) {
+				if (e.key === "ArrowLeft") currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
+				if (e.key === "ArrowRight") currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
+				updateSlide();
+			}
 			if (e.key === "Escape") closeModal();
-			updateSlide();
 		};
 		document.addEventListener("keydown", keyHandler);
 
 		updateSlide();
 
-		history.pushState({
-			modalOpen: true
-		}, "", window.location.href);
-		const popHandler = () => {
-			if (modal.isConnected) closeModal();
-		};
+		history.pushState({ modalOpen: true }, "", window.location.href);
+		const popHandler = () => { if (modal.isConnected) closeModal(); };
 		window.addEventListener("popstate", popHandler);
 
 		const closeModal = () => {
@@ -183,15 +182,11 @@
 				if (grid) grid.style.pointerEvents = "auto";
 				document.body.style.overflow = "auto";
 				if (history.state?.modalOpen) history.back();
-			}, {
-				once: true
-			});
+			}, { once: true });
 		};
 
 		modal.querySelector(".close-modal").addEventListener("click", closeModal);
-		modal.addEventListener("click", e => {
-			if (e.target === modal) closeModal();
-		});
+		modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
 	}
 
 	grid.addEventListener("click", async e => {
@@ -216,18 +211,8 @@
 			const id = card.querySelector(".info-btn")?.dataset.id;
 			if (id) {
 				try {
-					const body = {
-						operationName: "GetListing",
-						variables: {
-							id
-						},
-						query: GET_LISTING_QUERY
-					};
-					const res = await fetch(PROXY + API_URL, {
-						method: "POST",
-						headers: HEADERS,
-						body: JSON.stringify(body)
-					});
+					const body = { operationName: "GetListing", variables: { id }, query: GET_LISTING_QUERY };
+					const res = await fetch(PROXY + API_URL, { method: "POST", headers: HEADERS, body: JSON.stringify(body) });
 					const data = await res.json();
 					const listing = data?.data?.listing;
 					if (listing) {
