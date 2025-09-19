@@ -56,6 +56,7 @@
 				card.classList.remove('border-top', 'border-bottom', 'border-left', 'border-right');
 				card.style.borderBottomLeftRadius = '';
 				card.style.borderBottomRightRadius = '';
+				card.style.animation = '';
 			});
 			const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length || 1;
 
@@ -72,10 +73,6 @@
 			const newCardPositions = new Set(positions.map(p => `${p.row},${p.col}`));
 
 			cards.forEach((card, idx) => {
-				card.classList.remove('border-top', 'border-bottom', 'border-left', 'border-right');
-				card.style.borderBottomLeftRadius = '';
-				card.style.borderBottomRightRadius = '';
-
 				const {
 					row,
 					col
@@ -91,6 +88,16 @@
 
 				card.style.borderBottomLeftRadius = hasBelow || newCardPositions.has(`${row},${col - 1}`) ? '0' : '12px';
 				card.style.borderBottomRightRadius = hasBelow || hasRight ? '0' : '12px';
+
+				const animations = [];
+				if (card.classList.contains('border-top')) animations.push('pulsate-top 1.5s infinite linear');
+				if (card.classList.contains('border-bottom')) animations.push('pulsate-bottom 1.5s infinite linear');
+				if (card.classList.contains('border-left')) animations.push('pulsate-left 1.5s infinite linear');
+				if (card.classList.contains('border-right')) animations.push('pulsate-right 1.5s infinite linear');
+
+				if (animations.length > 0) {
+					card.style.animation = animations.join(', ');
+				}
 			});
 		}
 
@@ -111,6 +118,11 @@
 			if (cards.length <= maxStaggerCards) delay += idx * staggerMs;
 			card.style.animationDelay = `${delay}ms`;
 			grid.prepend(card);
+
+			requestAnimationFrame(() => {
+				card.style.opacity = '1';
+				card.style.transform = 'translateY(0)';
+			});
 
 			const animationDuration = 500;
 			setTimeout(() => {
