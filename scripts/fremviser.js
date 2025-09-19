@@ -104,7 +104,7 @@
 			<div class="ad-modal-content">
 				${imageSlider(images, title)}
 				<div class="ad-info">
-					<h2>${decode(title)}</h2><hr class="ad-divider">
+					<div class="ad-title-wrapper"><h2>${decode(title)}</h2></div><hr class="ad-divider"> 
 					${hasDescription ? `<div class="ad-description">${decode(description)}</div><hr class="ad-divider">` : ""}
 					<div class="ad-price-container">${priceBlock(price, priceDiff)}</div>
 					<hr class="price-divider">
