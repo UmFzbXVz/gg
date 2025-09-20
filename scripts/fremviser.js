@@ -208,18 +208,18 @@
 			let scale = 1,
 				lastScale = 1;
 			let startX = 0,
-				startY = 0,
-				lastX = 0,
-				lastY = 0;
+				startY = 0;
 			let translateX = 0,
 				translateY = 0;
-			let pinchDistance = 0;
+			let lastX = 0,
+				lastY = 0;
+			let pinchStartDist = 0;
 
 			wrapper.addEventListener('touchstart', e => {
 				if (e.touches.length === 2) {
 					const dx = e.touches[0].clientX - e.touches[1].clientX;
 					const dy = e.touches[0].clientY - e.touches[1].clientY;
-					pinchDistance = Math.hypot(dx, dy);
+					pinchStartDist = Math.hypot(dx, dy);
 				} else if (e.touches.length === 1) {
 					startX = e.touches[0].clientX - lastX;
 					startY = e.touches[0].clientY - lastY;
@@ -233,34 +233,37 @@
 					e.preventDefault();
 					const dx = e.touches[0].clientX - e.touches[1].clientX;
 					const dy = e.touches[0].clientY - e.touches[1].clientY;
-					const distance = Math.hypot(dx, dy);
-					scale = Math.max(1, Math.min(3, lastScale * (distance / pinchDistance)));
-					img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+					const dist = Math.hypot(dx, dy);
+					scale = lastScale * (dist / pinchStartDist);
+					scale = Math.max(1, Math.min(scale, 5));
 				} else if (e.touches.length === 1 && scale > 1) {
 					e.preventDefault();
 					translateX = e.touches[0].clientX - startX;
 					translateY = e.touches[0].clientY - startY;
-					img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+
+					const maxX = (img.offsetWidth * (scale - 1)) / 2;
+					const maxY = (img.offsetHeight * (scale - 1)) / 2;
+					translateX = Math.max(-maxX, Math.min(maxX, translateX));
+					translateY = Math.max(-maxY, Math.min(maxY, translateY));
 				}
+
+				img.style.transform = `scale(${scale}) translate(${translateX/scale}px, ${translateY/scale}px)`;
 			}, {
 				passive: false
 			});
 
 			wrapper.addEventListener('touchend', e => {
-				lastScale = scale;
-				lastX = translateX;
-				lastY = translateY;
-				if (scale === 1) {
-					translateX = 0;
-					translateY = 0;
-					lastX = 0;
-					lastY = 0;
+				if (e.touches.length < 2) {
+					lastScale = scale;
+					lastX = translateX;
+					lastY = translateY;
 				}
 			});
 		}
 
-		modal.querySelectorAll('.zoom-wrapper').forEach(makeZoomable);
+		document.querySelectorAll('.zoom-wrapper').forEach(makeZoomable);
 	}
+
 
 	grid.addEventListener("click", async e => {
 		const card = e.target.closest(".card");
