@@ -99,29 +99,54 @@
 	function openAdModal(title, description, price, location, images, originalUrl, priceDiff = 0) {
 		const modal = document.createElement("div");
 		modal.className = "ad-modal";
+
 		const hasDescription = description && description.trim() && description.trim() !== "Ingen beskrivelse tilgængelig.";
+
 		modal.innerHTML = `
-			<div class="ad-modal-content">
-				${imageSlider(images, title)}
-				<div class="ad-info">
-					<div class="ad-title-wrapper"><h2>${decode(title)}</h2></div><hr class="ad-divider"> 
-					${hasDescription ? `<div class="ad-description">${decode(description)}</div><hr class="ad-divider">` : ""}
-					<div class="ad-price-container">${priceBlock(price, priceDiff)}</div>
-					<hr class="price-divider">
-					<div class="ad-location">${decode(location)}</div>
+		<div class="ad-modal-content">
+			<div class="image-slider">
+				<div class="slider-inner">
+					${images.map(src => `
+						<div class="slide">
+							<div class="zoom-wrapper">
+								<img src="${src}" alt="${title}">
+							</div>
+							<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
+								<img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
+							</a>
+						</div>
+					`).join('')}
 				</div>
-				<a href="${originalUrl}" target="_blank" rel="noopener" class="original-link"><img src="https://ruban.nu/image/external-link-white.svg" width="24"></a>
-				<button class="close-modal">×</button>
+				${images.length > 1 ? `
+					<button class="arrow left-arrow"><</button>
+					<button class="arrow right-arrow">></button>
+					<div class="slide-indicator"></div>
+				` : ""}
 			</div>
-		`;
+			<div class="ad-info">
+				<div class="ad-title-wrapper"><h2>${decode(title)}</h2></div>
+				${hasDescription ? `<hr class="ad-divider"><div class="ad-description">${decode(description)}</div>` : ""}
+				<hr class="ad-divider">
+				<div class="ad-price-container">
+					${priceDiff ? `<div class="ad-old-price">${(parseInt(price.replace(/\D/g,"")) - priceDiff).toLocaleString("da-DK")} kr.</div>` : ""}
+					<div class="ad-price">${price}</div>
+				</div>
+				<hr class="price-divider">
+				<div class="ad-location">${decode(location)}</div>
+			</div>
+			<a href="${originalUrl}" target="_blank" rel="noopener" class="original-link">
+				<img src="https://ruban.nu/image/external-link-white.svg" width="24">
+			</a>
+			<button class="close-modal">×</button>
+		</div>
+	`;
 
 		document.body.appendChild(modal);
-		if (grid) grid.style.pointerEvents = "none";
 		document.body.style.overflow = "hidden";
 
-		let currentSlide = 0;
 		const inner = modal.querySelector(".slider-inner");
 		const indicator = modal.querySelector(".slide-indicator");
+		let currentSlide = 0;
 
 		const updateSlide = () => {
 			if (inner) {
@@ -131,62 +156,110 @@
 			}
 		};
 
-		if (inner) {
-			modal.querySelector(".left-arrow")?.addEventListener("click", () => {
-				currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
-				updateSlide();
-			});
-			modal.querySelector(".right-arrow")?.addEventListener("click", () => {
-				currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
-				updateSlide();
-			});
+		modal.querySelector(".left-arrow")?.addEventListener("click", () => {
+			currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
+			updateSlide();
+		});
+		modal.querySelector(".right-arrow")?.addEventListener("click", () => {
+			currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
+			updateSlide();
+		});
 
-			let startX = 0, endX = 0;
-			inner.addEventListener("touchstart", e => {
-				startX = e.touches[0].clientX;
-				inner.style.transition = "none";
-			});
-			inner.addEventListener("touchend", e => {
-				endX = e.changedTouches[0].clientX;
-				const diff = endX - startX;
-				if (Math.abs(diff) > 50) {
-					currentSlide = diff > 0 ? (currentSlide > 0 ? currentSlide - 1 : images.length - 1)
-											: (currentSlide < images.length - 1 ? currentSlide + 1 : 0);
-				}
-				updateSlide();
-			});
-		}
-
-		const keyHandler = e => {
-			if (inner && images.length) {
-				if (e.key === "ArrowLeft") currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
-				if (e.key === "ArrowRight") currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
+		let startX = 0;
+		inner?.addEventListener("touchstart", e => {
+			startX = e.touches[0].clientX;
+			inner.style.transition = "none";
+		});
+		inner?.addEventListener("touchend", e => {
+			const diff = e.changedTouches[0].clientX - startX;
+			if (Math.abs(diff) > 50) {
+				currentSlide = diff > 0 ? (currentSlide > 0 ? currentSlide - 1 : images.length - 1) :
+					(currentSlide < images.length - 1 ? currentSlide + 1 : 0);
 				updateSlide();
 			}
-			if (e.key === "Escape") closeModal();
-		};
-		document.addEventListener("keydown", keyHandler);
+		});
 
 		updateSlide();
-
-		history.pushState({ modalOpen: true }, "", window.location.href);
-		const popHandler = () => { if (modal.isConnected) closeModal(); };
-		window.addEventListener("popstate", popHandler);
 
 		const closeModal = () => {
 			modal.classList.add("closing");
 			modal.addEventListener("animationend", () => {
 				modal.remove();
-				document.removeEventListener("keydown", keyHandler);
-				window.removeEventListener("popstate", popHandler);
-				if (grid) grid.style.pointerEvents = "auto";
 				document.body.style.overflow = "auto";
-				if (history.state?.modalOpen) history.back();
-			}, { once: true });
+			}, {
+				once: true
+			});
 		};
-
 		modal.querySelector(".close-modal").addEventListener("click", closeModal);
-		modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
+		modal.addEventListener("click", e => {
+			if (e.target === modal) closeModal();
+		});
+
+		const keyHandler = e => {
+			if (e.key === "ArrowLeft") currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
+			if (e.key === "ArrowRight") currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
+			if (e.key === "Escape") closeModal();
+			updateSlide();
+		};
+		document.addEventListener("keydown", keyHandler);
+
+		function makeZoomable(wrapper) {
+			const img = wrapper.querySelector('img');
+			let scale = 1,
+				lastScale = 1;
+			let startX = 0,
+				startY = 0,
+				lastX = 0,
+				lastY = 0;
+			let translateX = 0,
+				translateY = 0;
+			let pinchDistance = 0;
+
+			wrapper.addEventListener('touchstart', e => {
+				if (e.touches.length === 2) {
+					const dx = e.touches[0].clientX - e.touches[1].clientX;
+					const dy = e.touches[0].clientY - e.touches[1].clientY;
+					pinchDistance = Math.hypot(dx, dy);
+				} else if (e.touches.length === 1) {
+					startX = e.touches[0].clientX - lastX;
+					startY = e.touches[0].clientY - lastY;
+				}
+			}, {
+				passive: false
+			});
+
+			wrapper.addEventListener('touchmove', e => {
+				if (e.touches.length === 2) {
+					e.preventDefault();
+					const dx = e.touches[0].clientX - e.touches[1].clientX;
+					const dy = e.touches[0].clientY - e.touches[1].clientY;
+					const distance = Math.hypot(dx, dy);
+					scale = Math.max(1, Math.min(3, lastScale * (distance / pinchDistance)));
+					img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+				} else if (e.touches.length === 1 && scale > 1) {
+					e.preventDefault();
+					translateX = e.touches[0].clientX - startX;
+					translateY = e.touches[0].clientY - startY;
+					img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+				}
+			}, {
+				passive: false
+			});
+
+			wrapper.addEventListener('touchend', e => {
+				lastScale = scale;
+				lastX = translateX;
+				lastY = translateY;
+				if (scale === 1) {
+					translateX = 0;
+					translateY = 0;
+					lastX = 0;
+					lastY = 0;
+				}
+			});
+		}
+
+		modal.querySelectorAll('.zoom-wrapper').forEach(makeZoomable);
 	}
 
 	grid.addEventListener("click", async e => {
@@ -211,8 +284,18 @@
 			const id = card.querySelector(".info-btn")?.dataset.id;
 			if (id) {
 				try {
-					const body = { operationName: "GetListing", variables: { id }, query: GET_LISTING_QUERY };
-					const res = await fetch(PROXY + API_URL, { method: "POST", headers: HEADERS, body: JSON.stringify(body) });
+					const body = {
+						operationName: "GetListing",
+						variables: {
+							id
+						},
+						query: GET_LISTING_QUERY
+					};
+					const res = await fetch(PROXY + API_URL, {
+						method: "POST",
+						headers: HEADERS,
+						body: JSON.stringify(body)
+					});
 					const data = await res.json();
 					const listing = data?.data?.listing;
 					if (listing) {
