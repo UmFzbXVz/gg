@@ -16,19 +16,19 @@
 		"x-requested-with": "dk.guloggratis"
 	};
 	const GET_LISTING_QUERY = `query GetListing($id: ID!) {
-		listing(id: $id) {
-			id
-			title
-			url
-			description
-			price { raw text type }
-			images {
-				sortOrder
-				small: url(size: Listing640)
-				medium: url(size: Listing1280)
-			}
-		}
-	}`;
+        listing(id: $id) {
+            id
+            title
+            url
+            description
+            price { raw text type }
+            images {
+                sortOrder
+                small: url(size: Listing640)
+                medium: url(size: Listing1280)
+            }
+        }
+    }`;
 
 	const grid = document.getElementById("grid");
 
@@ -66,28 +66,28 @@
 		const numeric = +price.replace(/\D/g, "") || 0;
 		const oldPrice = diff > 0 ? numeric - diff : numeric + Math.abs(diff);
 		return `
-			<div class="ad-old-price">${oldPrice.toLocaleString("da-DK")} kr.</div>
-			<div class="ad-price">${price}</div>
-		`;
+            <div class="ad-old-price">${oldPrice.toLocaleString("da-DK")} kr.</div>
+            <div class="ad-price">${price}</div>
+        `;
 	}
 
 	function imageSlider(images, title) {
 		if (!images.length) {
 			return `
-			<div class="image-slider empty-slider">
-				<div class="slide empty-slide">
-					<span class="no-image-text">(ingen billeder)</span>
-				</div>
-			</div>`;
+            <div class="image-slider empty-slider">
+                <div class="slide empty-slide">
+                    <span class="no-image-text">(ingen billeder)</span>
+                </div>
+            </div>`;
 		}
 
 		const slides = images.map(src => `
-			<div class="slide">
-				<img src="${src}" alt="${title}">
-				<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
-					<img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
-				</a>
-			</div>`).join("");
+            <div class="slide">
+                <img src="${src}" alt="${title}">
+                <a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
+                </a>
+            </div>`).join("");
 
 		const arrows = images.length > 1 ?
 			`<button class="arrow left-arrow"><</button><button class="arrow right-arrow">></button><div class="slide-indicator"></div>` :
@@ -101,23 +101,52 @@
 		modal.className = "ad-modal";
 		const hasDescription = description && description.trim() && description.trim() !== "Ingen beskrivelse tilgængelig.";
 		modal.innerHTML = `
-			<div class="ad-modal-content">
-				${imageSlider(images, title)}
-				<div class="ad-info">
-					<div class="ad-title-wrapper"><h2>${decode(title)}</h2></div><hr class="ad-divider"> 
-					${hasDescription ? `<div class="ad-description">${decode(description)}</div><hr class="ad-divider">` : ""}
-					<div class="ad-price-container">${priceBlock(price, priceDiff)}</div>
-					<hr class="price-divider">
-					<div class="ad-location">${decode(location)}</div>
-				</div>
-				<a href="${originalUrl}" target="_blank" rel="noopener" class="original-link"><img src="https://ruban.nu/image/external-link-white.svg" width="24"></a>
-				<button class="close-modal">×</button>
-			</div>
-		`;
+            <div class="ad-modal-content">
+                ${imageSlider(images, title)}
+                <div class="ad-info">
+                    <div class="ad-title-wrapper"><h2>${decode(title)}</h2></div><hr class="ad-divider"> 
+                    ${hasDescription ? `<div class="ad-description">${decode(description)}</div><hr class="ad-divider">` : ""}
+                    <div class="ad-price-container">${priceBlock(price, priceDiff)}</div>
+                    <hr class="price-divider">
+                    <div class="ad-location">${decode(location)}</div>
+                </div>
+                <a href="${originalUrl}" target="_blank" rel="noopener" class="original-link"><img src="https://ruban.nu/image/external-link-white.svg" width="24"></a>
+                <button class="close-modal">×</button>
+            </div>
+        `;
 
 		document.body.appendChild(modal);
 		if (grid) grid.style.pointerEvents = "none";
 		document.body.style.overflow = "hidden";
+
+		if (images.length > 0) {
+			const firstImg = modal.querySelector('.slider-inner img');
+			const modalContent = modal.querySelector('.ad-modal-content');
+			const slider = modal.querySelector('.image-slider');
+
+			const adjustSliderSize = () => {
+				if (firstImg.naturalWidth === 0 || firstImg.naturalHeight === 0) {
+					requestAnimationFrame(adjustSliderSize);
+					return;
+				}
+
+				const aspectRatio = firstImg.naturalWidth / firstImg.naturalHeight;
+				const modalWidth = modalContent.getBoundingClientRect().width;
+				let sliderHeight = modalWidth / aspectRatio;
+				const maxHeight = window.innerHeight * 0.5;
+				if (sliderHeight > maxHeight) sliderHeight = maxHeight;
+
+				slider.style.height = `${sliderHeight}px`;
+			};
+
+			firstImg.addEventListener('load', () => requestAnimationFrame(adjustSliderSize));
+			if (firstImg.complete) {
+				requestAnimationFrame(adjustSliderSize);
+			} else {
+				setTimeout(() => requestAnimationFrame(adjustSliderSize), 100);
+			}
+		}
+
 
 		let currentSlide = 0;
 		const inner = modal.querySelector(".slider-inner");
@@ -141,7 +170,8 @@
 				updateSlide();
 			});
 
-			let startX = 0, endX = 0;
+			let startX = 0,
+				endX = 0;
 			inner.addEventListener("touchstart", e => {
 				startX = e.touches[0].clientX;
 				inner.style.transition = "none";
@@ -150,8 +180,8 @@
 				endX = e.changedTouches[0].clientX;
 				const diff = endX - startX;
 				if (Math.abs(diff) > 50) {
-					currentSlide = diff > 0 ? (currentSlide > 0 ? currentSlide - 1 : images.length - 1)
-											: (currentSlide < images.length - 1 ? currentSlide + 1 : 0);
+					currentSlide = diff > 0 ? (currentSlide > 0 ? currentSlide - 1 : images.length - 1) :
+						(currentSlide < images.length - 1 ? currentSlide + 1 : 0);
 				}
 				updateSlide();
 			});
@@ -169,8 +199,12 @@
 
 		updateSlide();
 
-		history.pushState({ modalOpen: true }, "", window.location.href);
-		const popHandler = () => { if (modal.isConnected) closeModal(); };
+		history.pushState({
+			modalOpen: true
+		}, "", window.location.href);
+		const popHandler = () => {
+			if (modal.isConnected) closeModal();
+		};
 		window.addEventListener("popstate", popHandler);
 
 		const closeModal = () => {
@@ -182,11 +216,15 @@
 				if (grid) grid.style.pointerEvents = "auto";
 				document.body.style.overflow = "auto";
 				if (history.state?.modalOpen) history.back();
-			}, { once: true });
+			}, {
+				once: true
+			});
 		};
 
 		modal.querySelector(".close-modal").addEventListener("click", closeModal);
-		modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
+		modal.addEventListener("click", e => {
+			if (e.target === modal) closeModal();
+		});
 	}
 
 	grid.addEventListener("click", async e => {
@@ -211,8 +249,18 @@
 			const id = card.querySelector(".info-btn")?.dataset.id;
 			if (id) {
 				try {
-					const body = { operationName: "GetListing", variables: { id }, query: GET_LISTING_QUERY };
-					const res = await fetch(PROXY + API_URL, { method: "POST", headers: HEADERS, body: JSON.stringify(body) });
+					const body = {
+						operationName: "GetListing",
+						variables: {
+							id
+						},
+						query: GET_LISTING_QUERY
+					};
+					const res = await fetch(PROXY + API_URL, {
+						method: "POST",
+						headers: HEADERS,
+						body: JSON.stringify(body)
+					});
 					const data = await res.json();
 					const listing = data?.data?.listing;
 					if (listing) {
