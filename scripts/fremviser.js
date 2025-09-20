@@ -71,7 +71,7 @@
 		`;
 	}
 
-	function imageSlider(images, title) {
+	function buildImageSlider(images, title, includeZoom = false, includeGoogle = false) {
 		if (!images.length) {
 			return `
 			<div class="image-slider empty-slider">
@@ -81,13 +81,18 @@
 			</div>`;
 		}
 
-		const slides = images.map(src => `
-			<div class="slide">
-				<img src="${src}" alt="${title}">
-				<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
+		const slides = images.map(src => {
+			let slideContent = `<img src="${src}" alt="${title}">`;
+			if (includeZoom) {
+				slideContent = `<div class="zoom-wrapper">${slideContent}</div>`;
+			}
+			if (includeGoogle) {
+				slideContent += `<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
 					<img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
-				</a>
-			</div>`).join("");
+				</a>`;
+			}
+			return `<div class="slide">${slideContent}</div>`;
+		}).join("");
 
 		const arrows = images.length > 1 ?
 			`<button class="arrow left-arrow"><</button><button class="arrow right-arrow">></button><div class="slide-indicator"></div>` :
@@ -96,33 +101,21 @@
 		return `<div class="image-slider"><div class="slider-inner">${slides}</div>${arrows}</div>`;
 	}
 
+	function imageSlider(images, title) {
+		return buildImageSlider(images, title, false, false);
+	}
+
 	function openAdModal(title, description, price, location, images, originalUrl, priceDiff = 0) {
 		const modal = document.createElement("div");
 		modal.className = "ad-modal";
 
 		const hasDescription = description && description.trim() && description.trim() !== "Ingen beskrivelse tilgængelig.";
 
+		const sliderHtml = buildImageSlider(images, title, true, true);
+
 		modal.innerHTML = `
 		<div class="ad-modal-content">
-			<div class="image-slider">
-				<div class="slider-inner">
-					${images.map(src => `
-						<div class="slide">
-							<div class="zoom-wrapper">
-								<img src="${src}" alt="${title}">
-							</div>
-							<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
-								<img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
-							</a>
-						</div>
-					`).join('')}
-				</div>
-				${images.length > 1 ? `
-					<button class="arrow left-arrow"><</button>
-					<button class="arrow right-arrow">></button>
-					<div class="slide-indicator"></div>
-				` : ""}
-			</div>
+			${sliderHtml}
 			<div class="ad-info">
 				<div class="ad-title-wrapper"><h2>${decode(title)}</h2></div>
 				${hasDescription ? `<hr class="ad-divider"><div class="ad-description">${decode(description)}</div>` : ""}
@@ -147,7 +140,7 @@
 		const inner = modal.querySelector(".slider-inner");
 		const indicator = modal.querySelector(".slide-indicator");
 		let currentSlide = 0;
-		let isPinching = false; 
+		let isPinching = false;
 
 		const updateSlide = () => {
 			if (inner) {
@@ -168,27 +161,33 @@
 		});
 
 		let startX = 0;
-		let startY = 0; 
+		let startY = 0;
 		inner?.addEventListener("touchstart", e => {
-			if (isPinching) return; 
+			if (isPinching) return;
 			startX = e.touches[0].clientX;
 			startY = e.touches[0].clientY;
 			inner.style.transition = "none";
-		}, { passive: true });
+		}, {
+			passive: true
+		});
 		inner?.addEventListener("touchmove", e => {
-			if (isPinching) return; 
-			e.preventDefault(); 
-		}, { passive: false });
+			if (isPinching) return;
+			e.preventDefault();
+		}, {
+			passive: false
+		});
 		inner?.addEventListener("touchend", e => {
-			if (isPinching) return; 
+			if (isPinching) return;
 			const diffX = e.changedTouches[0].clientX - startX;
 			const diffY = e.changedTouches[0].clientY - startY;
-			if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) { 
+			if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
 				currentSlide = diffX > 0 ? (currentSlide > 0 ? currentSlide - 1 : images.length - 1) :
 					(currentSlide < images.length - 1 ? currentSlide + 1 : 0);
 				updateSlide();
 			}
-		}, { passive: true });
+		}, {
+			passive: true
+		});
 
 		updateSlide();
 
@@ -197,7 +196,9 @@
 			modal.addEventListener("animationend", () => {
 				modal.remove();
 				document.body.style.overflow = "auto";
-			}, { once: true });
+			}, {
+				once: true
+			});
 		};
 		modal.querySelector(".close-modal").addEventListener("click", closeModal);
 		modal.addEventListener("click", e => {
@@ -212,6 +213,14 @@
 		};
 		document.addEventListener("keydown", keyHandler);
 
+		history.pushState({
+			modalOpen: true
+		}, "", window.location.href);
+		const popHandler = () => {
+			if (modal.isConnected) closeModal();
+		};
+		window.addEventListener("popstate", popHandler);
+
 		function resetZoom() {
 			modal.querySelectorAll('.zoom-wrapper img').forEach(img => {
 				img.style.transform = 'scale(1) translate(0px, 0px)';
@@ -220,14 +229,19 @@
 
 		function makeZoomable(wrapper) {
 			const img = wrapper.querySelector('img');
-			let scale = 1, lastScale = 1;
-			let startX = 0, startY = 0, lastX = 0, lastY = 0;
-			let translateX = 0, translateY = 0;
+			let scale = 1,
+				lastScale = 1;
+			let startX = 0,
+				startY = 0,
+				lastX = 0,
+				lastY = 0;
+			let translateX = 0,
+				translateY = 0;
 			let pinchDistance = 0;
 
 			wrapper.addEventListener('touchstart', e => {
 				if (e.touches.length === 2) {
-					isPinching = true; 
+					isPinching = true;
 					const dx = e.touches[0].clientX - e.touches[1].clientX;
 					const dy = e.touches[0].clientY - e.touches[1].clientY;
 					pinchDistance = Math.hypot(dx, dy);
@@ -235,12 +249,15 @@
 					startX = e.touches[0].clientX - lastX;
 					startY = e.touches[0].clientY - lastY;
 				}
-			}, { passive: false });
+			}, {
+				passive: false
+			});
 
 			wrapper.addEventListener('touchmove', e => {
 				if (e.touches.length === 2 && isPinching) {
 					e.preventDefault();
-					e.stopPropagation(); 
+					e.stopPropagation();
+					/
 					const dx = e.touches[0].clientX - e.touches[1].clientX;
 					const dy = e.touches[0].clientY - e.touches[1].clientY;
 					const distance = Math.hypot(dx, dy);
@@ -248,18 +265,20 @@
 					img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
 				} else if (e.touches.length === 1 && scale > 1 && !isPinching) {
 					e.preventDefault();
-					e.stopPropagation(); 
+					e.stopPropagation();
 					translateX = e.touches[0].clientX - startX;
 					translateY = e.touches[0].clientY - startY;
 					img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
 				}
-			}, { passive: false });
+			}, {
+				passive: false
+			});
 
 			wrapper.addEventListener('touchend', e => {
 				lastScale = scale;
 				lastX = translateX;
 				lastY = translateY;
-				if (e.touches.length === 0) isPinching = false; 
+				if (e.touches.length === 0) isPinching = false;
 				if (scale === 1) {
 					translateX = 0;
 					translateY = 0;
@@ -297,7 +316,9 @@
 				try {
 					const body = {
 						operationName: "GetListing",
-						variables: { id },
+						variables: {
+							id
+						},
 						query: GET_LISTING_QUERY
 					};
 					const res = await fetch(PROXY + API_URL, {
