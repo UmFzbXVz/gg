@@ -237,6 +237,8 @@
             window.seenAdKeys.clear();
 
             try {
+                window.isMagicMode = true;
+
                 const bgEnabled = bgToggle.checked;
                 if (bgEnabled && window.bgSearch) {
                     window.bgSearch.clear();
@@ -276,6 +278,8 @@
             } finally {
                 input.disabled = false;
                 spinner.classList.remove("active");
+            
+                window.isMagicMode = false;
             }
         });
     };
@@ -378,7 +382,7 @@
     });
 
     magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig"], "gode sager");
-    magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander"], "generelle sager");
+    magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander", "retro"], "generelle sager");
 })();
 
 (() => {
