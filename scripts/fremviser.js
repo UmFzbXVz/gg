@@ -239,8 +239,8 @@
                 lastScale = 1;
             let translateX = 0,
                 translateY = 0;
-            let lastX = 0,
-                lastY = 0;
+            let lastTranslateX = 0,
+                lastTranslateY = 0;
             let pinchDistance = 0;
             let initial_pinchX = 0,
                 initial_pinchY = 0;
@@ -290,10 +290,10 @@
                     initial_pinchY = (t0.clientY + t1.clientY) / 2 - rect.top;
                     initial_translateX = translateX;
                     initial_translateY = translateY;
-                    initial_scale = lastScale;
+                    initial_scale = scale;
                 } else if (e.touches.length === 1 && scale > 1) {
-                    startX = e.touches[0].clientX - lastX;
-                    startY = e.touches[0].clientY - lastY;
+                    startX = e.touches[0].clientX - translateX;
+                    startY = e.touches[0].clientY - translateY;
                 }
             }, {
                 passive: false
@@ -309,10 +309,14 @@
                     const dy = t0.clientY - t1.clientY;
                     const distance = Math.hypot(dx, dy);
                     const ratio = distance / pinchDistance;
-                    const new_scale = initial_scale * ratio;
-                    scale = Math.max(1, Math.min(3, new_scale));
-                    translateX = initial_translateX * ratio + initial_pinchX * (1 - ratio);
-                    translateY = initial_translateY * ratio + initial_pinchY * (1 - ratio);
+                    scale = Math.max(1, Math.min(3, initial_scale * ratio));
+                    const delta_ratio = ratio - 1;
+                    const centerX = wrapper.clientWidth / 2;
+                    const centerY = wrapper.clientHeight / 2;
+                    const adjustX = -delta_ratio * (initial_pinchX - centerX);
+                    const adjustY = -delta_ratio * (initial_pinchY - centerY);
+                    translateX = initial_translateX + adjustX;
+                    translateY = initial_translateY + adjustY;
                     clampTranslate();
                     img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
                     img.dataset.scale = scale.toString();
@@ -332,14 +336,14 @@
             wrapper.addEventListener('touchend', e => {
                 img.style.transition = '';
                 lastScale = scale;
-                lastX = translateX;
-                lastY = translateY;
+                lastTranslateX = translateX;
+                lastTranslateY = translateY;
                 if (e.touches.length === 0) isPinching = false;
                 if (scale === 1) {
                     translateX = 0;
                     translateY = 0;
-                    lastX = 0;
-                    lastY = 0;
+                    lastTranslateX = 0;
+                    lastTranslateY = 0;
                     img.style.transform = 'scale(1) translate(0px, 0px)';
                     img.dataset.scale = '1';
                 }
