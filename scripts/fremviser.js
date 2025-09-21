@@ -248,6 +248,8 @@
                 initial_translateY = 0;
             let initial_scale = 1;
 
+            const PAN_SENSITIVITY = 0.5; 
+
             function clampTranslate() {
                 if (scale <= 1) {
                     translateX = 0;
@@ -292,8 +294,8 @@
                     initial_translateY = translateY;
                     initial_scale = scale;
                 } else if (e.touches.length === 1 && scale > 1) {
-                    startX = e.touches[0].clientX - translateX;
-                    startY = e.touches[0].clientY - translateY;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
                 }
             }, {
                 passive: false
@@ -323,8 +325,10 @@
                 } else if (e.touches.length === 1 && scale > 1 && !isPinching) {
                     e.preventDefault();
                     e.stopPropagation();
-                    translateX = e.touches[0].clientX - startX;
-                    translateY = e.touches[0].clientY - startY;
+                    const deltaX = (e.touches[0].clientX - startX) * PAN_SENSITIVITY;
+                    const deltaY = (e.touches[0].clientY - startY) * PAN_SENSITIVITY;
+                    translateX = lastTranslateX + deltaX;
+                    translateY = lastTranslateY + deltaY;
                     clampTranslate();
                     img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
                     img.dataset.scale = scale.toString();
