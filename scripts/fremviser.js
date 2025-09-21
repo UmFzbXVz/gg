@@ -1,21 +1,21 @@
 (() => {
-	const PROXY = "https://corsproxy.io/?";
-	const API_URL = "https://api.guloggratis.dk/graphql";
-	const HEADERS = {
-		"accept": "*/*",
-		"accept-encoding": "gzip, deflate",
-		"accept-language": "en-US,en;q=0.9",
-		"apollo-require-preflight": "true",
-		"content-type": "application/json",
-		"origin": "https://www.guloggratis.dk",
-		"referer": "https://www.guloggratis.dk/",
-		"user-agent": "Dalvik/2.1.0 (Linux; U; Android 15; SM-E366B Build/TQ3A.250901.001) GGApp/8.4.4 EmbeddedBrowser",
-		"x-client-idfa": "granted",
-		"x-client-type": "android",
-		"x-client-version": "8.4.4",
-		"x-requested-with": "dk.guloggratis"
-	};
-	const GET_LISTING_QUERY = `query GetListing($id: ID!) {
+    const PROXY = "https://corsproxy.io/?";
+    const API_URL = "https://api.guloggratis.dk/graphql";
+    const HEADERS = {
+        "accept": "*/*",
+        "accept-encoding": "gzip, deflate",
+        "accept-language": "en-US,en;q=0.9",
+        "apollo-require-preflight": "true",
+        "content-type": "application/json",
+        "origin": "https://www.guloggratis.dk",
+        "referer": "https://www.guloggratis.dk/",
+        "user-agent": "Dalvik/2.1.0 (Linux; U; Android 15; SM-E366B Build/TQ3A.250901.001) GGApp/8.4.4 EmbeddedBrowser",
+        "x-client-idfa": "granted",
+        "x-client-type": "android",
+        "x-client-version": "8.4.4",
+        "x-requested-with": "dk.guloggratis"
+    };
+    const GET_LISTING_QUERY = `query GetListing($id: ID!) {
         listing(id: $id) {
             id
             title
@@ -30,90 +30,90 @@
         }
     }`;
 
-	const grid = document.getElementById("grid");
+    const grid = document.getElementById("grid");
 
-	const decode = str =>
-		(str || "")
-		.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-		.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
+    const decode = str =>
+        (str || "")
+        .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+        .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
 
-	async function getDbaDescription(url) {
-		try {
-			const res = await fetch(PROXY + encodeURIComponent(url));
-			const text = await res.text();
-			const parser = new DOMParser();
-			const htmlDoc = parser.parseFromString(text, 'text/html');
+    async function getDbaDescription(url) {
+        try {
+            const res = await fetch(PROXY + encodeURIComponent(url));
+            const text = await res.text();
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(text, 'text/html');
 
-			const ldJsonEl = htmlDoc.querySelector('script[type="application/ld+json"]');
-			if (ldJsonEl) {
-				try {
-					const data = JSON.parse(ldJsonEl.textContent);
-					if (data && data.description) return decode(data.description.trim());
-				} catch {}
-			}
+            const ldJsonEl = htmlDoc.querySelector('script[type="application/ld+json"]');
+            if (ldJsonEl) {
+                try {
+                    const data = JSON.parse(ldJsonEl.textContent);
+                    if (data && data.description) return decode(data.description.trim());
+                } catch {}
+            }
 
-			const descEl = htmlDoc.querySelector('.vip-description-text');
-			if (descEl) return decode(descEl.innerText.trim());
+            const descEl = htmlDoc.querySelector('.vip-description-text');
+            if (descEl) return decode(descEl.innerText.trim());
 
-			return 'Ingen beskrivelse tilgængelig.';
-		} catch {
-			return 'Fejl ved indlæsning af beskrivelse.';
-		}
-	}
+            return 'Ingen beskrivelse tilgængelig.';
+        } catch {
+            return 'Fejl ved indlæsning af beskrivelse.';
+        }
+    }
 
-	function priceBlock(price, diff) {
-		if (!diff) return `<div class="ad-price">${price}</div>`;
-		const numeric = +price.replace(/\D/g, "") || 0;
-		const oldPrice = diff > 0 ? numeric - diff : numeric + Math.abs(diff);
-		return `
+    function priceBlock(price, diff) {
+        if (!diff) return `<div class="ad-price">${price}</div>`;
+        const numeric = +price.replace(/\D/g, "") || 0;
+        const oldPrice = diff > 0 ? numeric - diff : numeric + Math.abs(diff);
+        return `
             <div class="ad-old-price">${oldPrice.toLocaleString("da-DK")} kr.</div>
             <div class="ad-price">${price}</div>
         `;
-	}
+    }
 
-	function buildImageSlider(images, title, includeZoom = false, includeGoogle = false) {
-		if (!images.length) {
-			return `
+    function buildImageSlider(images, title, includeZoom = false, includeGoogle = false) {
+        if (!images.length) {
+            return `
             <div class="image-slider empty-slider">
                 <div class="slide empty-slide">
                     <span class="no-image-text">(ingen billeder)</span>
                 </div>
             </div>`;
-		}
+        }
 
-		const slides = images.map(src => {
-			let slideContent = `<img src="${src}" alt="${title}">`;
-			if (includeZoom) {
-				slideContent = `<div class="zoom-wrapper">${slideContent}</div>`;
-			}
-			if (includeGoogle) {
-				slideContent += `<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
+        const slides = images.map(src => {
+            let slideContent = `<img src="${src}" alt="${title}">`;
+            if (includeZoom) {
+                slideContent = `<div class="zoom-wrapper">${slideContent}</div>`;
+            }
+            if (includeGoogle) {
+                slideContent += `<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
                 </a>`;
-			}
-			return `<div class="slide">${slideContent}</div>`;
-		}).join("");
+            }
+            return `<div class="slide">${slideContent}</div>`;
+        }).join("");
 
-		const arrows = images.length > 1 ?
-			`<button class="arrow left-arrow"><</button><button class="arrow right-arrow">></button><div class="slide-indicator"></div>` :
-			"";
+        const arrows = images.length > 1 ?
+            `<button class="arrow left-arrow"><</button><button class="arrow right-arrow">></button><div class="slide-indicator"></div>` :
+            "";
 
-		return `<div class="image-slider"><div class="slider-inner">${slides}</div>${arrows}</div>`;
-	}
+        return `<div class="image-slider"><div class="slider-inner">${slides}</div>${arrows}</div>`;
+    }
 
-	function imageSlider(images, title) {
-		return buildImageSlider(images, title, false, false);
-	}
+    function imageSlider(images, title) {
+        return buildImageSlider(images, title, false, false);
+    }
 
-	function openAdModal(title, description, price, location, images, originalUrl, priceDiff = 0) {
-		const modal = document.createElement("div");
-		modal.className = "ad-modal";
+    function openAdModal(title, description, price, location, images, originalUrl, priceDiff = 0) {
+        const modal = document.createElement("div");
+        modal.className = "ad-modal";
 
-		const hasDescription = description && description.trim() && description.trim() !== "Ingen beskrivelse tilgængelig.";
+        const hasDescription = description && description.trim() && description.trim() !== "Ingen beskrivelse tilgængelig.";
 
-		const sliderHtml = buildImageSlider(images, title, true, true);
+        const sliderHtml = buildImageSlider(images, title, true, true);
 
-		modal.innerHTML = `
+        modal.innerHTML = `
         <div class="ad-modal-content">
             ${sliderHtml}
             <div class="ad-info">
@@ -134,276 +134,274 @@
         </div>
     `;
 
-		document.body.appendChild(modal);
-		document.body.style.overflow = "hidden";
+        document.body.appendChild(modal);
+        document.body.style.overflow = "hidden";
 
-		const inner = modal.querySelector(".slider-inner");
-		const indicator = modal.querySelector(".slide-indicator");
-		let currentSlide = 0;
-		let isPinching = false;
+        const inner = modal.querySelector(".slider-inner");
+        const indicator = modal.querySelector(".slide-indicator");
+        let currentSlide = 0;
+        let isPinching = false;
 
-		const updateSlide = () => {
-			if (inner) {
-				inner.style.transform = `translateX(-${currentSlide * 100}%)`;
-				inner.style.transition = "transform 0.3s ease";
-				if (indicator) indicator.textContent = `${currentSlide + 1}/${images.length}`;
-			}
-			resetZoom();
-		};
+        const updateSlide = () => {
+            if (inner) {
+                inner.style.transform = `translateX(-${currentSlide * 100}%)`;
+                inner.style.transition = "transform 0.3s ease";
+                if (indicator) indicator.textContent = `${currentSlide + 1}/${images.length}`;
+            }
+            resetZoom();
+        };
 
-		modal.querySelector(".left-arrow")?.addEventListener("click", () => {
-			currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
-			updateSlide();
-		});
-		modal.querySelector(".right-arrow")?.addEventListener("click", () => {
-			currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
-			updateSlide();
-		});
+        modal.querySelector(".left-arrow")?.addEventListener("click", () => {
+            currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
+            updateSlide();
+        });
+        modal.querySelector(".right-arrow")?.addEventListener("click", () => {
+            currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
+            updateSlide();
+        });
 
-		let startX = 0;
-		let startY = 0;
-		inner?.addEventListener("touchstart", e => {
-			if (isPinching) return;
-			startX = e.touches[0].clientX;
-			startY = e.touches[0].clientY;
-			inner.style.transition = "none";
-		}, {
-			passive: true
-		});
-		inner?.addEventListener("touchmove", e => {
-			if (isPinching) return;
-			e.preventDefault();
-		}, {
-			passive: false
-		});
-		inner?.addEventListener("touchend", e => {
-			if (isPinching) return;
-			const diffX = e.changedTouches[0].clientX - startX;
-			const diffY = e.changedTouches[0].clientY - startY;
+        let startX = 0;
+        let startY = 0;
+        inner?.addEventListener("touchstart", e => {
+            if (isPinching) return;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            inner.style.transition = "none";
+        }, {
+            passive: true
+        });
+        inner?.addEventListener("touchmove", e => {
+            if (isPinching) return;
+            e.preventDefault();
+        }, {
+            passive: false
+        });
+        inner?.addEventListener("touchend", e => {
+            if (isPinching) return;
+            const diffX = e.changedTouches[0].clientX - startX;
+            const diffY = e.changedTouches[0].clientY - startY;
 
-			const currentImg = inner.querySelectorAll('img')[currentSlide];
-			const currScale = parseFloat(currentImg.dataset.scale) || 1;
-			if (currScale > 1) return;
+            const currentImg = inner.querySelectorAll('img')[currentSlide];
+            const currScale = parseFloat(currentImg.dataset.scale) || 1;
+            if (currScale > 1) return;
 
-			if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
-				currentSlide = diffX > 0 ? (currentSlide > 0 ? currentSlide - 1 : images.length - 1) :
-					(currentSlide < images.length - 1 ? currentSlide + 1 : 0);
-				updateSlide();
-			}
-		}, {
-			passive: true
-		});
+            if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+                currentSlide = diffX > 0 ? (currentSlide > 0 ? currentSlide - 1 : images.length - 1) :
+                    (currentSlide < images.length - 1 ? currentSlide + 1 : 0);
+                updateSlide();
+            }
+        }, {
+            passive: true
+        });
 
-		updateSlide();
+        updateSlide();
 
-		const closeModal = () => {
-			modal.classList.add("closing");
-			modal.addEventListener("animationend", () => {
-				modal.remove();
-				document.body.style.overflow = "auto";
-			}, {
-				once: true
-			});
-		};
-		modal.querySelector(".close-modal").addEventListener("click", closeModal);
-		modal.addEventListener("click", e => {
-			if (e.target === modal) closeModal();
-		});
+        const closeModal = () => {
+            modal.classList.add("closing");
+            modal.addEventListener("animationend", () => {
+                modal.remove();
+                document.body.style.overflow = "auto";
+            }, {
+                once: true
+            });
+        };
+        modal.querySelector(".close-modal").addEventListener("click", closeModal);
+        modal.addEventListener("click", e => {
+            if (e.target === modal) closeModal();
+        });
 
-		const keyHandler = e => {
-			if (e.key === "ArrowLeft") currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
-			if (e.key === "ArrowRight") currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
-			if (e.key === "Escape") closeModal();
-			updateSlide();
-		};
-		document.addEventListener("keydown", keyHandler);
+        const keyHandler = e => {
+            if (e.key === "ArrowLeft") currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
+            if (e.key === "ArrowRight") currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
+            if (e.key === "Escape") closeModal();
+            updateSlide();
+        };
+        document.addEventListener("keydown", keyHandler);
 
-		history.pushState({
-			modalOpen: true
-		}, "", window.location.href);
-		const popHandler = () => {
-			if (modal.isConnected) closeModal();
-		};
-		window.addEventListener("popstate", popHandler);
+        history.pushState({
+            modalOpen: true
+        }, "", window.location.href);
+        const popHandler = () => {
+            if (modal.isConnected) closeModal();
+        };
+        window.addEventListener("popstate", popHandler);
 
-		function resetZoom() {
-			modal.querySelectorAll('.zoom-wrapper img').forEach(img => {
-				img.style.transform = 'scale(1) translate(0px, 0px)';
-				img.dataset.scale = '1';
-			});
-		}
+        function resetZoom() {
+            modal.querySelectorAll('.zoom-wrapper img').forEach(img => {
+                img.style.transform = 'scale(1) translate(0px, 0px)';
+                img.dataset.scale = '1';
+            });
+        }
 
-		function makeZoomable(wrapper) {
-			const img = wrapper.querySelector('img');
-			let scale = 1,
-				lastScale = 1;
-			let translateX = 0,
-				translateY = 0;
-			let lastX = 0,
-				lastY = 0;
-			let pinchDistance = 0;
-			let initial_pinchX = 0,
-				initial_pinchY = 0;
-			let initial_translateX = 0,
-				initial_translateY = 0;
-			let initial_scale = 1;
+        function makeZoomable(wrapper) {
+            const img = wrapper.querySelector('img');
+            let scale = 1,
+                lastScale = 1;
+            let translateX = 0,
+                translateY = 0;
+            let lastX = 0,
+                lastY = 0;
+            let pinchDistance = 0;
+            let initial_pinchX = 0,
+                initial_pinchY = 0;
+            let initial_translateX = 0,
+                initial_translateY = 0;
+            let initial_scale = 1;
 
-			function clampTranslate() {
-				if (scale <= 1) {
-					translateX = 0;
-					translateY = 0;
-					return;
-				}
-				const viewW = wrapper.clientWidth;
-				const viewH = wrapper.clientHeight;
-				const naturalW = img.naturalWidth;
-				const naturalH = img.naturalHeight;
-				if (naturalW === 0 || naturalH === 0) return;
-				const ratio = naturalW / naturalH;
-				let fittedW, fittedH;
-				if (viewW / viewH > ratio) {
-					fittedH = viewH;
-					fittedW = viewH * ratio;
-				} else {
-					fittedW = viewW;
-					fittedH = viewW / ratio;
-				}
-				const effW = fittedW * scale;
-				const effH = fittedH * scale;
-				const maxTX = 0;
-				const minTX = -(effW - viewW);
-				const maxTY = 0;
-				const minTY = -(effH - viewH);
-				translateX = Math.max(minTX, Math.min(maxTX, translateX));
-				translateY = Math.max(minTY, Math.min(maxTY, translateY));
-			}
+            function clampTranslate() {
+                if (scale <= 1) {
+                    translateX = 0;
+                    translateY = 0;
+                    return;
+                }
+                const viewW = wrapper.clientWidth;
+                const viewH = wrapper.clientHeight;
+                const naturalW = img.naturalWidth;
+                const naturalH = img.naturalHeight;
+                if (naturalW === 0 || naturalH === 0) return;
+                const ratio = naturalW / naturalH;
+                let fittedW, fittedH;
+                if (viewW / viewH > ratio) {
+                    fittedH = viewH;
+                    fittedW = viewH * ratio;
+                } else {
+                    fittedW = viewW;
+                    fittedH = viewW / ratio;
+                }
+                const effW = fittedW * scale;
+                const effH = fittedH * scale;
+                const maxTX = (effW - viewW) / 2;
+                const maxTY = (effH - viewH) / 2;
+                translateX = Math.max(-maxTX, Math.min(maxTX, translateX));
+                translateY = Math.max(-maxTY, Math.min(maxTY, translateY));
+            }
 
-			wrapper.addEventListener('touchstart', e => {
-				img.style.transition = 'none';
-				if (e.touches.length === 2) {
-					isPinching = true;
-					const t0 = e.touches[0];
-					const t1 = e.touches[1];
-					const dx = t0.clientX - t1.clientX;
-					const dy = t0.clientY - t1.clientY;
-					pinchDistance = Math.hypot(dx, dy);
-					const rect = wrapper.getBoundingClientRect();
-					initial_pinchX = (t0.clientX + t1.clientX) / 2 - rect.left;
-					initial_pinchY = (t0.clientY + t1.clientY) / 2 - rect.top;
-					initial_translateX = translateX;
-					initial_translateY = translateY;
-					initial_scale = lastScale;
-				} else if (e.touches.length === 1 && scale > 1) {
-					startX = e.touches[0].clientX - lastX;
-					startY = e.touches[0].clientY - lastY;
-				}
-			}, {
-				passive: false
-			});
+            wrapper.addEventListener('touchstart', e => {
+                img.style.transition = 'none';
+                if (e.touches.length === 2) {
+                    isPinching = true;
+                    const t0 = e.touches[0];
+                    const t1 = e.touches[1];
+                    const dx = t0.clientX - t1.clientX;
+                    const dy = t0.clientY - t1.clientY;
+                    pinchDistance = Math.hypot(dx, dy);
+                    const rect = wrapper.getBoundingClientRect();
+                    initial_pinchX = (t0.clientX + t1.clientX) / 2 - rect.left;
+                    initial_pinchY = (t0.clientY + t1.clientY) / 2 - rect.top;
+                    initial_translateX = translateX;
+                    initial_translateY = translateY;
+                    initial_scale = lastScale;
+                } else if (e.touches.length === 1 && scale > 1) {
+                    startX = e.touches[0].clientX - lastX;
+                    startY = e.touches[0].clientY - lastY;
+                }
+            }, {
+                passive: false
+            });
 
-			wrapper.addEventListener('touchmove', e => {
-				if (e.touches.length === 2 && isPinching) {
-					e.preventDefault();
-					e.stopPropagation();
-					const t0 = e.touches[0];
-					const t1 = e.touches[1];
-					const dx = t0.clientX - t1.clientX;
-					const dy = t0.clientY - t1.clientY;
-					const distance = Math.hypot(dx, dy);
-					const ratio = distance / pinchDistance;
-					const new_scale = initial_scale * ratio;
-					scale = Math.max(1, Math.min(3, new_scale));
-					translateX = initial_translateX * ratio + initial_pinchX * (1 - ratio);
-					translateY = initial_translateY * ratio + initial_pinchY * (1 - ratio);
-					clampTranslate();
-					img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
-					img.dataset.scale = scale.toString();
-				} else if (e.touches.length === 1 && scale > 1 && !isPinching) {
-					e.preventDefault();
-					e.stopPropagation();
-					translateX = e.touches[0].clientX - startX;
-					translateY = e.touches[0].clientY - startY;
-					clampTranslate();
-					img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
-					img.dataset.scale = scale.toString();
-				}
-			}, {
-				passive: false
-			});
+            wrapper.addEventListener('touchmove', e => {
+                if (e.touches.length === 2 && isPinching) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const t0 = e.touches[0];
+                    const t1 = e.touches[1];
+                    const dx = t0.clientX - t1.clientX;
+                    const dy = t0.clientY - t1.clientY;
+                    const distance = Math.hypot(dx, dy);
+                    const ratio = distance / pinchDistance;
+                    const new_scale = initial_scale * ratio;
+                    scale = Math.max(1, Math.min(3, new_scale));
+                    translateX = initial_translateX * ratio + initial_pinchX * (1 - ratio);
+                    translateY = initial_translateY * ratio + initial_pinchY * (1 - ratio);
+                    clampTranslate();
+                    img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+                    img.dataset.scale = scale.toString();
+                } else if (e.touches.length === 1 && scale > 1 && !isPinching) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    translateX = e.touches[0].clientX - startX;
+                    translateY = e.touches[0].clientY - startY;
+                    clampTranslate();
+                    img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+                    img.dataset.scale = scale.toString();
+                }
+            }, {
+                passive: false
+            });
 
-			wrapper.addEventListener('touchend', e => {
-				img.style.transition = '';
-				lastScale = scale;
-				lastX = translateX;
-				lastY = translateY;
-				if (e.touches.length === 0) isPinching = false;
-				if (scale === 1) {
-					translateX = 0;
-					translateY = 0;
-					lastX = 0;
-					lastY = 0;
-					img.style.transform = 'scale(1) translate(0px, 0px)';
-					img.dataset.scale = '1';
-				}
-			});
-		}
+            wrapper.addEventListener('touchend', e => {
+                img.style.transition = '';
+                lastScale = scale;
+                lastX = translateX;
+                lastY = translateY;
+                if (e.touches.length === 0) isPinching = false;
+                if (scale === 1) {
+                    translateX = 0;
+                    translateY = 0;
+                    lastX = 0;
+                    lastY = 0;
+                    img.style.transform = 'scale(1) translate(0px, 0px)';
+                    img.dataset.scale = '1';
+                }
+            });
+        }
 
-		modal.querySelectorAll('.zoom-wrapper').forEach(makeZoomable);
-	}
+        modal.querySelectorAll('.zoom-wrapper').forEach(makeZoomable);
+    }
 
-	grid.addEventListener("click", async e => {
-		const card = e.target.closest(".card");
-		if (!card || e.target.classList.contains("info-btn")) return;
-		e.preventDefault();
-		e.stopPropagation();
+    grid.addEventListener("click", async e => {
+        const card = e.target.closest(".card");
+        if (!card || e.target.classList.contains("info-btn")) return;
+        e.preventDefault();
+        e.stopPropagation();
 
-		const isGG = !!card.querySelector(".gg-badge");
-		const isDBA = !!card.querySelector(".dba-badge");
-		const isReshopper = !!card.querySelector(".reshopper-badge");
+        const isGG = !!card.querySelector(".gg-badge");
+        const isDBA = !!card.querySelector(".dba-badge");
+        const isReshopper = !!card.querySelector(".reshopper-badge");
 
-		const originalUrl = card.href;
-		const title = card.querySelector("h3")?.innerText || "Ukendt titel";
-		const price = card.querySelector(".price")?.innerText || "Ingen pris";
-		let location = card.querySelector(".city")?.innerText || "Ukendt placering";
-		let description = "";
-		let images = [];
-		let priceDiff = Number(card.dataset.priceDiff || 0);
+        const originalUrl = card.href;
+        const title = card.querySelector("h3")?.innerText || "Ukendt titel";
+        const price = card.querySelector(".price")?.innerText || "Ingen pris";
+        let location = card.querySelector(".city")?.innerText || "Ukendt placering";
+        let description = "";
+        let images = [];
+        let priceDiff = Number(card.dataset.priceDiff || 0);
 
-		if (isGG) {
-			const id = card.querySelector(".info-btn")?.dataset.id;
-			if (id) {
-				try {
-					const body = {
-						operationName: "GetListing",
-						variables: {
-							id
-						},
-						query: GET_LISTING_QUERY
-					};
-					const res = await fetch(PROXY + API_URL, {
-						method: "POST",
-						headers: HEADERS,
-						body: JSON.stringify(body)
-					});
-					const data = await res.json();
-					const listing = data?.data?.listing;
-					if (listing) {
-						description = decode(listing.description || "Ingen beskrivelse.");
-						images = listing.images?.map(img => img.medium || img.small || "").filter(Boolean) || [];
-					}
-				} catch {
-					description = "Fejl ved indlæsning.";
-				}
-			}
-		} else if (isDBA) {
-			images = JSON.parse(card.dataset.images || "[]");
-			description = await getDbaDescription(originalUrl);
-		} else if (isReshopper) {
-			images = JSON.parse(card.dataset.images || "[]");
-			description = decode(card.dataset.description || "Ingen beskrivelse tilgængelig.");
-			location = decode(card.dataset.seller || "Ukendt sælger");
-		}
+        if (isGG) {
+            const id = card.querySelector(".info-btn")?.dataset.id;
+            if (id) {
+                try {
+                    const body = {
+                        operationName: "GetListing",
+                        variables: {
+                            id
+                        },
+                        query: GET_LISTING_QUERY
+                    };
+                    const res = await fetch(PROXY + API_URL, {
+                        method: "POST",
+                        headers: HEADERS,
+                        body: JSON.stringify(body)
+                    });
+                    const data = await res.json();
+                    const listing = data?.data?.listing;
+                    if (listing) {
+                        description = decode(listing.description || "Ingen beskrivelse.");
+                        images = listing.images?.map(img => img.medium || img.small || "").filter(Boolean) || [];
+                    }
+                } catch {
+                    description = "Fejl ved indlæsning.";
+                }
+            }
+        } else if (isDBA) {
+            images = JSON.parse(card.dataset.images || "[]");
+            description = await getDbaDescription(originalUrl);
+        } else if (isReshopper) {
+            images = JSON.parse(card.dataset.images || "[]");
+            description = decode(card.dataset.description || "Ingen beskrivelse tilgængelig.");
+            location = decode(card.dataset.seller || "Ukendt sælger");
+        }
 
-		openAdModal(title, description, price, location, images, originalUrl, priceDiff);
-	});
+        openAdModal(title, description, price, location, images, originalUrl, priceDiff);
+    });
 })();
