@@ -1,87 +1,96 @@
 const RESHOPPER_MAX = 100;
 
 (() => {
-    const PROXY = "https://corsproxy.io/?";
-    let isLoading = false;
+	const PROXY = "https://corsproxy.io/?";
+	let isLoading = false;
 
-    const locationCoords = {
-        jylland: {
-            lat: 56.15,
-            lon: 10.20,
-            radius: 200
-        },
-        sydsjaellandOgOerne: {
-            lat: 55.24,
-            lon: 11.76,
-            radius: 60
-        },
-        fyn: {
-            lat: 55.40,
-            lon: 10.40,
-            radius: 50
-        },
-        sjaelland: {
-            lat: 55.68,
-            lon: 12.10,
-            radius: 100
-        }
-    };
+	const locationCoords = {
+		jylland: {
+			lat: 56.15,
+			lon: 10.20,
+			radius: 200
+		},
+		sydsjaellandOgOerne: {
+			lat: 55.24,
+			lon: 11.76,
+			radius: 60
+		},
+		fyn: {
+			lat: 55.40,
+			lon: 10.40,
+			radius: 50
+		},
+		sjaelland: {
+			lat: 55.68,
+			lon: 12.10,
+			radius: 100
+		}
+	};
 
-    function getSelectedLocationsRes() {
-        const selected = [];
-        if (document.getElementById("locationJylland")?.checked) selected.push('jylland');
-        if (document.getElementById("locationSydsjaelland")?.checked) selected.push('sydsjaellandOgOerne');
-        if (document.getElementById("locationFyn")?.checked) selected.push('fyn');
-        if (document.getElementById("locationSjaelland")?.checked) selected.push('sjaelland');
-        return selected.length ? selected : ['jylland'];
-    }
+	function getSelectedLocationsRes() {
+		const selected = [];
+		if (document.getElementById("locationJylland")?.checked) selected.push('jylland');
+		if (document.getElementById("locationSydsjaelland")?.checked) selected.push('sydsjaellandOgOerne');
+		if (document.getElementById("locationFyn")?.checked) selected.push('fyn');
+		if (document.getElementById("locationSjaelland")?.checked) selected.push('sjaelland');
+		return selected.length ? selected : ['jylland'];
+	}
 
-    function formatPrice(amountInHundreds, currency) {
-        if (!amountInHundreds) return "";
-        let amount = amountInHundreds / 100;
-        return currency === "dkk" ?
-            `${amount.toLocaleString("da-DK")} kr.` :
-            `${amount} ${currency || ""}`;
-    }
+	function formatPrice(amountInHundreds, currency) {
+		if (!amountInHundreds) return "";
+		let amount = amountInHundreds / 100;
+		return currency === "dkk" ?
+			`${amount.toLocaleString("da-DK")} kr.` :
+			`${amount} ${currency || ""}`;
+	}
 
-    function getHighestQualityImages(images = []) {
-        const bestImages = {};
+	function getHighestQualityImages(images = []) {
+		const bestImages = {};
 
-        images.forEach(img => {
-            const fileId = img.fileId;
-            if (!fileId) return;
+		images.forEach(img => {
+			const fileId = img.fileId;
+			if (!fileId) return;
 
-            const pixels = (img.width || 0) * (img.height || 0);
+			const pixels = (img.width || 0) * (img.height || 0);
 
-            if (!bestImages[fileId] || pixels > bestImages[fileId].pixels) {
-                bestImages[fileId] = {
-                    ...img,
-                    pixels
-                };
-            }
-        });
+			if (!bestImages[fileId] || pixels > bestImages[fileId].pixels) {
+				bestImages[fileId] = {
+					...img,
+					pixels
+				};
+			}
+		});
 
-        return Object.values(bestImages).map(img => img.url);
-    }
+		return Object.values(bestImages).map(img => img.url);
+	}
 
-    function makeCard(item) {
-        const card = document.createElement("a");
-        card.className = "card";
-        card.href = `https://reshopper.com/da/item/${item.description.replace(/\s+/g, '-').toLowerCase()}/${item.id}`;
-        card.target = "_blank";
-        card.rel = "noopener noreferrer";
+	function makeCard(item) {
+		const card = document.createElement("a");
+		card.className = "card";
+		card.href = `https://reshopper.com/da/item/${item.description.replace(/\s+/g, '-').toLowerCase()}/${item.id}`;
+		card.target = "_blank";
+		card.rel = "noopener noreferrer";
 
-        const bestImageUrls = getHighestQualityImages(item.images);
-        const firstImageUrl = bestImageUrls.length ? bestImageUrls[0] : "";
+		let bestImageUrls = getHighestQualityImages(item.images);
+		if (!bestImageUrls.length) {
+			bestImageUrls.push("noimage.svg");
+		}
 
-        const priceText = formatPrice(item.priceInHundreds, item.currency);
-        const sellerText = item.user?.userPublicName || "Ukendt";
-        const descriptionText = (item.extendedDescription || item.description || "").trim();
+		let imageHtml = '';
+		if (bestImageUrls[0] === "noimage.svg") {
+			imageHtml = `<img loading="lazy" src="${bestImageUrls[0]}" alt="${item.description}" class="fallback-image" />`;
+		} else {
+			imageHtml = `<img loading="lazy" src="${bestImageUrls[0]}" alt="${item.description}" />`;
+		}
 
-        card.innerHTML = `
+		const priceText = formatPrice(item.priceInHundreds, item.currency);
+		const sellerText = item.user?.userPublicName || "Ukendt";
+		const descriptionText = (item.extendedDescription || item.description || "").trim();
+
+		card.innerHTML = `
         <div class="card-image-wrapper">
-          <img loading="lazy" src="${firstImageUrl}" alt="${item.description}" />
-          <div class="reshopper-badge">
+            ${imageHtml}
+            <div class="reshopper-badge">
             <svg width="24" height="24" viewBox="0 0 1200 1203" xmlns="http://www.w3.org/2000/svg">
               <g fill="none" stroke="none" stroke-width="1">
                 <g>
@@ -94,184 +103,184 @@ const RESHOPPER_MAX = 100;
                 </g>
               </g>
             </svg>
-          </div>
+            </div>
         </div>
         <div class="card-content">
-          <h3>${item.description}</h3>
-          <div class="card-footer">
-            <div class="price">${priceText}</div>
-            <div class="seller">${sellerText}</div>
-          </div>
+            <h3>${item.description}</h3>
+            <div class="card-footer">
+                <div class="price">${priceText}</div>
+                <div class="seller">${sellerText}</div>
+            </div>
         </div>
     `;
 
-        card.dataset.timestamp = item.images?.[0]?.timeUploaded ?
-            new Date(item.images[0].timeUploaded).getTime() :
-            0;
+		card.dataset.timestamp = item.images?.[0]?.timeUploaded ?
+			new Date(item.images[0].timeUploaded).getTime() :
+			0;
 
-        card.dataset.images = JSON.stringify(bestImageUrls);
-        card.dataset.key = item.id;
-        card.dataset.source = "reshopper";
-        card.dataset.seller = sellerText;
-        card.dataset.description = descriptionText || "Ingen beskrivelse tilgængelig.";
+		card.dataset.images = JSON.stringify(bestImageUrls);
+		card.dataset.key = item.id;
+		card.dataset.source = "reshopper";
+		card.dataset.seller = sellerText;
+		card.dataset.description = descriptionText || "Ingen beskrivelse tilgængelig.";
 
-        return card;
-    }
+		return card;
+	}
 
-    async function fetchReshopperPage(
-        offset = 0,
-        query = "",
-        pageSize = 12,
-        location = null,
-        radiusInKilometers = null,
-        segmentValue = null
-    ) {
-        const API_URL = "https://app.reshopper.com/web/items/faceted";
-        const payload = {
-            facets: [{
-                    type: "segment",
-                    facetCount: 3,
-                    values: segmentValue ? [segmentValue] : undefined
-                },
-                {
-                    type: "condition",
-                    facetCount: 5
-                },
-                {
-                    type: "gender",
-                    facetCount: 3
-                },
-                {
-                    type: "category",
-                    facetCount: 20
-                },
-                {
-                    type: "size",
-                    facetCount: 40
-                },
-                {
-                    type: "brandOrTitle",
-                    facetCount: 100
-                },
-                {
-                    type: "age",
-                    facetCount: 20
-                },
-                {
-                    type: "shopType",
-                    facetCount: 4
-                },
-                {
-                    type: "retailShop",
-                    facetCount: 10
-                },
-                {
-                    type: "isShippingOffered",
-                    facetCount: 3
-                }
-            ],
-            query,
-            pageSize,
-            offset,
-            country: "DK",
-            isSold: false,
-            removeSoldItemsFromQuery: true,
-            sortDirection: "desc",
-            sortBy: "created",
-            omitPointInTime: true,
-            itemCategoryGroupPath: ""
-        };
+	async function fetchReshopperPage(
+		offset = 0,
+		query = "",
+		pageSize = 12,
+		location = null,
+		radiusInKilometers = null,
+		segmentValue = null
+	) {
+		const API_URL = "https://app.reshopper.com/web/items/faceted";
+		const payload = {
+			facets: [{
+					type: "segment",
+					facetCount: 3,
+					values: segmentValue ? [segmentValue] : undefined
+				},
+				{
+					type: "condition",
+					facetCount: 5
+				},
+				{
+					type: "gender",
+					facetCount: 3
+				},
+				{
+					type: "category",
+					facetCount: 20
+				},
+				{
+					type: "size",
+					facetCount: 40
+				},
+				{
+					type: "brandOrTitle",
+					facetCount: 100
+				},
+				{
+					type: "age",
+					facetCount: 20
+				},
+				{
+					type: "shopType",
+					facetCount: 4
+				},
+				{
+					type: "retailShop",
+					facetCount: 10
+				},
+				{
+					type: "isShippingOffered",
+					facetCount: 3
+				}
+			],
+			query,
+			pageSize,
+			offset,
+			country: "DK",
+			isSold: false,
+			removeSoldItemsFromQuery: true,
+			sortDirection: "desc",
+			sortBy: "created",
+			omitPointInTime: true,
+			itemCategoryGroupPath: ""
+		};
 
-        if (location && location.lat && location.lon) {
-            payload.location = {
-                lat: String(location.lat),
-                lon: String(location.lon)
-            };
-        }
-        if (radiusInKilometers) {
-            payload.radiusInKilometers = radiusInKilometers;
-        }
+		if (location && location.lat && location.lon) {
+			payload.location = {
+				lat: String(location.lat),
+				lon: String(location.lon)
+			};
+		}
+		if (radiusInKilometers) {
+			payload.radiusInKilometers = radiusInKilometers;
+		}
 
-        const res = await fetch(PROXY + API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-        });
+		const res = await fetch(PROXY + API_URL, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json"
+			},
+			body: JSON.stringify(payload)
+		});
 
-        if (!res.ok) throw new Error(`HTTP-fejl ${res.status}`);
-        return res.json();
-    }
+		if (!res.ok) throw new Error(`HTTP-fejl ${res.status}`);
+		return res.json();
+	}
 
-    window.hentOgVisReshopper = async function(term = "", bgMode = false, segmentValue = undefined) {
-        if (segmentValue === null) {
-            console.log("Reshopper-søgning ignoreret pga. null-segment");
-            return;
-        }
+	window.hentOgVisReshopper = async function(term = "", bgMode = false, segmentValue = undefined) {
+		if (segmentValue === null) {
+			console.log("Reshopper-søgning ignoreret pga. null-segment");
+			return;
+		}
 
-        if (isLoading) return;
-        isLoading = true;
+		if (isLoading) return;
+		isLoading = true;
 
-        try {
-            const selectedLocs = getSelectedLocationsRes();
-            let totalFetched = 0;
-            let totalResults = 0;
-            const pageSize = 12;
-            const numPagesPerLoc = bgMode ? 1 : (window.isMagicMode ? 2 : Math.ceil(RESHOPPER_MAX / pageSize));
+		try {
+			const selectedLocs = getSelectedLocationsRes();
+			let totalFetched = 0;
+			let totalResults = 0;
+			const pageSize = 12;
+			const numPagesPerLoc = bgMode ? 1 : (window.isMagicMode ? 2 : Math.ceil(RESHOPPER_MAX / pageSize));
 
-            for (const locKey of selectedLocs) {
-                const {
-                    lat,
-                    lon,
-                    radius
-                } = locationCoords[locKey];
-                let offset = 0;
+			for (const locKey of selectedLocs) {
+				const {
+					lat,
+					lon,
+					radius
+				} = locationCoords[locKey];
+				let offset = 0;
 
-                const firstData = await fetchReshopperPage(offset, term, pageSize, {
-                    lat,
-                    lon
-                }, radius, segmentValue);
-                const locTotal = Math.min(firstData.totalHits || 0, RESHOPPER_MAX);
-                totalResults += locTotal;
-                window.totalAds += locTotal;
+				const firstData = await fetchReshopperPage(offset, term, pageSize, {
+					lat,
+					lon
+				}, radius, segmentValue);
+				const locTotal = Math.min(firstData.totalHits || 0, RESHOPPER_MAX);
+				totalResults += locTotal;
+				window.totalAds += locTotal;
 
-                firstData.items.forEach(item => {
-                    if (totalFetched >= RESHOPPER_MAX) return;
-                    const adId = item.id;
-                    if (window.seenAdKeys.has(adId)) return;
-                    window.allCards.push(makeCard(item));
-                    window.seenAdKeys.add(adId);
-                    totalFetched++;
-                    window.loadedAds++;
-                });
+				firstData.items.forEach(item => {
+					if (totalFetched >= RESHOPPER_MAX) return;
+					const adId = item.id;
+					if (window.seenAdKeys.has(adId)) return;
+					window.allCards.push(makeCard(item));
+					window.seenAdKeys.add(adId);
+					totalFetched++;
+					window.loadedAds++;
+				});
 
-                for (let page = 1; page < numPagesPerLoc && totalFetched < RESHOPPER_MAX; page++) {
-                    offset = page * pageSize;
-                    const pageData = await fetchReshopperPage(offset, term, pageSize, {
-                        lat,
-                        lon
-                    }, radius, segmentValue);
-                    pageData.items.forEach(item => {
-                        if (totalFetched >= RESHOPPER_MAX) return;
-                        const adId = item.id;
-                        if (window.seenAdKeys.has(adId)) return;
-                        window.allCards.push(makeCard(item));
-                        window.seenAdKeys.add(adId);
-                        totalFetched++;
-                        window.loadedAds++;
-                    });
-                }
+				for (let page = 1; page < numPagesPerLoc && totalFetched < RESHOPPER_MAX; page++) {
+					offset = page * pageSize;
+					const pageData = await fetchReshopperPage(offset, term, pageSize, {
+						lat,
+						lon
+					}, radius, segmentValue);
+					pageData.items.forEach(item => {
+						if (totalFetched >= RESHOPPER_MAX) return;
+						const adId = item.id;
+						if (window.seenAdKeys.has(adId)) return;
+						window.allCards.push(makeCard(item));
+						window.seenAdKeys.add(adId);
+						totalFetched++;
+						window.loadedAds++;
+					});
+				}
 
-                if (totalFetched >= RESHOPPER_MAX) break;
-            }
+				if (totalFetched >= RESHOPPER_MAX) break;
+			}
 
-            totalResults = Math.min(totalResults, RESHOPPER_MAX);
-        } catch (err) {
-            console.error("Fejl Reshopper:", err);
-        } finally {
-            isLoading = false;
-        }
-    };
+			totalResults = Math.min(totalResults, RESHOPPER_MAX);
+		} catch (err) {
+			console.error("Fejl Reshopper:", err);
+		} finally {
+			isLoading = false;
+		}
+	};
 
 })();
