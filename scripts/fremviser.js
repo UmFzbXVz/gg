@@ -110,10 +110,7 @@
 		modal.className = "ad-modal";
 
 		const hasDescription = description && description.trim() && description.trim() !== "Ingen beskrivelse tilgængelig.";
-
-		// --- NY ÆNDRING: slå Google Lens fra, hvis første billede er fallback ---
 		const useGoogleLens = images.length && images[0] !== "noimage.svg";
-
 		const sliderHtml = buildImageSlider(images, title, true, useGoogleLens);
 
 		modal.innerHTML = `
@@ -143,7 +140,6 @@
 		const inner = modal.querySelector(".slider-inner");
 		const indicator = modal.querySelector(".slide-indicator");
 		let currentSlide = 0;
-		let isPinching = false;
 
 		const updateSlide = () => {
 			if (inner) {
@@ -151,7 +147,6 @@
 				inner.style.transition = "transform 0.3s ease";
 				if (indicator) indicator.textContent = `${currentSlide + 1}/${images.length}`;
 			}
-			resetZoom();
 		};
 
 		modal.querySelector(".left-arrow")?.addEventListener("click", () => {
@@ -163,10 +158,9 @@
 			updateSlide();
 		});
 
-		let startX = 0;
-		let startY = 0;
+		let startX = 0,
+			startY = 0;
 		inner?.addEventListener("touchstart", e => {
-			if (isPinching) return;
 			startX = e.touches[0].clientX;
 			startY = e.touches[0].clientY;
 			inner.style.transition = "none";
@@ -175,23 +169,18 @@
 		});
 
 		inner?.addEventListener("touchmove", e => {
-			if (isPinching) return;
 			e.preventDefault();
 		}, {
 			passive: false
 		});
 
 		inner?.addEventListener("touchend", e => {
-			if (isPinching) return;
 			const diffX = e.changedTouches[0].clientX - startX;
 			const diffY = e.changedTouches[0].clientY - startY;
 
-			const currentImg = inner.querySelectorAll('img')[currentSlide];
-			const currScale = parseFloat(currentImg.dataset.scale) || 1;
-			if (currScale > 1) return;
-
 			if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
-				currentSlide = diffX > 0 ? (currentSlide > 0 ? currentSlide - 1 : images.length - 1) :
+				currentSlide = diffX > 0 ?
+					(currentSlide > 0 ? currentSlide - 1 : images.length - 1) :
 					(currentSlide < images.length - 1 ? currentSlide + 1 : 0);
 				updateSlide();
 			}
@@ -231,135 +220,14 @@
 		};
 		window.addEventListener("popstate", popHandler);
 
-		function resetZoom() {
-			modal.querySelectorAll('.zoom-wrapper img').forEach(img => {
-				img.style.transform = 'scale(1) translate(0px, 0px)';
-				img.dataset.scale = '1';
+		modal.querySelectorAll('.zoom-wrapper img').forEach(img => {
+			Panzoom(img, {
+				maxScale: 5,
+				minScale: 1,
+				contain: 'outside',
+				panOnlyWhenZoomed: true
 			});
-		}
-
-		function makeZoomable(wrapper) {
-			const img = wrapper.querySelector('img');
-			let scale = 1,
-				lastScale = 1;
-			let translateX = 0,
-				translateY = 0;
-			let lastTranslateX = 0,
-				lastTranslateY = 0;
-			let pinchDistance = 0;
-			let initial_pinchX = 0,
-				initial_pinchY = 0;
-			let initial_translateX = 0,
-				initial_translateY = 0;
-			let initial_scale = 1;
-
-			const PAN_SENSITIVITY = 0.5;
-
-			function clampTranslate() {
-				if (scale <= 1) {
-					translateX = 0;
-					translateY = 0;
-					return;
-				}
-				const viewW = wrapper.clientWidth;
-				const viewH = wrapper.clientHeight;
-				const naturalW = img.naturalWidth;
-				const naturalH = img.naturalHeight;
-				if (naturalW === 0 || naturalH === 0) return;
-				const ratio = naturalW / naturalH;
-				let fittedW, fittedH;
-				if (viewW / viewH > ratio) {
-					fittedH = viewH;
-					fittedW = viewH * ratio;
-				} else {
-					fittedW = viewW;
-					fittedH = viewW / ratio;
-				}
-				const effW = fittedW * scale;
-				const effH = fittedH * scale;
-				const maxTX = (effW - viewW) / 2;
-				const maxTY = (effH - viewH) / 2;
-				translateX = Math.max(-maxTX, Math.min(maxTX, translateX));
-				translateY = Math.max(-maxTY, Math.min(maxTY, translateY));
-			}
-
-			wrapper.addEventListener('touchstart', e => {
-				img.style.transition = 'none';
-				if (e.touches.length === 2) {
-					isPinching = true;
-					const t0 = e.touches[0];
-					const t1 = e.touches[1];
-					const dx = t0.clientX - t1.clientX;
-					const dy = t0.clientY - t1.clientY;
-					pinchDistance = Math.hypot(dx, dy);
-					const rect = wrapper.getBoundingClientRect();
-					initial_pinchX = (t0.clientX + t1.clientX) / 2 - rect.left;
-					initial_pinchY = (t0.clientY + t1.clientY) / 2 - rect.top;
-					initial_translateX = translateX;
-					initial_translateY = translateY;
-					initial_scale = scale;
-				} else if (e.touches.length === 1 && scale > 1) {
-					startX = e.touches[0].clientX;
-					startY = e.touches[0].clientY;
-				}
-			}, {
-				passive: false
-			});
-
-			wrapper.addEventListener('touchmove', e => {
-				if (e.touches.length === 2 && isPinching) {
-					e.preventDefault();
-					e.stopPropagation();
-					const t0 = e.touches[0];
-					const t1 = e.touches[1];
-					const dx = t0.clientX - t1.clientX;
-					const dy = t0.clientY - t1.clientY;
-					const distance = Math.hypot(dx, dy);
-					const ratio = distance / pinchDistance;
-					scale = Math.max(1, Math.min(3, initial_scale * ratio));
-					const delta_ratio = ratio - 1;
-					const centerX = wrapper.clientWidth / 2;
-					const centerY = wrapper.clientHeight / 2;
-					const adjustX = -delta_ratio * (initial_pinchX - centerX);
-					const adjustY = -delta_ratio * (initial_pinchY - centerY);
-					translateX = initial_translateX + adjustX;
-					translateY = initial_translateY + adjustY;
-					clampTranslate();
-					img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
-					img.dataset.scale = scale.toString();
-				} else if (e.touches.length === 1 && scale > 1 && !isPinching) {
-					e.preventDefault();
-					e.stopPropagation();
-					const deltaX = (e.touches[0].clientX - startX) * PAN_SENSITIVITY;
-					const deltaY = (e.touches[0].clientY - startY) * PAN_SENSITIVITY;
-					translateX = lastTranslateX + deltaX;
-					translateY = lastTranslateY + deltaY;
-					clampTranslate();
-					img.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
-					img.dataset.scale = scale.toString();
-				}
-			}, {
-				passive: false
-			});
-
-			wrapper.addEventListener('touchend', e => {
-				img.style.transition = '';
-				lastScale = scale;
-				lastTranslateX = translateX;
-				lastTranslateY = translateY;
-				if (e.touches.length === 0) isPinching = false;
-				if (scale === 1) {
-					translateX = 0;
-					translateY = 0;
-					lastTranslateX = 0;
-					lastTranslateY = 0;
-					img.style.transform = 'scale(1) translate(0px, 0px)';
-					img.dataset.scale = '1';
-				}
-			});
-		}
-
-		modal.querySelectorAll('.zoom-wrapper').forEach(makeZoomable);
+		});
 	}
 
 	grid.addEventListener("click", async e => {
