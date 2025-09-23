@@ -228,6 +228,18 @@
 			if (e.key === "Escape") closeModal();
 		};
 		document.addEventListener("keydown", keyHandler);
+
+		history.pushState({
+			modalOpen: true
+		}, "", window.location.href);
+		const popHandler = () => {
+			const modal = document.querySelector(".ad-modal");
+			if (modal && modal.isConnected) {
+				modal.querySelector(".close-modal")?.click();
+			}
+		};
+		window.addEventListener("popstate", popHandler);
+
 	};
 
 	grid.addEventListener("click", async e => {
