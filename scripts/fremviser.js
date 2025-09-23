@@ -149,7 +149,7 @@
 				minScale: 1,
 				contain: 'outside',
 				panOnlyWhenZoomed: true,
-				zoomSpeed: 0.2
+				zoomSpeed: 0.5
 			});
 			img._pz = pz;
 			img._baseScale = pz.getScale();
