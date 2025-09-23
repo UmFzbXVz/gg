@@ -148,7 +148,8 @@
 				maxScale: 5,
 				minScale: 1,
 				contain: 'outside',
-				panOnlyWhenZoomed: true
+				panOnlyWhenZoomed: true,
+				zoomSpeed: 0.2
 			});
 			img._pz = pz;
 			img._baseScale = pz.getScale();
