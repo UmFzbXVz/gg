@@ -114,53 +114,75 @@
 		const sliderHtml = buildImageSlider(images, title, true, useGoogleLens);
 
 		modal.innerHTML = `
-    <div class="ad-modal-content">
-        ${sliderHtml}
-        <div class="ad-info">
-            <div class="ad-title-wrapper"><h2>${decode(title)}</h2></div>
-            ${hasDescription ? `<hr class="ad-divider"><div class="ad-description">${decode(description)}</div>` : ""}
-            <hr class="ad-divider">
-            <div class="ad-price-container">
-                ${priceDiff ? `<div class="ad-old-price">${(parseInt(price.replace(/\D/g,"")) - priceDiff).toLocaleString("da-DK")} kr.</div>` : ""}
-                <div class="ad-price">${price}</div>
+        <div class="ad-modal-content">
+            ${sliderHtml}
+            <div class="ad-info">
+                <div class="ad-title-wrapper"><h2>${decode(title)}</h2></div>
+                ${hasDescription ? `<hr class="ad-divider"><div class="ad-description">${decode(description)}</div>` : ""}
+                <hr class="ad-divider">
+                <div class="ad-price-container">
+                    ${priceDiff ? `<div class="ad-old-price">${(parseInt(price.replace(/\D/g,"")) - priceDiff).toLocaleString("da-DK")} kr.</div>` : ""}
+                    <div class="ad-price">${price}</div>
+                </div>
+                <hr class="price-divider">
+                <div class="ad-location">${decode(location)}</div>
             </div>
-            <hr class="price-divider">
-            <div class="ad-location">${decode(location)}</div>
+            <a href="${originalUrl}" target="_blank" rel="noopener" class="original-link">
+                <img src="https://ruban.nu/image/external-link-white.svg" width="24">
+            </a>
+            <button class="close-modal">×</button>
         </div>
-        <a href="${originalUrl}" target="_blank" rel="noopener" class="original-link">
-            <img src="https://ruban.nu/image/external-link-white.svg" width="24">
-        </a>
-        <button class="close-modal">×</button>
-    </div>
     `;
 
 		document.body.appendChild(modal);
 		document.body.style.overflow = "hidden";
 
 		const inner = modal.querySelector(".slider-inner");
+		const slides = Array.from(modal.querySelectorAll('.slide'));
 		const indicator = modal.querySelector(".slide-indicator");
 		let currentSlide = 0;
 
-		const updateSlide = () => {
-			if (inner) {
-				inner.style.transform = `translateX(-${currentSlide * 100}%)`;
-				inner.style.transition = "transform 0.3s ease";
-				if (indicator) indicator.textContent = `${currentSlide + 1}/${images.length}`;
-			}
+		slides.forEach((slide, idx) => {
+			const img = slide.querySelector('img');
+			const pz = Panzoom(img, {
+				maxScale: 5,
+				minScale: 1,
+				contain: 'outside',
+				panOnlyWhenZoomed: true
+			});
+			img._pz = pz;
+			img._baseScale = pz.getScale();
+		});
+
+		const updateSlide = (newIndex) => {
+			if (newIndex === undefined) newIndex = currentSlide;
+			const oldImg = slides[currentSlide].querySelector('img');
+			oldImg._pz.reset();
+			oldImg._baseScale = oldImg._pz.getScale();
+
+			currentSlide = newIndex;
+			inner.style.transform = `translateX(-${currentSlide * 100}%)`;
+			inner.style.transition = "transform 0.3s ease";
+			if (indicator) indicator.textContent = `${currentSlide + 1}/${images.length}`;
+
+			const newImg = slides[currentSlide].querySelector('img');
+			newImg._pz.reset();
+			newImg._baseScale = newImg._pz.getScale();
 		};
 
 		modal.querySelector(".left-arrow")?.addEventListener("click", () => {
-			currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
-			updateSlide();
+			const nextIndex = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
+			updateSlide(nextIndex);
 		});
+
 		modal.querySelector(".right-arrow")?.addEventListener("click", () => {
-			currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
-			updateSlide();
+			const nextIndex = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
+			updateSlide(nextIndex);
 		});
 
 		let startX = 0,
 			startY = 0;
-		inner?.addEventListener("touchstart", e => {
+		inner.addEventListener("touchstart", e => {
 			startX = e.touches[0].clientX;
 			startY = e.touches[0].clientY;
 			inner.style.transition = "none";
@@ -168,27 +190,22 @@
 			passive: true
 		});
 
-		inner?.addEventListener("touchmove", e => {
-			e.preventDefault();
-		}, {
-			passive: false
-		});
-
-		inner?.addEventListener("touchend", e => {
+		inner.addEventListener("touchend", e => {
 			const diffX = e.changedTouches[0].clientX - startX;
 			const diffY = e.changedTouches[0].clientY - startY;
 
-			if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
-				currentSlide = diffX > 0 ?
+			const img = slides[currentSlide].querySelector('img');
+			const zoomed = Math.abs(img._pz.getScale() - img._baseScale) > 0.01;
+
+			if (!zoomed && Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+				const nextIndex = diffX > 0 ?
 					(currentSlide > 0 ? currentSlide - 1 : images.length - 1) :
 					(currentSlide < images.length - 1 ? currentSlide + 1 : 0);
-				updateSlide();
+				updateSlide(nextIndex);
 			}
 		}, {
 			passive: true
 		});
-
-		updateSlide();
 
 		const closeModal = () => {
 			modal.classList.add("closing");
@@ -199,36 +216,19 @@
 				once: true
 			});
 		};
+
 		modal.querySelector(".close-modal").addEventListener("click", closeModal);
 		modal.addEventListener("click", e => {
 			if (e.target === modal) closeModal();
 		});
 
 		const keyHandler = e => {
-			if (e.key === "ArrowLeft") currentSlide = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
-			if (e.key === "ArrowRight") currentSlide = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
+			if (e.key === "ArrowLeft") updateSlide(currentSlide > 0 ? currentSlide - 1 : images.length - 1);
+			if (e.key === "ArrowRight") updateSlide(currentSlide < images.length - 1 ? currentSlide + 1 : 0);
 			if (e.key === "Escape") closeModal();
-			updateSlide();
 		};
 		document.addEventListener("keydown", keyHandler);
-
-		history.pushState({
-			modalOpen: true
-		}, "", window.location.href);
-		const popHandler = () => {
-			if (modal.isConnected) closeModal();
-		};
-		window.addEventListener("popstate", popHandler);
-
-		modal.querySelectorAll('.zoom-wrapper img').forEach(img => {
-			Panzoom(img, {
-				maxScale: 5,
-				minScale: 1,
-				contain: 'outside',
-				panOnlyWhenZoomed: true
-			});
-		});
-	}
+	};
 
 	grid.addEventListener("click", async e => {
 		const card = e.target.closest(".card");
