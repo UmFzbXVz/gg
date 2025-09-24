@@ -188,34 +188,40 @@ function parseGGDate(str) {
 
 				let imageUrls = [];
 				if (primaryImage?.url) {
-					imageUrls.push(primaryImage.url);
-				} else {
-					imageUrls.push("noimage.svg");
+					imageUrls = [primaryImage.url];
+				}
+				if (imageUrls.length === 0) {
+					imageUrls = ["noimage.svg"];
 				}
 
-				let imageHtml = '';
+				let imageHtml;
 				if (imageUrls[0] === "noimage.svg") {
-					imageHtml = `<img loading="lazy" src="${imageUrls[0]}" alt="${title}" class="fallback-image" />`;
+					imageHtml = `<img loading="lazy" src="noimage.svg" alt="${title}" class="fallback-image" />`;
 				} else {
 					imageHtml = `<img loading="lazy" src="${imageUrls[0]}" alt="${title}" />`;
 				}
 
 				card.innerHTML = `
-        <button class="info-btn" data-id="${id}">i</button>
-        ${imageHtml}
-        <div class="card-content">
-            <h3>${title}</h3>
-            <div class="price">${price?.text || "Ingen pris"}</div>
-            <div class="city">${location}</div>
-        </div>
-        <div class="gg-badge">GG</div>
-    `;
+  <div class="card-image-wrapper">
+      ${imageHtml}
+  </div>
+  <button class="info-btn" data-id="${id}">i</button>
+  <div class="card-content">
+      <h3>${title}</h3>
+      <div class="price">${price?.text || "Ingen pris"}</div>
+      <div class="city">${location}</div>
+  </div>
+  <div class="gg-badge">GG</div>
+`;
 
 				const parsedTimestamp = parseGGDate(createdAt);
 				card.dataset.timestamp = parsedTimestamp;
+
 				card.dataset.images = JSON.stringify(imageUrls);
+
 				window.allCards.push(card);
 			});
+
 			window.loadedAds += toShow.length;
 		} catch (err) {
 			console.error("Fejl:", err.message);
