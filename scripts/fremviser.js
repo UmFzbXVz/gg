@@ -142,6 +142,9 @@
 		const indicator = modal.querySelector(".slide-indicator");
 		let currentSlide = 0;
 
+		const zoomCycle = [1, 2, 4];
+		let currentZoomIndex = 0;
+
 		slides.forEach((slide, idx) => {
 			const img = slide.querySelector('img');
 			const pz = Panzoom(img, {
@@ -149,11 +152,81 @@
 				minScale: 1,
 				contain: 'outside',
 				panOnlyWhenZoomed: true,
-				step: 0.2
+				step: 0.2,
+				animate: true,
+				duration: 150
 			});
 			img._pz = pz;
-			img._baseScale = pz.getScale();
+
+			let zoomCycle = [1, 2, 4];
+			let currentZoomIndex = 0;
+			let isAnimating = false;
+
+			function handleZoomCycle(event) {
+				if (isAnimating) return;
+				event.preventDefault();
+				currentZoomIndex = (currentZoomIndex + 1) % zoomCycle.length;
+				const targetScale = zoomCycle[currentZoomIndex];
+
+				const rect = img.getBoundingClientRect();
+				let clientX = rect.left + rect.width / 2;
+				let clientY = rect.top + rect.height / 2;
+
+				if (event.type === 'dblclick') {
+					clientX = event.clientX;
+					clientY = event.clientY;
+				} else if (event.type === 'touchend') {
+					const touch = event.changedTouches[0];
+					clientX = touch.clientX;
+					clientY = touch.clientY;
+				}
+
+				if (targetScale === 1) {
+					isAnimating = true;
+					pz.reset({
+						animate: true
+					});
+					setTimeout(() => {
+						isAnimating = false;
+					}, 160);
+				} else {
+					isAnimating = true;
+					pz.zoomToPoint(targetScale, {
+						clientX,
+						clientY,
+						animate: true
+					});
+					setTimeout(() => {
+						isAnimating = false;
+					}, 160);
+				}
+			}
+
+			img.addEventListener('dblclick', handleZoomCycle);
+
+			let lastTapTime = 0,
+				lastTapX = 0,
+				lastTapY = 0;
+			img.addEventListener('touchend', (event) => {
+				const currentTime = Date.now();
+				const touch = event.changedTouches[0];
+				const currentX = touch.clientX;
+				const currentY = touch.clientY;
+
+				const timeDiff = currentTime - lastTapTime;
+				const distance = Math.hypot(currentX - lastTapX, currentY - lastTapY);
+
+				if (timeDiff < 300 && distance < 50) {
+					handleZoomCycle(event);
+					lastTapTime = 0;
+				} else {
+					lastTapTime = currentTime;
+					lastTapX = currentX;
+					lastTapY = currentY;
+				}
+			});
 		});
+
 
 		const updateSlide = (newIndex) => {
 			if (newIndex === undefined) newIndex = currentSlide;
@@ -170,7 +243,7 @@
 			newImg._pz.reset();
 			newImg._baseScale = newImg._pz.getScale();
 		};
-		
+
 		updateSlide();
 
 		modal.querySelector(".left-arrow")?.addEventListener("click", () => {
