@@ -170,6 +170,8 @@
 			newImg._pz.reset();
 			newImg._baseScale = newImg._pz.getScale();
 		};
+		
+		updateSlide();
 
 		modal.querySelector(".left-arrow")?.addEventListener("click", () => {
 			const nextIndex = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
