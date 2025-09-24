@@ -90,10 +90,10 @@
 				card.style.borderBottomRightRadius = hasBelow || hasRight ? '0' : '12px';
 
 				const animations = [];
-				if (card.classList.contains('border-top')) animations.push('pulsate-top 1.5s infinite linear');
-				if (card.classList.contains('border-bottom')) animations.push('pulsate-bottom 1.5s infinite linear');
-				if (card.classList.contains('border-left')) animations.push('pulsate-left 1.5s infinite linear');
-				if (card.classList.contains('border-right')) animations.push('pulsate-right 1.5s infinite linear');
+				if (card.classList.contains('border-top')) animations.push('pulsate-top 2.5s infinite linear');
+				if (card.classList.contains('border-bottom')) animations.push('pulsate-bottom 2.5s infinite linear');
+				if (card.classList.contains('border-left')) animations.push('pulsate-left 2.5s infinite linear');
+				if (card.classList.contains('border-right')) animations.push('pulsate-right 2.5s infinite linear');
 
 				if (animations.length > 0) {
 					card.style.animation = animations.join(', ');
