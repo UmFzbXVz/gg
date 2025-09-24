@@ -489,16 +489,17 @@ input:checked + .slider:before {
 }
 
 .arrow-up {
-  stroke: red;
+  stroke: rgba(255, 0, 0, 0.8);
+  filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.5));
 }
 
 .arrow-down {
-  stroke: green;
+  stroke: rgba(0, 200, 0, 0.8);
+  filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.5));
 }
 
 .price-change-badge svg {
   width: 1em;
-  height: 1em;
   stroke-width: 4;
   fill: none;
   display: inline-block;
@@ -509,7 +510,7 @@ input:checked + .slider:before {
 
 .modal {
   position: fixed;
-  top: 0;
+  top: 0;2
   left: 0;
   width: 100%;
   height: 100%;
@@ -968,6 +969,7 @@ input:checked + .slider:before {
   );
   margin: 12px auto;
   width: 80%;
+  transform: scaleY(1);
 }
 
 .price-divider {
