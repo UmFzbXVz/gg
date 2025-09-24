@@ -72,15 +72,6 @@
 	}
 
 	function buildImageSlider(images, title, includeZoom = false, includeGoogle = false) {
-		if (!images.length) {
-			return `
-            <div class="image-slider empty-slider">
-                <div class="slide empty-slide">
-                    <span class="no-image-text">(ingen billeder)</span>
-                </div>
-            </div>`;
-		}
-
 		const slides = images.map(src => {
 			let slideContent = `<img src="${src}" alt="${title}">`;
 			if (includeZoom) {
@@ -227,7 +218,6 @@
 			});
 		});
 
-
 		const updateSlide = (newIndex) => {
 			if (newIndex === undefined) newIndex = currentSlide;
 			const oldImg = slides[currentSlide].querySelector('img');
@@ -368,12 +358,24 @@
 				}
 			}
 		} else if (isDBA) {
-			images = JSON.parse(card.dataset.images || "[]");
+			try {
+				images = JSON.parse(card.dataset.images || "[]");
+			} catch {
+				images = [];
+			}
 			description = await getDbaDescription(originalUrl);
 		} else if (isReshopper) {
-			images = JSON.parse(card.dataset.images || "[]");
+			try {
+				images = JSON.parse(card.dataset.images || "[]");
+			} catch {
+				images = [];
+			}
 			description = decode(card.dataset.description || "Ingen beskrivelse tilgængelig.");
 			location = decode(card.dataset.seller || "Ukendt sælger");
+		}
+
+		if (!images.length) {
+			images = ["noimage.svg"];
 		}
 
 		openAdModal(title, description, price, location, images, originalUrl, priceDiff);
