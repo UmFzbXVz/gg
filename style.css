@@ -489,13 +489,22 @@ input:checked + .slider:before {
 }
 
 .arrow-up {
-  color: rgba(255, 0, 0, 1);
-  font-weight: bold;
+  stroke: red;
 }
 
 .arrow-down {
-  color: rgba(0, 200, 0, 1);
-  font-weight: bold;
+  stroke: green;
+}
+
+.price-change-badge svg {
+  width: 1em;
+  height: 1em;
+  stroke-width: 4;
+  fill: none;
+  display: inline-block;
+  vertical-align: middle;
+  position: relative;
+  top: -1px; 
 }
 
 .modal {
