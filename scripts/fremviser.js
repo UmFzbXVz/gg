@@ -53,13 +53,20 @@
 			}
 
 			const descEl = htmlDoc.querySelector('.vip-description-text');
-			if (descEl) return decode(descEl.innerText.trim());
+			if (descEl && descEl.innerText.trim()) return decode(descEl.innerText.trim());
+
+			const metaDesc = htmlDoc.querySelector('meta[name="description"]');
+			if (metaDesc && metaDesc.content.trim()) return decode(metaDesc.content.trim());
+
+			const ogDesc = htmlDoc.querySelector('meta[property="og:description"]');
+			if (ogDesc && ogDesc.content.trim()) return decode(ogDesc.content.trim());
 
 			return 'Ingen beskrivelse tilgængelig.';
 		} catch {
 			return 'Fejl ved indlæsning af beskrivelse.';
 		}
 	}
+
 
 	function priceBlock(price, diff) {
 		if (!diff) return `<div class="ad-price">${price}</div>`;
@@ -100,7 +107,7 @@
 		const modal = document.createElement("div");
 		modal.className = "ad-modal";
 
-		const hasDescription = description && description.trim() && description.trim() !== "Ingen beskrivelse tilgængelig.";
+		const hasDescription = description && description.trim() && !["Ingen beskrivelse tilgængelig.", "Fejl ved indlæsning af beskrivelse."].includes(description.trim());
 		const useGoogleLens = images.length && images[0] !== "noimage.svg";
 		const sliderHtml = buildImageSlider(images, title, true, useGoogleLens);
 
