@@ -100,7 +100,7 @@ const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/ra
 					const status = priceDiff > 0 ? "steget" : "faldet";
 					const diffBadge = document.createElement("div");
 					diffBadge.className = `price-change-badge ${status}`;
-					diffBadge.innerHTML = `${priceDiff > 0 ? '<span class="arrow-up">△</span>' : '<span class="arrow-down">▽</span>'} ${Math.abs(priceDiff).toLocaleString("da-DK")} kr.`;
+					diffBadge.innerHTML = `${priceDiff > 0 ? '<svg viewBox="0 0 24 24" class="arrow-up"><path d="M12 2 L22 22 L2 22 Z"/></svg>' : '<svg viewBox="0 0 24 24" class="arrow-down"><path d="M2 2 L22 2 L12 22 Z"/></svg>'} ${Math.abs(priceDiff).toLocaleString("da-DK")} kr.`;
 					card.querySelector(".card-image-wrapper").appendChild(diffBadge);
 
 					card.dataset.priceDiff = priceDiff;
