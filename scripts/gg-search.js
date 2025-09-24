@@ -202,17 +202,19 @@ function parseGGDate(str) {
 				}
 
 				card.innerHTML = `
-  <div class="card-image-wrapper">
-      ${imageHtml}
-  </div>
-  <button class="info-btn" data-id="${id}">i</button>
-  <div class="card-content">
-      <h3>${title}</h3>
-      <div class="price">${price?.text || "Ingen pris"}</div>
-      <div class="city">${location}</div>
-  </div>
-  <div class="gg-badge">GG</div>
-`;
+				  <button class="info-btn" data-id="${id}">i</button>
+				  <div class="card-image-wrapper">
+					  ${imageHtml}
+				  </div>
+				  <div class="card-content">
+					  <h3>${title}</h3>
+					  <div class="card-footer">
+						  <div class="price">${price?.text || "Ingen pris"}</div>
+						  <div class="city">${location}</div>
+					  </div>
+				  </div>
+				  <div class="gg-badge">GG</div>
+				`;
 
 				const parsedTimestamp = parseGGDate(createdAt);
 				card.dataset.timestamp = parsedTimestamp;
