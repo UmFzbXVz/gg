@@ -149,7 +149,7 @@
 				minScale: 1,
 				contain: 'outside',
 				panOnlyWhenZoomed: true,
-				zoomSpeed: 0.5
+				step: 0.2
 			});
 			img._pz = pz;
 			img._baseScale = pz.getScale();
@@ -282,7 +282,12 @@
 					if (listing) {
 						description = decode(listing.description || "Ingen beskrivelse.");
 						images = listing.images?.map(img => img.medium || img.small || "").filter(Boolean) || [];
+
+						if (images.length === 0) {
+							images = ["noimage.svg"];
+						}
 					}
+
 				} catch {
 					description = "Fejl ved indlæsning.";
 				}
