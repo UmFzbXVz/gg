@@ -504,7 +504,7 @@ input:checked + .slider:before {
   display: inline-block;
   vertical-align: middle;
   position: relative;
-  top: -1px; 
+  top: -2px; 
 }
 
 .modal {
