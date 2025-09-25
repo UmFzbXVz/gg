@@ -46,39 +46,51 @@
 
 			let images = getBestImageUrls(htmlDoc);
 
+			function preloadSequential(imgs) {
+				if (!imgs.length) return;
+				const [first, ...rest] = imgs;
+				const img = new Image();
+				img.onload = () => preloadSequential(rest);
+				img.onerror = () => preloadSequential(rest); 
+				img.src = first;
+			}
+
+			const buildResult = (descriptionText) => {
+				if (images.length > 1) {
+					preloadSequential(images);
+				}
+				return {
+					description: decode(descriptionText),
+					images: images.length ? [images[0], ...images.slice(1)] : []
+				};
+			};
+
 			const ldJsonEl = htmlDoc.querySelector('script[type="application/ld+json"]');
 			if (ldJsonEl) {
 				try {
 					const data = JSON.parse(ldJsonEl.textContent);
-					if (data && data.description) return {
-						description: decode(data.description.trim()),
-						images
-					};
+					if (data && data.description) {
+						return buildResult(data.description.trim());
+					}
 				} catch {}
 			}
 
 			const descEl = htmlDoc.querySelector('.vip-description-text');
-			if (descEl && descEl.innerText.trim()) return {
-				description: decode(descEl.innerText.trim()),
-				images
-			};
+			if (descEl && descEl.innerText.trim()) {
+				return buildResult(descEl.innerText.trim());
+			}
 
 			const metaDesc = htmlDoc.querySelector('meta[name="description"]');
-			if (metaDesc && metaDesc.content.trim()) return {
-				description: decode(metaDesc.content.trim()),
-				images
-			};
+			if (metaDesc && metaDesc.content.trim()) {
+				return buildResult(metaDesc.content.trim());
+			}
 
 			const ogDesc = htmlDoc.querySelector('meta[property="og:description"]');
-			if (ogDesc && ogDesc.content.trim()) return {
-				description: decode(ogDesc.content.trim()),
-				images
-			};
+			if (ogDesc && ogDesc.content.trim()) {
+				return buildResult(ogDesc.content.trim());
+			}
 
-			return {
-				description: 'Ingen beskrivelse tilgængelig.',
-				images
-			};
+			return buildResult('Ingen beskrivelse tilgængelig.');
 		} catch {
 			return {
 				description: 'Fejl ved indlæsning af beskrivelse.',
@@ -86,6 +98,7 @@
 			};
 		}
 	}
+
 
 	function getBestImageUrls(htmlDoc) {
 		const template = htmlDoc.querySelector('template[shadowrootmode]');
@@ -168,18 +181,22 @@
 	}
 
 	function buildImageSlider(images, title, includeZoom = false, includeGoogle = false) {
-		const slides = images.map(src => {
-			let slideContent = `<img src="${src}" alt="${title}">`;
+		const slides = images.map((src, idx) => {
+			let imgTag = idx === 0 ?
+				`<img src="${src}" alt="${title}">` :
+				`<img data-src="${src}" alt="${title}">`;
+
 			if (includeZoom) {
-				slideContent = `<div class="zoom-wrapper">${slideContent}</div>`;
+				imgTag = `<div class="zoom-wrapper">${imgTag}</div>`;
 			}
 			if (includeGoogle) {
-				slideContent += `<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
-                </a>`;
+				imgTag += `<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
+            </a>`;
 			}
-			return `<div class="slide">${slideContent}</div>`;
+			return `<div class="slide">${imgTag}</div>`;
 		}).join("");
+
 
 		const arrows = images.length > 1 ?
 			`<button class="arrow left-arrow"><</button><button class="arrow right-arrow">></button><div class="slide-indicator"></div>` :
@@ -250,7 +267,22 @@
 		const indicator = modal.querySelector(".slide-indicator");
 		let currentSlide = 0;
 
-		const zoomCycle = [1, 2, 4];
+		const firstImg = slides[0]?.querySelector("img");
+		if (firstImg) {
+			firstImg.addEventListener("load", () => {
+				slides.slice(1).forEach(slide => {
+					const img = slide.querySelector("img[data-src]");
+					if (img) {
+						img.src = img.dataset.src;
+						img.removeAttribute("data-src");
+					}
+				});
+			}, {
+				once: true
+			});
+		}
+
+		const zoomCycle = [1, 2, 5];
 		let currentZoomIndex = 0;
 
 		slides.forEach((slide, idx) => {
@@ -266,7 +298,7 @@
 			});
 			img._pz = pz;
 
-			let zoomCycle = [1, 2, 4];
+			let zoomCycle = [1, 2, 5];
 			let currentZoomIndex = 0;
 			let isAnimating = false;
 
@@ -422,8 +454,8 @@
 			}
 		};
 		window.addEventListener("popstate", popHandler);
+	}
 
-	};
 
 	grid.addEventListener("click", async e => {
 		const card = e.target.closest(".card");
