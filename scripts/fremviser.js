@@ -44,29 +44,118 @@
 			const parser = new DOMParser();
 			const htmlDoc = parser.parseFromString(text, 'text/html');
 
+			let images = getBestImageUrls(htmlDoc);
+
 			const ldJsonEl = htmlDoc.querySelector('script[type="application/ld+json"]');
 			if (ldJsonEl) {
 				try {
 					const data = JSON.parse(ldJsonEl.textContent);
-					if (data && data.description) return decode(data.description.trim());
+					if (data && data.description) return {
+						description: decode(data.description.trim()),
+						images
+					};
 				} catch {}
 			}
 
 			const descEl = htmlDoc.querySelector('.vip-description-text');
-			if (descEl && descEl.innerText.trim()) return decode(descEl.innerText.trim());
+			if (descEl && descEl.innerText.trim()) return {
+				description: decode(descEl.innerText.trim()),
+				images
+			};
 
 			const metaDesc = htmlDoc.querySelector('meta[name="description"]');
-			if (metaDesc && metaDesc.content.trim()) return decode(metaDesc.content.trim());
+			if (metaDesc && metaDesc.content.trim()) return {
+				description: decode(metaDesc.content.trim()),
+				images
+			};
 
 			const ogDesc = htmlDoc.querySelector('meta[property="og:description"]');
-			if (ogDesc && ogDesc.content.trim()) return decode(ogDesc.content.trim());
+			if (ogDesc && ogDesc.content.trim()) return {
+				description: decode(ogDesc.content.trim()),
+				images
+			};
 
-			return 'Ingen beskrivelse tilgængelig.';
+			return {
+				description: 'Ingen beskrivelse tilgængelig.',
+				images
+			};
 		} catch {
-			return 'Fejl ved indlæsning af beskrivelse.';
+			return {
+				description: 'Fejl ved indlæsning af beskrivelse.',
+				images: []
+			};
 		}
 	}
 
+	function getBestImageUrls(htmlDoc) {
+		const template = htmlDoc.querySelector('template[shadowrootmode]');
+		if (!template) return [];
+
+		const root = template.content;
+		const gallery = root.querySelector('section[data-testid="image-gallery"]');
+		if (!gallery) return [];
+
+		const imageMap = new Map();
+
+		const addOrUpdateImage = (url, width = 0) => {
+			if (!url) return;
+			const key = url.split('/').pop().split('?')[0];
+			if (!imageMap.has(key) || imageMap.get(key).width < width) {
+				imageMap.set(key, {
+					url,
+					width
+				});
+			}
+		};
+
+		const parseSrcset = (srcset) => {
+			return srcset.split(',')
+				.map(p => p.trim())
+				.map(part => {
+					const [url, size] = part.split(/\s+/);
+					let width = 0;
+					if (size && size.endsWith('w')) {
+						width = parseInt(size.replace('w', ''), 10);
+					}
+					return {
+						url,
+						width
+					};
+				});
+		};
+
+		gallery.querySelectorAll('img').forEach(img => {
+			if (img.hasAttribute('srcset')) {
+				parseSrcset(img.getAttribute('srcset')).forEach(({
+					url,
+					width
+				}) => addOrUpdateImage(url, width));
+			} else if (img.hasAttribute('src')) {
+				addOrUpdateImage(img.getAttribute('src'));
+			}
+		});
+
+		gallery.querySelectorAll('li').forEach(li => {
+			const bg = li.style.backgroundImage;
+			if (bg && bg.startsWith('url(')) {
+				const url = bg.slice(4, -1).replace(/["']/g, '');
+				addOrUpdateImage(url);
+			}
+		});
+
+		template.querySelectorAll('link[rel="preload"][as="image"]').forEach(link => {
+			if (link.hasAttribute('imagesrcset')) {
+				parseSrcset(link.getAttribute('imagesrcset')).forEach(({
+					url,
+					width
+				}) => addOrUpdateImage(url, width));
+			} else if (link.hasAttribute('href')) {
+				addOrUpdateImage(link.getAttribute('href'));
+			}
+		});
+
+		return Array.from(imageMap.values()).map(obj => obj.url);
+	}
 
 	function priceBlock(price, diff) {
 		if (!diff) return `<div class="ad-price">${price}</div>`;
@@ -103,6 +192,26 @@
 		return buildImageSlider(images, title, false, false);
 	}
 
+	function addLoadingSpinner(slide) {
+		const wrapper = slide.querySelector('.zoom-wrapper');
+		if (!wrapper) return;
+
+		const spinner = document.createElement('div');
+		spinner.className = 'loading-spinner';
+		wrapper.appendChild(spinner);
+
+		const img = slide.querySelector('img');
+		if (!img) return;
+
+		if (img.complete && img.naturalHeight !== 0) {
+			spinner.remove();
+			return;
+		}
+
+		img.addEventListener('load', () => spinner.remove());
+		img.addEventListener('error', () => spinner.remove());
+	}
+
 	function openAdModal(title, description, price, location, images, originalUrl, priceDiff = 0) {
 		const modal = document.createElement("div");
 		modal.className = "ad-modal";
@@ -137,6 +246,7 @@
 
 		const inner = modal.querySelector(".slider-inner");
 		const slides = Array.from(modal.querySelectorAll('.slide'));
+		slides.forEach(addLoadingSpinner);
 		const indicator = modal.querySelector(".slide-indicator");
 		let currentSlide = 0;
 
@@ -365,12 +475,9 @@
 				}
 			}
 		} else if (isDBA) {
-			try {
-				images = JSON.parse(card.dataset.images || "[]");
-			} catch {
-				images = [];
-			}
-			description = await getDbaDescription(originalUrl);
+			const result = await getDbaDescription(originalUrl);
+			description = result.description;
+			images = result.images;
 		} else if (isReshopper) {
 			try {
 				images = JSON.parse(card.dataset.images || "[]");
