@@ -393,8 +393,12 @@
 		const updateSlide = (newIndex) => {
 			if (newIndex === undefined) newIndex = currentSlide;
 			const oldImg = slides[currentSlide].querySelector('img');
-			oldImg._pz.reset();
-			oldImg._baseScale = oldImg._pz.getScale();
+			if (oldImg._pz) {
+				oldImg._pz.reset();
+				oldImg._baseScale = oldImg._pz.getScale();
+			} else {
+				oldImg._baseScale = 1;
+			}
 
 			currentSlide = newIndex;
 			inner.style.transform = `translateX(-${currentSlide * 100}%)`;
@@ -402,8 +406,12 @@
 			if (indicator) indicator.textContent = `${currentSlide + 1}/${images.length}`;
 
 			const newImg = slides[currentSlide].querySelector('img');
-			newImg._pz.reset();
-			newImg._baseScale = newImg._pz.getScale();
+			if (newImg._pz) {
+				newImg._pz.reset();
+				newImg._baseScale = newImg._pz.getScale();
+			} else {
+				newImg._baseScale = 1;
+			}
 		};
 
 		updateSlide();
@@ -433,7 +441,7 @@
 			const diffY = e.changedTouches[0].clientY - startY;
 
 			const img = slides[currentSlide].querySelector('img');
-			const zoomed = Math.abs(img._pz.getScale() - img._baseScale) > 0.01;
+			const zoomed = img._pz ? Math.abs(img._pz.getScale() - img._baseScale) > 0.01 : false;
 
 			if (!zoomed && Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
 				const nextIndex = diffX > 0 ?
