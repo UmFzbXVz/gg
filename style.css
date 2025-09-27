@@ -387,6 +387,11 @@ input:checked + .slider:before {
   height: 100%;
 }
 
+.image-slider .slide img[src$="noimage.svg"] {
+  max-width: 128px;
+  max-height: 128px;
+}
+
 .no-image-text {
   color: #aaa;
   font-size: 1.2rem;
