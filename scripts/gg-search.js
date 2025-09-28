@@ -93,6 +93,7 @@ function parseGGDate(str) {
 
 	const GRAPHQL_QUERY = `query Search($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) { redirect(url: $currentUrl) search(filters: $filters, pagination: $pagination) { pagination { total hasPrevious hasNext __typename } availableCategories { title url count __typename } listings { id title description url price { text raw __typename } primaryImage { url(size: Listing320) __typename } city zipcode createdAt(dateFormat: RELATIVE_SHORT) } }}`;
 	const GET_LISTING_QUERY = `query GetListing($id: ID!) { listing(id: $id) { id title url description categoryId externalLink status viewsCount draftFinishedAt expiredAt productType favoritesCount isWeaponContent isTransactionEnabled metaTitle metaDescription isFixedPrice isInBasket isShippingAvailable transactionData { transactionId __typename } price { raw text type __typename } originalPrice images { sortOrder small: url(size: Listing640) medium: url(size: Listing1280) bigPictureSmall: url(size: Listing640x640) bigPictureMedium: url(size: Listing1280x1280) bigPictureLarge: url(size: Listing2560x2560) __typename } user { id displayName isBusiness mitIdValidatedAt isReachableByMessage isTransactionEnabled isSafepayAuthenticated status avatar { url(size: Avatar75) __typename } subscription { userId __typename } memberSince: createdAt(dateFormat: RELATIVE_LONG) availableFrom availableTo onlineListingsCount business { isBannerOwnershipActive isNoFollowEnabled isGenericExternalLinkTextEnabled isPromotionsEnabled isReachableByMail website websiteText profileText __typename } displayAddress city zipcode createdAt transactionHandInTime isFollowing receivedRatings { amount average __typename } followersCount __typename } displayAddress phones { id masked __typename } categories { id title url __typename } leafCategory { id title url featureTags isPublished __typename } listingFields { field { id isSeo title slug isBookable sortOrder parentFieldId __typename } fieldOption { slug title __typename } value fullValue displayGroup { id title sortOrder __typename } __typename } __typename } }`;
+	const USER_DETAILS_QUERY = `query SearchPageSearch($filters: SearchFiltersInput!, $pagination: PaginationInput!, $currentUrl: String!) {\n  redirect(url: $currentUrl)\n  search(filters: $filters, pagination: $pagination) {\n    hash\n    seoTitle\n    seoDescription\n    title\n    isWeaponContent\n    category {\n      id\n      title\n      url\n      description\n      isPublished\n      icon\n      parent {\n        title\n        url\n        parent {\n          title\n          url\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    seoFilters {\n      title\n      values\n      isBookable\n      __typename\n    }\n    metaCategories\n    listings {\n      id\n      title\n      isNew\n      description\n      url\n      externalLink\n      price {\n        text\n        raw\n        __typename\n      }\n      originalPrice\n      isTransactionEnabled\n      productType\n      primaryImage {\n        url(size: Listing320)\n        __typename\n      }\n      images {\n        id\n        url(size: Listing160)\n        largeUrl: url(size: Listing640x640)\n        small: url(size: Listing160)\n        xlarge: url(size: Listing1280x1280)\n        __typename\n      }\n      createdAt(dateFormat: RELATIVE_SHORT)\n      address\n      city\n      zipcode\n      userId\n      user {\n        id\n        avatar {\n          url(size: Avatar75)\n          __typename\n        }\n        displayName\n        mitIdValidatedAt\n        isBusiness\n        isSafepayAuthenticated\n        isReachableByMessage\n        __typename\n      }\n      isWeaponContent\n      __typename\n    }\n    pagination {\n      total\n      hasPrevious\n      hasNext\n      __typename\n    }\n    seoLinks {\n      title\n      slug\n      options {\n        title\n        slug\n        __typename\n      }\n      __typename\n    }\n    userProfile {\n      id\n      displayName\n      phones {\n        id\n        masked\n        __typename\n      }\n      avatar {\n        url(size: Avatar150)\n        __typename\n      }\n      subscription {\n        userId\n        __typename\n      }\n      zipcode\n      city\n      mitIdValidatedAt\n      isBusiness\n      memberSince: createdAt(dateFormat: RELATIVE_LONG)\n      createdAt(dateFormat: ABSOLUTE_DATE_YEAR)\n      availableFrom\n      availableTo\n      business {\n        isBannerOwnershipActive\n        isNoFollowEnabled\n        isGenericExternalLinkTextEnabled\n        isPromotionsEnabled\n        isReachableByMail\n        website\n        websiteText\n        profileText\n        __typename\n      }\n      status\n      transactionHandInTime\n      isTransactionEnabled\n      isSafepayAuthenticated\n      isFollowing\n      receivedRatings {\n        amount\n        average\n        __typename\n      }\n      followersCount\n      __typename\n    }\n    __typename\n  }\n}`;
 
 	let currentPage = 1;
 	let currentTerm = "";
@@ -202,19 +203,19 @@ function parseGGDate(str) {
 				}
 
 				card.innerHTML = `
-				  <button class="info-btn" data-id="${id}">i</button>
-				  <div class="card-image-wrapper">
-					  ${imageHtml}
-				  </div>
-				  <div class="card-content">
-					  <h3>${title}</h3>
-					  <div class="card-footer">
-						  <div class="price">${price?.text || "Ingen pris"}</div>
-						  <div class="city">${location}</div>
-					  </div>
-				  </div>
-				  <div class="gg-badge">GG</div>
-				`;
+                  <button class="info-btn" data-id="${id}">i</button>
+                  <div class="card-image-wrapper">
+                      ${imageHtml}
+                  </div>
+                  <div class="card-content">
+                      <h3>${title}</h3>
+                      <div class="card-footer">
+                          <div class="price">${price?.text || "Ingen pris"}</div>
+                          <div class="city">${location}</div>
+                      </div>
+                  </div>
+                  <div class="gg-badge">GG</div>
+                `;
 
 				const parsedTimestamp = parseGGDate(createdAt);
 				card.dataset.timestamp = parsedTimestamp;
@@ -229,6 +230,38 @@ function parseGGDate(str) {
 			console.error("Fejl:", err.message);
 		} finally {
 			isLoading = false;
+		}
+	}
+
+	async function getUserDetails(userId) {
+		try {
+			const body = {
+				operationName: "SearchPageSearch",
+				variables: {
+					filters: {
+						weapons: true,
+						categoryFields: [],
+						userIds: [userId]
+					},
+					pagination: {
+						perPage: 36,
+						page: 1
+					},
+					currentUrl: ""
+				},
+				query: USER_DETAILS_QUERY
+			};
+			const res = await fetch(PROXY + API_URL, {
+				method: "POST",
+				headers: HEADERS,
+				body: JSON.stringify(body)
+			});
+			if (!res.ok) throw new Error(`Fejl ved hentning af brugeroplysninger: ${res.status}`);
+			const data = await res.json();
+			return data?.data?.search;
+		} catch (err) {
+			console.error('Fejl ved hentning af brugeroplysninger:', err);
+			return null;
 		}
 	}
 
@@ -252,8 +285,12 @@ function parseGGDate(str) {
 
 			const user = listing.user;
 			const phones = listing.phones || [];
-			const fullAddress = listing.displayAddress || `${user.city || ''} ${user.zipcode || ''}`;
-			const mapsLink = fullAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}` : '';
+
+			const userDetails = await getUserDetails(user.id);
+			const firstListing = userDetails?.listings?.[0];
+			const fullAddress = firstListing?.address || listing.displayAddress || `${user.city || ''} ${user.zipcode || ''}`;
+			const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([firstListing?.address || listing.displayAddress, user.city, user.zipcode].filter(Boolean).join(", "))}`;
+
 
 			const modal = document.createElement('div');
 			modal.className = 'modal';
