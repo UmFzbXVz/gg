@@ -1,89 +1,69 @@
 <!DOCTYPE html>
 <html lang="da">
-
-<head>
+  <head>
     <meta charset="UTF-8">
     <title>Råt og Hvidt</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-</head>
-
-<body>
+  </head>
+  <body>
     <div class="page-container">
-        <h1>
-            <span class="title-highlight">
-                <span id="rat">Råt</span> og <span id="hvidt">Hvidt</span>
-            </span>
-        </h1>
-
-        <form id="searchForm" class="controls">
-            <div class="input-wrapper">
-                <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
-                <svg id="searchSpinner" class="loading-border" viewBox="0 0 300 40" preserveAspectRatio="none">
-                    <rect x="2" y="2" width="296" height="36" rx="6" ry="6" fill="none" stroke="#4caf50"
-                        stroke-width="5" stroke-linecap="round" />
-                </svg>
+      <h1>
+        <span class="title-highlight">
+          <span id="rat">Råt</span> og <span id="hvidt">Hvidt</span>
+        </span>
+      </h1>
+      <form id="searchForm" class="controls">
+        <div class="input-wrapper">
+          <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
+          <svg id="searchSpinner" class="loading-border" viewBox="0 0 300 40" preserveAspectRatio="none">
+            <rect x="2" y="2" width="296" height="36" rx="6" ry="6" fill="none" stroke="#4caf50" stroke-width="5" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div class="category-selector">
+          <button id="categoryButton" class="category-button" type="button">
+            <img src="sorting.svg" alt="" class="category-icon">
+          </button>
+          <div id="categoryMenu" class="category-menu" style="display: none;">
+            <div class="category-menu-title">Kategorier</div>
+            <ul class="categories-list">
+              <li data-value="mobler">Møbler og indretning</li>
+              <li data-value="dyr">Dyr og udstyr</li>
+              <li data-value="toejogboern">Tøj og børn</li>
+              <li data-value="kunst">Kunst og antik</li>
+              <li data-value="alting">Alting</li>
+            </ul>
+            <hr class="menu-divider" />
+            <div class="location-selector">
+              <div class="category-menu-title">Områder</div>
+              <ul class="locations-list">
+                <li>
+                  <label>
+                    <input type="checkbox" id="locationJylland" value="jylland" checked>Jylland </label>
+                </li>
+                <li>
+                  <label>
+                    <input type="checkbox" id="locationSydsjaelland" value="sydsjaelland-og-oerne"> Sydsj. og øerne </label>
+                </li>
+                <li>
+                  <label>
+                    <input type="checkbox" id="locationFyn" value="fyn"> Fyn </label>
+                </li>
+                <li>
+                  <label>
+                    <input type="checkbox" id="locationSjaelland" value="sjaelland"> Sjælland </label>
+                </li>
+              </ul>
             </div>
-
-            <div class="category-selector">
-                <button id="categoryButton" class="category-button" type="button">
-                    <img src="sorting.svg" alt="" class="category-icon">
-                </button>
-
-                <div id="categoryMenu" class="category-menu" style="display: none;">
-                    <div class="category-menu-title">Kategorier</div>
-                    <ul class="categories-list">
-                        <li data-value="mobler">Møbler og indretning</li>
-                        <li data-value="dyr">Dyr og udstyr</li>
-                        <li data-value="toejogboern">Tøj og børn</li>
-                        <li data-value="kunst">Kunst og antik</li>
-                        <li data-value="alting">Alting</li>
-                    </ul>
-
-                    <hr class="menu-divider" />
-
-                    <div class="location-selector">
-                        <div class="category-menu-title">Områder</div>
-                        <ul class="locations-list">
-                            <li>
-                                <label>
-                                    <input type="checkbox" id="locationJylland" value="jylland" checked>Jylland
-                                </label>
-                            </li>
-                            <li>
-                                <label>
-                                    <input type="checkbox" id="locationSydsjaelland" value="sydsjaelland-og-oerne">
-                                    Sydsj. og øerne
-                                </label>
-                            </li>
-                            <li>
-                                <label>
-                                    <input type="checkbox" id="locationFyn" value="fyn">
-                                    Fyn
-                                </label>
-                            </li>
-                            <li>
-                                <label>
-                                    <input type="checkbox" id="locationSjaelland" value="sjaelland">
-                                    Sjælland
-                                </label>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <hr class="menu-divider" />
-
-                    <label class="bg-toggle"> Auto-opdatér
-                        <input type="checkbox" id="bgToggle" checked>
-                    </label>
-                </div>
-            </div>
-        </form>
-
-        <div id="grid"></div>
+            <hr class="menu-divider" />
+            <label class="bg-toggle"> Auto-opdatér <input type="checkbox" id="bgToggle" checked>
+            </label>
+          </div>
+        </div>
+      </form>
+      <div id="grid"></div>
     </div>
-
     <script src="https://unpkg.com/@panzoom/panzoom@4.6.0/dist/panzoom.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="scripts/gg-search.js"></script>
@@ -91,7 +71,6 @@
     <script src="scripts/reshopper-search.js"></script>
     <script src="scripts/fremviser.js"></script>
     <script src="scripts/bg.js"></script>
-
     <script>
 (() => {
 	const form = document.getElementById("searchForm");
@@ -242,6 +221,8 @@
 		if (!span) return;
 
 		span.addEventListener('click', async () => {
+			if (spinner.classList.contains("active")) return;
+
 			const catObj = categories[selectedCategory];
 			input.value = "";
 			input.disabled = true;
@@ -430,5 +411,5 @@
 	loadPostnumre();
 })();
     </script>
-</body>
+  </body>
 </html>
