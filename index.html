@@ -16,8 +16,8 @@
       </h1>
       <form id="searchForm" class="controls">
         <div class="input-wrapper">
-          <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
-          <svg id="searchSpinner" class="loading-border" viewBox="0 0 300 40" preserveAspectRatio="none">
+          <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off" disabled>
+          <svg id="searchSpinner" class="loading-border active" viewBox="0 0 300 40" preserveAspectRatio="none">
             <rect x="2" y="2" width="296" height="36" rx="6" ry="6" fill="none" stroke="#4caf50" stroke-width="5" stroke-linecap="round" />
           </svg>
         </div>
@@ -379,8 +379,8 @@
 		}
 	});
 
-	magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig"], "gode sager");
-	magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander", "retro"], "generelle sager");
+	magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig", "Wikkelsø"], "gode sager");
+	magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander", "retro", "skammel"], "generelle sager");
 })();
 
 (() => {
