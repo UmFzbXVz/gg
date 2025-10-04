@@ -1,30 +1,90 @@
 const MAX_RESULTS = 300;
 const PROXY = "https://corsproxy.io/?";
-const PRICE_FILE = "./docs/priser.json.gz";
+const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/raw/refs/heads/main/docs/priser.json.gz");
 
 (async () => {
 	const grid = document.getElementById("grid");
 	const API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON";
 	let isLoading = false;
 
-	let priceJsonString = '';  
 	const firstPricesCache = new Map();  
+	const pendingRequests = new Map();
 
 	async function loadPriceData() {
-		try {
-			const res = await fetch(PRICE_FILE);
-			if (!res.ok) throw new Error(`Kunne ikke hente ${PRICE_FILE} (status ${res.status})`);
-			const arrayBuffer = await res.arrayBuffer();
-			priceJsonString = pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
-			console.log("Indlæst priceJsonString på ca.", priceJsonString.length, "tegn");
-			return {}; 
-		} catch (err) {
-			console.error("Fejl ved loadPriceData:", err);
-			return {};
-		}
+		return new Promise((resolve, reject) => {
+			const workerCode = `
+				importScripts('https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js');
+
+				let priceData;
+				self.addEventListener('message', async (e) => {
+					const data = e.data;
+					if (data.type === 'load') {
+						try {
+							const res = await fetch('${PRICE_FILE}');
+							if (!res.ok) throw new Error(\`Kunne ikke hente ${PRICE_FILE} (status \${res.status})\`);
+							const arrayBuffer = await res.arrayBuffer();
+							const priceJsonString = pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
+							priceData = JSON.parse(priceJsonString);
+							console.log("Indlæst priceData på ca.", priceJsonString.length, "tegn");
+							self.postMessage({ type: 'ready' });
+						} catch (err) {
+							self.postMessage({ type: 'error', error: err.message });
+						}
+					} else if (data.type === 'getFirstPrice') {
+						const adId = data.adId;
+						const history = priceData[adId];
+						const firstPrice = (history && history.length > 0) ? history[0][2] : null;
+						self.postMessage({ type: 'firstPrice', adId, firstPrice });
+					}
+				});
+			`;
+
+			const blob = new Blob([workerCode], { type: 'application/javascript' });
+			const worker = new Worker(URL.createObjectURL(blob));
+			window.priceWorker = worker;
+
+			worker.addEventListener('message', (e) => {
+				if (e.data.type === 'ready') {
+					resolve({});
+				} else if (e.data.type === 'error') {
+					console.error("Fejl ved loadPriceData:", e.data.error);
+					reject(new Error(e.data.error));
+				} else if (e.data.type === 'firstPrice') {
+					const { adId, firstPrice } = e.data;
+					firstPricesCache.set(adId, firstPrice);
+					const resolveReq = pendingRequests.get(adId);
+					if (resolveReq) {
+						resolveReq(firstPrice);
+						pendingRequests.delete(adId);
+					}
+				}
+			});
+
+			worker.postMessage({ type: 'load' });
+		});
 	}
 
-	window.priceData = await loadPriceData();
+	async function getFirstPrice(adId) {
+		const cached = firstPricesCache.get(adId);
+		if (cached !== undefined) {
+			return cached;
+		}
+		return new Promise((resolve) => {
+			pendingRequests.set(adId, resolve);
+			window.priceWorker.postMessage({ type: 'getFirstPrice', adId });
+		});
+	}
+
+	let priceData;
+	try {
+		priceData = await loadPriceData();
+	} catch (err) {
+		console.error("Fejl ved indlæsning af pricedata:", err);
+	} finally {
+		document.getElementById("searchSpinner").classList.remove("active");
+		document.getElementById("searchTerm").disabled = false;
+	}
+	window.priceData = priceData;
 
 	const jylland = ["0.200006", "0.200005", "0.200007", "0.200008"];
 	const sydsjaellandOgOerne = ["0.200004"];
@@ -45,38 +105,6 @@ const PRICE_FILE = "./docs/priser.json.gz";
 		if (amount === 0) return "Gives væk";
 		const formatted = amount.toLocaleString("da-DK");
 		return currency === "DKK" ? `${formatted} kr.` : `${formatted} ${currency || ""}`;
-	}
-
-	function extractAndParseHistory(adId) {
-		const keyStr = `"${adId}":`;
-		let index = priceJsonString.indexOf(keyStr);
-		if (index === -1) return null;
-
-		index += keyStr.length;
-		while (index < priceJsonString.length && /\s/.test(priceJsonString[index])) index++;
-
-		if (priceJsonString[index] !== '[') return null;
-
-		const start = index;  
-		let depth = 1;
-		index++; 
-
-		while (index < priceJsonString.length && depth > 0) {
-			const char = priceJsonString[index];
-			if (char === '[') depth++;
-			else if (char === ']') depth--;
-			index++;
-		}
-
-		if (depth !== 0) return null;  
-
-		const historyStr = priceJsonString.slice(start, index);
-		try {
-			return JSON.parse(historyStr);
-		} catch (err) {
-			console.error(`Fejl ved parse af history for ${adId}:`, err);
-			return null;
-		}
 	}
 
 	function makeCard(doc) {
@@ -124,14 +152,7 @@ const PRICE_FILE = "./docs/priser.json.gz";
 
 		const currentPrice = doc.price?.amount;
 		if (typeof currentPrice === "number") {
-			setTimeout(() => {  
-				let firstPrice = firstPricesCache.get(adId);
-				if (firstPrice === undefined) {
-					const history = extractAndParseHistory(adId);
-					firstPrice = (history && history.length > 0) ? history[0][2] : null;
-					firstPricesCache.set(adId, firstPrice);  
-				}
-
+			getFirstPrice(adId).then(firstPrice => {
 				if (firstPrice !== null && typeof firstPrice === "number" && firstPrice !== 0) {
 					const priceDiff = currentPrice - firstPrice;
 					if (priceDiff !== 0) {
@@ -145,7 +166,7 @@ const PRICE_FILE = "./docs/priser.json.gz";
 						card.dataset.priceDiffStatus = status;
 					}
 				}
-			}, 0);  
+			});
 		}
 
 		return card;
