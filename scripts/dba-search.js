@@ -7,17 +7,17 @@ const PRICE_FILE = "./docs/priser.json.gz";
 	const API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON";
 	let isLoading = false;
 
+	let priceJsonString = '';  
+	const firstPricesCache = new Map();  
+
 	async function loadPriceData() {
 		try {
 			const res = await fetch(PRICE_FILE);
 			if (!res.ok) throw new Error(`Kunne ikke hente ${PRICE_FILE} (status ${res.status})`);
 			const arrayBuffer = await res.arrayBuffer();
-			const decompressed = pako.ungzip(new Uint8Array(arrayBuffer), {
-				to: 'string'
-			});
-			const data = JSON.parse(decompressed);
-			console.log("Indlæst priceData med", Object.keys(data).length);
-			return data;
+			priceJsonString = pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
+			console.log("Indlæst priceJsonString på ca.", priceJsonString.length, "tegn");
+			return {}; 
 		} catch (err) {
 			console.error("Fejl ved loadPriceData:", err);
 			return {};
@@ -45,6 +45,38 @@ const PRICE_FILE = "./docs/priser.json.gz";
 		if (amount === 0) return "Gives væk";
 		const formatted = amount.toLocaleString("da-DK");
 		return currency === "DKK" ? `${formatted} kr.` : `${formatted} ${currency || ""}`;
+	}
+
+	function extractAndParseHistory(adId) {
+		const keyStr = `"${adId}":`;
+		let index = priceJsonString.indexOf(keyStr);
+		if (index === -1) return null;
+
+		index += keyStr.length;
+		while (index < priceJsonString.length && /\s/.test(priceJsonString[index])) index++;
+
+		if (priceJsonString[index] !== '[') return null;
+
+		const start = index;  
+		let depth = 1;
+		index++; 
+
+		while (index < priceJsonString.length && depth > 0) {
+			const char = priceJsonString[index];
+			if (char === '[') depth++;
+			else if (char === ']') depth--;
+			index++;
+		}
+
+		if (depth !== 0) return null;  
+
+		const historyStr = priceJsonString.slice(start, index);
+		try {
+			return JSON.parse(historyStr);
+		} catch (err) {
+			console.error(`Fejl ved parse af history for ${adId}:`, err);
+			return null;
+		}
 	}
 
 	function makeCard(doc) {
@@ -89,24 +121,31 @@ const PRICE_FILE = "./docs/priser.json.gz";
 		card.dataset.key = doc.id;
 
 		const adId = String(doc.id);
-		const history = window.priceData[adId];
 
-		if (history && history.length > 0) {
-			const firstPrice = history[0][2];
-			const currentPrice = doc.price?.amount;
-			if (typeof currentPrice === "number" && typeof firstPrice === "number" && firstPrice !== 0) {
-				const priceDiff = currentPrice - firstPrice;
-				if (priceDiff !== 0) {
-					const status = priceDiff > 0 ? "steget" : "faldet";
-					const diffBadge = document.createElement("div");
-					diffBadge.className = `price-change-badge ${status}`;
-					diffBadge.innerHTML = `${priceDiff > 0 ? '<svg viewBox="0 0 24 24" class="arrow-up"><path d="M12 2 L22 22 L2 22 Z"/></svg>' : '<svg viewBox="0 0 24 24" class="arrow-down"><path d="M2 2 L22 2 L12 22 Z"/></svg>'} ${Math.abs(priceDiff).toLocaleString("da-DK")} kr.`;
-					card.querySelector(".card-image-wrapper").appendChild(diffBadge);
-
-					card.dataset.priceDiff = priceDiff;
-					card.dataset.priceDiffStatus = status;
+		const currentPrice = doc.price?.amount;
+		if (typeof currentPrice === "number") {
+			setTimeout(() => {  
+				let firstPrice = firstPricesCache.get(adId);
+				if (firstPrice === undefined) {
+					const history = extractAndParseHistory(adId);
+					firstPrice = (history && history.length > 0) ? history[0][2] : null;
+					firstPricesCache.set(adId, firstPrice);  
 				}
-			}
+
+				if (firstPrice !== null && typeof firstPrice === "number" && firstPrice !== 0) {
+					const priceDiff = currentPrice - firstPrice;
+					if (priceDiff !== 0) {
+						const status = priceDiff > 0 ? "steget" : "faldet";
+						const diffBadge = document.createElement("div");
+						diffBadge.className = `price-change-badge ${status}`;
+						diffBadge.innerHTML = `${priceDiff > 0 ? '<svg viewBox="0 0 24 24" class="arrow-up"><path d="M12 2 L22 22 L2 22 Z"/></svg>' : '<svg viewBox="0 0 24 24" class="arrow-down"><path d="M2 2 L22 2 L12 22 Z"/></svg>'} ${Math.abs(priceDiff).toLocaleString("da-DK")} kr.`;
+						card.querySelector(".card-image-wrapper").appendChild(diffBadge);
+
+						card.dataset.priceDiff = priceDiff;
+						card.dataset.priceDiffStatus = status;
+					}
+				}
+			}, 0);  
 		}
 
 		return card;
