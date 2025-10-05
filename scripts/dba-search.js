@@ -7,39 +7,59 @@ const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/ra
 	const API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON";
 	let isLoading = false;
 
-	const firstPricesCache = new Map();  
+	const firstPricesCache = new Map();
 	const pendingRequests = new Map();
 
 	async function loadPriceData() {
 		return new Promise((resolve, reject) => {
 			const workerCode = `
-				importScripts('https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js');
+    importScripts('https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js');
 
-				let priceData;
-				self.addEventListener('message', async (e) => {
-					const data = e.data;
-					if (data.type === 'load') {
-						try {
-							const res = await fetch('${PRICE_FILE}');
-							if (!res.ok) throw new Error(\`Kunne ikke hente ${PRICE_FILE} (status \${res.status})\`);
-							const arrayBuffer = await res.arrayBuffer();
-							const priceJsonString = pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
-							priceData = JSON.parse(priceJsonString);
-							console.log("Indlæst priceData på ca.", priceJsonString.length, "tegn");
-							self.postMessage({ type: 'ready' });
-						} catch (err) {
-							self.postMessage({ type: 'error', error: err.message });
-						}
-					} else if (data.type === 'getFirstPrice') {
-						const adId = data.adId;
-						const history = priceData[adId];
-						const firstPrice = (history && history.length > 0) ? history[0][2] : null;
-						self.postMessage({ type: 'firstPrice', adId, firstPrice });
-					}
-				});
-			`;
+    let priceData;
+    let ready = false;
+    let pendingQueries = [];
+    self.addEventListener('message', async (e) => {
+        const data = e.data;
+        if (data.type === 'load') {
+            try {
+                const res = await fetch('${PRICE_FILE}');
+                if (!res.ok) throw new Error(\`Kunne ikke hente ${PRICE_FILE} (status \${res.status})\`);
+                const arrayBuffer = await res.arrayBuffer();
+                const priceJsonString = pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
+                priceData = JSON.parse(priceJsonString);
+                console.log("Indlæst priceData på ca.", priceJsonString.length, "tegn");
+                ready = true;
+                self.postMessage({ type: 'ready' });
+                for (const query of pendingQueries) {
+                    const adId = query.adId;
+                    const history = priceData[adId];
+                    const firstPrice = (history && history.length > 0) ? history[0][2] : null;
+                    self.postMessage({ type: 'firstPrice', adId, firstPrice });
+                }
+                pendingQueries = [];
+            } catch (err) {
+                self.postMessage({ type: 'error', error: err.message });
+                for (const query of pendingQueries) {
+                    self.postMessage({ type: 'firstPrice', adId: query.adId, firstPrice: null });
+                }
+                pendingQueries = [];
+            }
+        } else if (data.type === 'getFirstPrice') {
+            const adId = data.adId;
+            if (ready) {
+                const history = priceData[adId];
+                const firstPrice = (history && history.length > 0) ? history[0][2] : null;
+                self.postMessage({ type: 'firstPrice', adId, firstPrice });
+            } else {
+                pendingQueries.push({ adId });
+            }
+        }
+    });
+`;
 
-			const blob = new Blob([workerCode], { type: 'application/javascript' });
+			const blob = new Blob([workerCode], {
+				type: 'application/javascript'
+			});
 			const worker = new Worker(URL.createObjectURL(blob));
 			window.priceWorker = worker;
 
@@ -50,7 +70,10 @@ const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/ra
 					console.error("Fejl ved loadPriceData:", e.data.error);
 					reject(new Error(e.data.error));
 				} else if (e.data.type === 'firstPrice') {
-					const { adId, firstPrice } = e.data;
+					const {
+						adId,
+						firstPrice
+					} = e.data;
 					firstPricesCache.set(adId, firstPrice);
 					const resolveReq = pendingRequests.get(adId);
 					if (resolveReq) {
@@ -60,7 +83,9 @@ const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/ra
 				}
 			});
 
-			worker.postMessage({ type: 'load' });
+			worker.postMessage({
+				type: 'load'
+			});
 		});
 	}
 
@@ -71,20 +96,16 @@ const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/ra
 		}
 		return new Promise((resolve) => {
 			pendingRequests.set(adId, resolve);
-			window.priceWorker.postMessage({ type: 'getFirstPrice', adId });
+			window.priceWorker.postMessage({
+				type: 'getFirstPrice',
+				adId
+			});
 		});
 	}
 
-	let priceData;
-	try {
-		priceData = await loadPriceData();
-	} catch (err) {
+	loadPriceData().catch(err => {
 		console.error("Fejl ved indlæsning af pricedata:", err);
-	} finally {
-		document.getElementById("searchSpinner").classList.remove("active");
-		document.getElementById("searchTerm").disabled = false;
-	}
-	window.priceData = priceData;
+	});
 
 	const jylland = ["0.200006", "0.200005", "0.200007", "0.200008"];
 	const sydsjaellandOgOerne = ["0.200004"];
@@ -166,7 +187,7 @@ const PRICE_FILE = PROXY + encodeURIComponent("https://github.com/UmFzbXVz/gg/ra
 						card.dataset.priceDiffStatus = status;
 					}
 				}
-			});
+			}).catch(() => {}); 
 		}
 
 		return card;
