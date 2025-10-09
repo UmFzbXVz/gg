@@ -939,16 +939,15 @@ input:checked + .slider:before {
 
 .ad-description {
   text-align: center;
-  white-space: pre-wrap;
-  font-size: clamp(0.8rem, 1vw, 1.2rem);
+  white-space: normal;
+  font-size: clamp(1rem, 1vw, 1.2rem);
   color: #ddd;
   max-height: 30%;
   overflow-y: auto;
   overflow-x: hidden;
-  white-space: pre-wrap;
   padding-right: 4px;
   padding: 4px;
-  display: flex;
+  display: block;
   justify-content: center;
 }
 
