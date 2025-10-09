@@ -37,6 +37,23 @@
 		.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
 		.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
 
+	function sanitizeHtml(html) {
+		const div = document.createElement('div');
+		div.innerHTML = html;
+		const allowedTags = ['p'];
+		const nodes = div.querySelectorAll('*');
+		nodes.forEach(node => {
+			if (!allowedTags.includes(node.tagName.toLowerCase())) {
+				node.replaceWith(...node.childNodes);
+			} else {
+				while (node.attributes.length > 0) {
+					node.removeAttribute(node.attributes[0].name);
+				}
+			}
+		});
+		return div.innerHTML.trim();
+	}
+
 	async function getDbaDescription(url) {
 		try {
 			const res = await fetch(PROXY + encodeURIComponent(url));
@@ -55,45 +72,58 @@
 				img.src = first;
 			}
 
-			const buildResult = (descriptionText) => {
+			const buildResult = (descriptionHtml) => {
 				if (images.length > 1) {
 					preloadSequential(images);
 				}
+				const sanitizedHtml = sanitizeHtml(descriptionHtml);
 				return {
-					description: decode(descriptionText),
+					description: sanitizedHtml,
 					images: images.length ? [images[0], ...images.slice(1)] : []
 				};
 			};
 
-			const ldJsonEl = htmlDoc.querySelector('script[type="application/ld+json"]');
-			if (ldJsonEl) {
+			const podiumLayout = htmlDoc.querySelector('podium-layout');
+			const template = podiumLayout?.querySelector('template[shadowrootmode="open"]');
+			let descEl = null;
+			if (template) {
+				descEl = template.content.querySelector('.whitespace-pre-wrap');
+				if (descEl && descEl.innerHTML.trim()) {
+					return buildResult(descEl.innerHTML.trim());
+				} else {
+					console.log('No .whitespace-pre-wrap in template, template content:', template.content.innerHTML.substring(0, 1000));
+				}
+			} else {
+				console.log('No podium-layout or template found, DOM body:', htmlDoc.body.innerHTML.substring(0, 1000));
+			}
+
+			const staticRouterScript = Array.from(htmlDoc.querySelectorAll('script')).find(
+				script => script.textContent.includes('__staticRouterHydrationData')
+			);
+			if (staticRouterScript) {
 				try {
-					const data = JSON.parse(ldJsonEl.textContent);
-					if (data && data.description) {
-						return buildResult(data.description.trim());
+					const jsonMatch = staticRouterScript.textContent.match(/__staticRouterHydrationData = JSON\.parse\("(.+?)"\)/);
+					if (jsonMatch && jsonMatch[1]) {
+						const data = JSON.parse(jsonMatch[1].replace(/\\"/g, '"'));
+						const fullDescription = data?.loaderData?.['item-recommerce']?.itemData?.description;
+						if (fullDescription && fullDescription.trim()) {
+							const htmlDescription = fullDescription
+								.split('\n')
+								.map(line => `<p>${line.trim()}</p>`)
+								.join('');
+							return buildResult(htmlDescription);
+						}
 					}
-				} catch {}
+				} catch (err) {
+					console.error('Error parsing __staticRouterHydrationData:', err);
+				}
 			}
 
-			const descEl = htmlDoc.querySelector('.vip-description-text');
-			if (descEl && descEl.innerText.trim()) {
-				return buildResult(descEl.innerText.trim());
-			}
-
-			const metaDesc = htmlDoc.querySelector('meta[name="description"]');
-			if (metaDesc && metaDesc.content.trim()) {
-				return buildResult(metaDesc.content.trim());
-			}
-
-			const ogDesc = htmlDoc.querySelector('meta[property="og:description"]');
-			if (ogDesc && ogDesc.content.trim()) {
-				return buildResult(ogDesc.content.trim());
-			}
-
-			return buildResult('Ingen beskrivelse tilgængelig.');
-		} catch {
+			return buildResult('<p>Ingen beskrivelse tilgængelig.</p>');
+		} catch (err) {
+			console.error('Error fetching DBA description:', err);
 			return {
-				description: 'Fejl ved indlæsning af beskrivelse.',
+				description: '<p>Fejl ved indlæsning af beskrivelse.</p>',
 				images: []
 			};
 		}
@@ -530,16 +560,25 @@
 					const data = await res.json();
 					const listing = data?.data?.listing;
 					if (listing) {
-						description = decode(listing.description || "Ingen beskrivelse.");
+						const rawDescription = decode(listing.description || "Ingen beskrivelse.");
+						const formattedDescription = rawDescription
+							.split('\n')
+							.map(line => line.trim())
+							.filter(line => line.length > 0)
+							.map(line => `<p>${line}</p>`)
+							.join('');
+						description = sanitizeHtml(formattedDescription);
+						console.log('Formatted GG description:', description);
 						images = listing.images?.map(img => img.medium || img.small || "").filter(Boolean) || [];
-
 						if (images.length === 0) {
 							images = ["noimage.svg"];
 						}
+					} else {
+						description = '<p>Ingen beskrivelse tilgængelig.</p>';
 					}
-
-				} catch {
-					description = "Fejl ved indlæsning.";
+				} catch (err) {
+					console.error('Error fetching GG listing:', err);
+					description = '<p>Fejl ved indlæsning af beskrivelse.</p>';
 				}
 			}
 		} else if (isDBA) {
