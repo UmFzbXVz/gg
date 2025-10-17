@@ -169,10 +169,7 @@
 
 		gallery.querySelectorAll('img').forEach(img => {
 			if (img.hasAttribute('srcset')) {
-				parseSrcset(img.getAttribute('srcset')).forEach(({
-					url,
-					width
-				}) => addOrUpdateImage(url, width));
+				parseSrcset(img.getAttribute('srcset')).forEach(({url, width}) => addOrUpdateImage(url, width));
 			} else if (img.hasAttribute('src')) {
 				addOrUpdateImage(img.getAttribute('src'));
 			}
@@ -188,10 +185,7 @@
 
 		template.querySelectorAll('link[rel="preload"][as="image"]').forEach(link => {
 			if (link.hasAttribute('imagesrcset')) {
-				parseSrcset(link.getAttribute('imagesrcset')).forEach(({
-					url,
-					width
-				}) => addOrUpdateImage(url, width));
+				parseSrcset(link.getAttribute('imagesrcset')).forEach(({url, width}) => addOrUpdateImage(url, width));
 			} else if (link.hasAttribute('href')) {
 				addOrUpdateImage(link.getAttribute('href'));
 			}
@@ -517,6 +511,58 @@
 		window.addEventListener("popstate", popHandler);
 	}
 
+async function getReshopperLocation(itemId) {
+    try {
+        const proxy = PROXY;
+        const apiUrl = `https://app.reshopper.com/api/views/items/${itemId}/via-feed`;
+        const headers = {
+            "Accept-Encoding": "identity",
+            "Connection": "Keep-Alive",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Host": "app.reshopper.com",
+            "ReshopperClient": "android 13",
+            "User-Agent": "Titanium SDK/12.8.1 (SM-G960F; Android API Level: 33; en-US;)",
+            "X-ReshopperVersion": "9.1.10"
+        };
+
+        const res = await fetch(proxy + encodeURIComponent(apiUrl), {
+            method: "POST",
+            headers,
+            body: new FormData() 
+        });
+
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+
+        const data = await res.json();
+        const loc = data?.item?.user?.address?.location;
+        if (!loc || !loc.lat || !loc.lon) return "Ukendt placering";
+
+        const reverseUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${Number(loc.lon).toFixed(6)}&y=${Number(loc.lat).toFixed(6)}&struktur=mini`;
+        const revRes = await fetch(proxy + encodeURIComponent(reverseUrl));
+
+        if (!revRes.ok) throw new Error(`HTTP error ${revRes.status}`);
+
+        const revData = await revRes.json();
+        console.log("Reverse geocoding response:", revData); 
+
+        let city = revData.postnrnavn || "Ukendt";
+        const zip = revData.postnr || "";
+
+        if (city === "Ukendt" && zip && window.cityToZip) {
+            const matchingCity = Object.keys(window.cityToZip).find(cityName => 
+                window.cityToZip[cityName].includes(zip)
+            );
+            if (matchingCity) {
+                city = matchingCity;
+            }
+        }
+
+        return `${city}${zip ? ` ${zip}` : ""}`;
+    } catch (err) {
+        console.error("Error fetching Reshopper location:", err);
+        return "Ukendt placering";
+    }
+}
 
 	grid.addEventListener("click", async e => {
 		const card = e.target.closest(".card");
@@ -592,7 +638,8 @@
 				images = [];
 			}
 			description = decode(card.dataset.description || "Ingen beskrivelse tilgængelig.");
-			location = decode(card.dataset.seller || "Ukendt sælger");
+			const itemId = card.dataset.key;
+			location = await getReshopperLocation(itemId);
 		}
 
 		if (!images.length) {
