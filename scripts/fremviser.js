@@ -543,7 +543,6 @@ async function getReshopperLocation(itemId) {
         if (!revRes.ok) throw new Error(`HTTP error ${revRes.status}`);
 
         const revData = await revRes.json();
-        console.log("Reverse geocoding response:", revData); 
 
         let city = revData.postnrnavn || "Ukendt";
         const zip = revData.postnr || "";
@@ -614,7 +613,6 @@ async function getReshopperLocation(itemId) {
 							.map(line => `<p>${line}</p>`)
 							.join('');
 						description = sanitizeHtml(formattedDescription);
-						console.log('Formatted GG description:', description);
 						images = listing.images?.map(img => img.medium || img.small || "").filter(Boolean) || [];
 						if (images.length === 0) {
 							images = ["noimage.svg"];

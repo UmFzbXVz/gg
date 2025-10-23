@@ -6,7 +6,7 @@ const RESHOPPER_MAX = 100;
 		jylland: {
 			lat: 56.15,
 			lon: 10.20,
-			radius: 200
+			radius: 90
 		},
 		sydsjaellandOgOerne: {
 			lat: 55.24,
@@ -21,7 +21,7 @@ const RESHOPPER_MAX = 100;
 		sjaelland: {
 			lat: 55.68,
 			lon: 12.10,
-			radius: 100
+			radius: 90
 		}
 	};
 
@@ -185,7 +185,7 @@ const RESHOPPER_MAX = 100;
 			removeSoldItemsFromQuery: true,
 			sortDirection: "desc",
 			sortBy: "created",
-			omitPointInTime: true,
+			omitPointInTime: false,
 			itemCategoryGroupPath: ""
 		};
 
