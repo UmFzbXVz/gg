@@ -411,7 +411,7 @@ input:checked + .slider:before {
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
-  z-index: 3;
+  z-index: -1;
 }
 
 .info-btn:hover {
@@ -1196,3 +1196,4 @@ input:checked + .slider:before {
     border-right-color: rgba(85, 255, 51, 0.7);
   }
 }
+
