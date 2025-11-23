@@ -40,11 +40,11 @@
               <ul class="locations-list">
                 <li>
                   <label>
-                    <input type="checkbox" id="locationJylland" value="jylland" checked>Jylland </label>
+                    <input type="checkbox" id="locationJylland" value="jylland">Jylland </label>
                 </li>
                 <li>
                   <label>
-                    <input type="checkbox" id="locationSydsjaelland" value="sydsjaelland-og-oerne"> Sydsj. og øerne </label>
+                    <input type="checkbox" id="locationSydsjaelland" value="sydsjaelland-og-oerne" checked> Sydsj. og øerne </label>
                 </li>
                 <li>
                   <label>
@@ -398,7 +398,7 @@
         const proxyUrl = PROXY_URLS[proxyIndex] + encodeURIComponent(url);
         try {
             const res = await fetch(proxyUrl, {
-                headers: proxyIndex === 2 ? { "x-cors-api-key": "temp_..." } : {} // Replace 'temp_...' with your cors.sh API key if needed
+                headers: proxyIndex === 2 ? { "x-cors-api-key": "temp_..." } : {} 
             });
             if (!res.ok) {
                 throw new Error(`HTTP error! Status: ${res.status}`);
@@ -421,7 +421,7 @@
             console.log("Postnumre hentet:", Object.keys(window.cityToZip).length);
         } catch (err) {
             console.error("Kunne ikke hente postnumre efter flere forsøg:", err);
-            window.cityToZip = {}; // Ensure cityToZip is defined even if fetch fails
+            window.cityToZip = {}; 
         }
     }
 
