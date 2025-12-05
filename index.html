@@ -390,40 +390,24 @@
     const MAX_RETRIES = PROXY_URLS.length;
     window.cityToZip = {};
 
-    async function fetchWithRetry(url, proxyIndex = 0) {
-        if (proxyIndex >= MAX_RETRIES) {
-            throw new Error("All CORS proxies failed");
-        }
 
-        const proxyUrl = PROXY_URLS[proxyIndex] + encodeURIComponent(url);
-        try {
-            const res = await fetch(proxyUrl, {
-                headers: proxyIndex === 2 ? { "x-cors-api-key": "temp_..." } : {} 
-            });
-            if (!res.ok) {
-                throw new Error(`HTTP error! Status: ${res.status}`);
-            }
-            return await res.json();
-        } catch (err) {
-            console.warn(`Proxy ${PROXY_URLS[proxyIndex]} failed: ${err.message}. Retrying with next proxy...`);
-            return fetchWithRetry(url, proxyIndex + 1);
-        }
-    }
+async function loadPostnumre() {
+    try {
+        const data = await fetch("https://api.dataforsyningen.dk/postnumre");
+        if (!data.ok) throw new Error("HTTP " + data.status);
+        const json = await data.json();
 
-    async function loadPostnumre() {
-        try {
-            const data = await fetchWithRetry("https://api.dataforsyningen.dk/postnumre");
-            data.forEach(entry => {
-                const city = entry.navn.trim();
-                if (!window.cityToZip[city]) window.cityToZip[city] = [];
-                window.cityToZip[city].push(entry.nr);
-            });
-            console.log("Postnumre hentet:", Object.keys(window.cityToZip).length);
-        } catch (err) {
-            console.error("Kunne ikke hente postnumre efter flere forsøg:", err);
-            window.cityToZip = {}; 
-        }
+        json.forEach(entry => {
+            const city = entry.navn.trim();
+            if (!window.cityToZip[city]) window.cityToZip[city] = [];
+            window.cityToZip[city].push(entry.nr);
+        });
+        console.log("Postnumre hentet:", Object.keys(window.cityToZip).length);
+    } catch (err) {
+        console.error("Kunne ikke hente postnumre:", err);
+        window.cityToZip = {};
     }
+}
 
     window.getZipForCity = (cityName) => {
         if (!cityName) return "";
