@@ -2,19 +2,18 @@ const MAX_RESULTS = 300;
 const PROXY = "https://corsproxy.io/?";
 const PRICE_FILE = "https://umfzbxvz.github.io/gg/docs/priser.json.gz";
 
-(async () => {
-    const grid = document.getElementById("grid");
-    const API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON";
-    let isLoading = false;
+const isMobileDevice = /mobile|tablet|android|iphone|ipad|ipod/i.test(navigator.userAgent) || 
+                       ('ontouchstart' in window && window.innerWidth < 1024);
 
-    const firstPricesCache = new Map();
-    const pendingRequests = new Map();
+let priceWorker = null;
+const firstPricesCache = new Map();
+const pendingRequests = new Map();
 
+if (!isMobileDevice) {
     async function loadPriceData() {
         return new Promise((resolve, reject) => {
             const workerCode = `
                 importScripts('https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js');
-
                 let priceData;
                 let ready = false;
                 let pendingQueries = [];
@@ -27,22 +26,16 @@ const PRICE_FILE = "https://umfzbxvz.github.io/gg/docs/priser.json.gz";
                             const arrayBuffer = await res.arrayBuffer();
                             const priceJsonString = pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
                             priceData = JSON.parse(priceJsonString);
-                            console.log("Indlæst priceData på ca.", priceJsonString.length, "tegn");
                             ready = true;
                             self.postMessage({ type: 'ready' });
                             for (const query of pendingQueries) {
-                                const adId = query.adId;
-                                const history = priceData[adId];
+                                const history = priceData[query.adId];
                                 const firstPrice = (history && history.length > 0) ? history[0][2] : null;
-                                self.postMessage({ type: 'firstPrice', adId, firstPrice });
+                                self.postMessage({ type: 'firstPrice', adId: query.adId, firstPrice });
                             }
                             pendingQueries = [];
                         } catch (err) {
                             self.postMessage({ type: 'error', error: err.message });
-                            for (const query of pendingQueries) {
-                                self.postMessage({ type: 'firstPrice', adId: query.adId, firstPrice: null });
-                            }
-                            pendingQueries = [];
                         }
                     } else if (data.type === 'getFirstPrice') {
                         const adId = data.adId;
@@ -56,20 +49,14 @@ const PRICE_FILE = "https://umfzbxvz.github.io/gg/docs/priser.json.gz";
                     }
                 });
             `;
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            priceWorker = new Worker(URL.createObjectURL(blob));
+            window.priceWorker = priceWorker;
 
-            const blob = new Blob([workerCode], {
-                type: 'application/javascript'
-            });
-            const worker = new Worker(URL.createObjectURL(blob));
-            window.priceWorker = worker;
-
-            worker.addEventListener('message', (e) => {
-                if (e.data.type === 'ready') {
-                    resolve({});
-                } else if (e.data.type === 'error') {
-                    console.error("Fejl ved loadPriceData:", e.data.error);
-                    reject(new Error(e.data.error));
-                } else if (e.data.type === 'firstPrice') {
+            priceWorker.addEventListener('message', (e) => {
+                if (e.data.type === 'ready') resolve({});
+                else if (e.data.type === 'error') reject(new Error(e.data.error));
+                else if (e.data.type === 'firstPrice') {
                     const { adId, firstPrice } = e.data;
                     firstPricesCache.set(adId, firstPrice);
                     const resolveReq = pendingRequests.get(adId);
@@ -80,168 +67,149 @@ const PRICE_FILE = "https://umfzbxvz.github.io/gg/docs/priser.json.gz";
                 }
             });
 
-            worker.postMessage({
-                type: 'load'
-            });
+            priceWorker.postMessage({ type: 'load' });
         });
     }
 
     async function getFirstPrice(adId) {
         const cached = firstPricesCache.get(adId);
-        if (cached !== undefined) {
-            return cached;
-        }
+        if (cached !== undefined) return cached;
         return new Promise((resolve) => {
             pendingRequests.set(adId, resolve);
-            window.priceWorker.postMessage({
-                type: 'getFirstPrice',
-                adId
-            });
+            priceWorker.postMessage({ type: 'getFirstPrice', adId });
         });
     }
 
     loadPriceData().catch(err => {
-        console.error("Fejl ved indlæsning af pricedata:", err);
+        console.error("Fejl ved indlæsning af prishistorik:", err);
     });
 
-    const jylland = ["0.200006", "0.200005", "0.200007", "0.200008"];
-    const sydsjaellandOgOerne = ["0.200004"];
-    const fyn = ["0.200009"];
-    const sjaelland = ["0.200001", "0.200002", "0.200003"];
+    window.getFirstPrice = getFirstPrice;
+} else {
+    window.getFirstPrice = () => Promise.resolve(null);
+}
 
-    function getSelectedLocations() {
-        const selected = [];
-        if (document.getElementById("locationJylland")?.checked) selected.push(...jylland);
-        if (document.getElementById("locationSydsjaelland")?.checked) selected.push(...sydsjaellandOgOerne);
-        if (document.getElementById("locationFyn")?.checked) selected.push(...fyn);
-        if (document.getElementById("locationSjaelland")?.checked) selected.push(...sjaelland);
-        return selected.length ? selected : jylland;
+const grid = document.getElementById("grid");
+const API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON";
+let isLoading = false;
+
+const jylland = ["0.200006", "0.200005", "0.200007", "0.200008"];
+const sydsjaellandOgOerne = ["0.200004"];
+const fyn = ["0.200009"];
+const sjaelland = ["0.200001", "0.200002", "0.200003"];
+
+function getSelectedLocations() {
+    const selected = [];
+    if (document.getElementById("locationJylland")?.checked) selected.push(...jylland);
+    if (document.getElementById("locationSydsjaelland")?.checked) selected.push(...sydsjaellandOgOerne);
+    if (document.getElementById("locationFyn")?.checked) selected.push(...fyn);
+    if (document.getElementById("locationSjaelland")?.checked) selected.push(...sjaelland);
+    return selected.length ? selected : jylland;
+}
+
+function formatPrice(amount, currency) {
+    if (typeof amount !== "number") return "";
+    if (amount === 0) return "Gives væk";
+    const formatted = amount.toLocaleString("da-DK");
+    return currency === "DKK" ? `${formatted} kr.` : `${formatted} ${currency || ""}`;
+}
+
+function makeCard(doc) {
+    if (!doc.image_urls || doc.image_urls.length === 0) {
+        doc.image_urls = ["noimage.svg"];
     }
+    const card = document.createElement("a");
+    card.className = "card";
+    card.href = doc.canonical_url?.startsWith("http") ? doc.canonical_url : `https://www.dba.dk${doc.canonical_url || ""}`;
+    card.target = "_blank";
+    card.rel = "noopener noreferrer";
+    const location = doc.location || "";
+    const zip = window.getZipForCity(location);
+    const imageSrc = doc.image_urls[0];
+    const priceText = formatPrice(doc.price?.amount, doc.price?.currency_code);
+    let imageHtml = imageSrc.endsWith("noimage.svg")
+        ? `<img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" class="fallback-image" />`
+        : `<img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" />`;
 
-    function formatPrice(amount, currency) {
-        if (typeof amount !== "number") return "";
-        if (amount === 0) return "Gives væk";
-        const formatted = amount.toLocaleString("da-DK");
-        return currency === "DKK" ? `${formatted} kr.` : `${formatted} ${currency || ""}`;
-    }
-
-    function makeCard(doc) {
-        if (!doc.image_urls || doc.image_urls.length === 0) {
-            doc.image_urls = ["noimage.svg"];
-        }
-
-        const card = document.createElement("a");
-        card.className = "card";
-        card.href = doc.canonical_url?.startsWith("http") ? doc.canonical_url : `https://www.dba.dk${doc.canonical_url || ""}`;
-        card.target = "_blank";
-        card.rel = "noopener noreferrer";
-
-        const location = doc.location || "";
-        const zip = window.getZipForCity(location);
-        const imageSrc = doc.image_urls[0];
-        const priceText = formatPrice(doc.price?.amount, doc.price?.currency_code);
-
-        let imageHtml;
-        if (imageSrc.endsWith("noimage.svg")) {
-            imageHtml = `<img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" class="fallback-image" />`;
-        } else {
-            imageHtml = `<img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" />`;
-        }
-
-        card.innerHTML = `
-            <div class="card-image-wrapper">
-                ${imageHtml}
+    card.innerHTML = `
+        <div class="card-image-wrapper">
+            ${imageHtml}
+        </div>
+        <div class="dba-badge">dba</div>
+        <div class="card-content">
+            <h3>${doc.heading || ""}</h3>
+            <div class="card-footer">
+                <div class="price">${priceText}</div>
+                <div class="city">${(location === "København K" || location === "København V" || location === "Frederiksberg C") ? location : location + (zip ? " " + zip : "")}</div>
             </div>
-            <div class="dba-badge">dba</div>
-            <div class="card-content">
-                <h3>${doc.heading || ""}</h3>
-                <div class="card-footer">
-                    <div class="price">${priceText}</div>
-                    <div class="city">${(location === "København K" || location === "København V" || location === "Frederiksberg C") ? location : location + (zip ? " " + zip : "")}</div>
-                </div>
-            </div>
-        `;
+        </div>
+    `;
+    card.dataset.timestamp = doc.timestamp || 0;
+    card.dataset.images = JSON.stringify(doc.image_urls);
+    card.dataset.key = doc.id;
 
-        card.dataset.timestamp = doc.timestamp || 0;
-        card.dataset.images = JSON.stringify(doc.image_urls);
-        card.dataset.key = doc.id;
-
-        const adId = String(doc.id);
-
-        const currentPrice = doc.price?.amount;
-        if (typeof currentPrice === "number") {
-            getFirstPrice(adId).then(firstPrice => {
-                if (firstPrice !== null && typeof firstPrice === "number" && firstPrice !== 0) {
-                    const priceDiff = currentPrice - firstPrice;
-                    if (priceDiff !== 0) {
-                        const status = priceDiff > 0 ? "steget" : "faldet";
-                        const diffBadge = document.createElement("div");
-                        diffBadge.className = `price-change-badge ${status}`;
-                        diffBadge.innerHTML = `${priceDiff > 0 ? '<svg viewBox="0 0 24 24" class="arrow-up"><path d="M12 2 L22 22 L2 22 Z"/></svg>' : '<svg viewBox="0 0 24 24" class="arrow-down"><path d="M2 2 L22 2 L12 22 Z"/></svg>'} ${Math.abs(priceDiff).toLocaleString("da-DK")} kr.`;
-                        card.querySelector(".card-image-wrapper").appendChild(diffBadge);
-
-                        card.dataset.priceDiff = priceDiff;
-                        card.dataset.priceDiffStatus = status;
-                    }
+    const adId = String(doc.id);
+    const currentPrice = doc.price?.amount;
+    if (typeof currentPrice === "number" && !isMobileDevice) {
+        getFirstPrice(adId).then(firstPrice => {
+            if (firstPrice !== null && typeof firstPrice === "number" && firstPrice !== 0) {
+                const priceDiff = currentPrice - firstPrice;
+                if (priceDiff !== 0) {
+                    const status = priceDiff > 0 ? "steget" : "faldet";
+                    const diffBadge = document.createElement("div");
+                    diffBadge.className = `price-change-badge ${status}`;
+                    diffBadge.innerHTML = `${priceDiff > 0 ? '<svg viewBox="0 0 24 24" class="arrow-up"><path d="M12 2 L22 22 L2 22 Z"/></svg>' : '<svg viewBox="0 0 24 24" class="arrow-down"><path d="M2 2 L22 2 L12 22 Z"/></svg>'} ${Math.abs(priceDiff).toLocaleString("da-DK")} kr.`;
+                    card.querySelector(".card-image-wrapper").appendChild(diffBadge);
+                    card.dataset.priceDiff = priceDiff;
+                    card.dataset.priceDiffStatus = status;
                 }
-            }).catch(() => {});
-        }
-
-        return card;
-    }
-
-    async function fetchDBAPage(page, term, category) {
-        const params = new URLSearchParams();
-        params.append("q", term);
-        if (category) params.append("category", category);
-        params.append("sort", "PUBLISHED_DESC");
-        getSelectedLocations().forEach(loc => params.append("location", loc));
-        params.append("dealer_segment", "1");
-        ["1", "2"].forEach(tt => params.append("trade_type", tt));
-        params.append("page", page);
-
-        const res = await fetch(`${PROXY}${API_URL}?${params.toString()}`);
-        if (!res.ok) throw new Error(`HTTP-fejl ${res.status}`);
-        const data = await res.json();
-        const bapDocs = (data.docs || []).filter(doc => doc.type === "bap");
-        const totalResults = data.metadata?.result_size?.match_count || 0;
-
-        return {
-            bapDocs,
-            totalResults
-        };
-    }
-
-    window.hentOgVisDBA = async function(term, category, bgMode = false) {
-        if (isLoading) return;
-        isLoading = true;
-
-        try {
-            const firstPage = await fetchDBAPage(1, term, category);
-            const totalResults = Math.min(firstPage.totalResults, MAX_RESULTS);
-            window.totalAds += totalResults;
-
-            const perPageAPI = 60;
-            const maxPagesDBA = bgMode ? 1 : (window.isMagicMode ? 2 : Math.ceil(totalResults / perPageAPI));
-            const pages = Array.from({
-                length: maxPagesDBA
-            }, (_, i) => i + 1);
-
-            for (const page of pages) {
-                const pageData = page === 1 ? firstPage : await fetchDBAPage(page, term, category);
-                for (const doc of pageData.bapDocs) {
-                    const adId = doc.id;
-                    if (window.seenAdKeys.has(adId)) continue;
-                    const card = makeCard(doc);
-                    window.allCards.push(card);
-                    window.seenAdKeys.add(adId);
-                }
-                window.loadedAds += pageData.bapDocs.length;
             }
-        } catch (err) {
-            console.error("Fejl DBA:", err);
-        } finally {
-            isLoading = false;
+        }).catch(() => {});
+    }
+    return card;
+}
+
+async function fetchDBAPage(page, term, category) {
+    const params = new URLSearchParams();
+    params.append("q", term);
+    if (category) params.append("category", category);
+    params.append("sort", "PUBLISHED_DESC");
+    getSelectedLocations().forEach(loc => params.append("location", loc));
+    params.append("dealer_segment", "1");
+    ["1", "2"].forEach(tt => params.append("trade_type", tt));
+    params.append("page", page);
+    const res = await fetch(`${PROXY}${API_URL}?${params.toString()}`);
+    if (!res.ok) throw new Error(`HTTP-fejl ${res.status}`);
+    const data = await res.json();
+    const bapDocs = (data.docs || []).filter(doc => doc.type === "bap");
+    const totalResults = data.metadata?.result_size?.match_count || 0;
+    return { bapDocs, totalResults };
+}
+
+window.hentOgVisDBA = async function(term, category, bgMode = false) {
+    if (isLoading) return;
+    isLoading = true;
+    try {
+        const firstPage = await fetchDBAPage(1, term, category);
+        const totalResults = Math.min(firstPage.totalResults, MAX_RESULTS);
+        window.totalAds += totalResults;
+        const perPageAPI = 60;
+        const maxPagesDBA = bgMode ? 1 : (window.isMagicMode ? 2 : Math.ceil(totalResults / perPageAPI));
+        const pages = Array.from({ length: maxPagesDBA }, (_, i) => i + 1);
+        for (const page of pages) {
+            const pageData = page === 1 ? firstPage : await fetchDBAPage(page, term, category);
+            for (const doc of pageData.bapDocs) {
+                const adId = doc.id;
+                if (window.seenAdKeys.has(adId)) continue;
+                const card = makeCard(doc);
+                window.allCards.push(card);
+                window.seenAdKeys.add(adId);
+            }
+            window.loadedAds += pageData.bapDocs.length;
         }
-    };
-})();
+    } catch (err) {
+        console.error("Fejl DBA:", err);
+    } finally {
+        isLoading = false;
+    }
+};
