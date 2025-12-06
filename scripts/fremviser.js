@@ -538,7 +538,7 @@ async function getReshopperLocation(itemId) {
         if (!loc || !loc.lat || !loc.lon) return "Ukendt placering";
 
         const reverseUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${Number(loc.lon).toFixed(6)}&y=${Number(loc.lat).toFixed(6)}&struktur=mini`;
-        const revRes = await fetch(proxy + encodeURIComponent(reverseUrl));
+       const revRes = await fetch(reverseUrl);
 
         if (!revRes.ok) throw new Error(`HTTP error ${revRes.status}`);
 
