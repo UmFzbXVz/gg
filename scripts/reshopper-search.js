@@ -14,7 +14,7 @@ const RESHOPPER_MAX = 100;
   const CUSTOM_LOCATION = {
     lat: 54.891039361728026,
     lon: 11.87686376273632,
-    radiusInKilometers: 20
+    radiusInKilometers: 50
   };
 
   function getSelectedLocationsRes() {
