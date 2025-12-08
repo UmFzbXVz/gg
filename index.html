@@ -6,6 +6,10 @@
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <style>
+      .location-selector.disabled label,
+      .location-selector.disabled input { opacity: 0.4; pointer-events: none; }
+    </style>
   </head>
   <body>
     <div class="page-container">
@@ -38,32 +42,21 @@
             <div class="location-selector">
               <div class="category-menu-title">Områder</div>
               <ul class="locations-list">
-                <li>
-                  <label>
-                    <input type="checkbox" id="locationJylland" value="jylland">Jylland </label>
-                </li>
-                <li>
-                  <label>
-                    <input type="checkbox" id="locationSydsjaelland" value="sydsjaelland-og-oerne" checked> Sydsj. og øerne </label>
-                </li>
-                <li>
-                  <label>
-                    <input type="checkbox" id="locationFyn" value="fyn"> Fyn </label>
-                </li>
-                <li>
-                  <label>
-                    <input type="checkbox" id="locationSjaelland" value="sjaelland"> Sjælland </label>
-                </li>
+                <li><label><input type="checkbox" id="locationJylland" value="jylland">Jylland </label></li>
+                <li><label><input type="checkbox" id="locationSydsjaelland" value="sydsjaelland-og-oerne" checked> Sydsj. og øerne </label></li>
+                <li><label><input type="checkbox" id="locationFyn" value="fyn"> Fyn </label></li>
+                <li><label><input type="checkbox" id="locationSjaelland" value="sjaelland"> Sjælland </label></li>
               </ul>
             </div>
             <hr class="menu-divider" />
-            <label class="bg-toggle"> Auto-opdatér <input type="checkbox" id="bgToggle" checked>
-            </label>
+            <label class="bg-toggle"> Auto-opdatér <input type="checkbox" id="bgToggle" checked></label>
+            <label class="bg-toggle"> NA30 <input type="checkbox" id="closestToggle"></label>
           </div>
         </div>
       </form>
       <div id="grid"></div>
     </div>
+
     <script src="https://unpkg.com/@panzoom/panzoom@4.6.0/dist/panzoom.min.js"></script>
     <script src="scripts/gg-search.js"></script>
     <script src="scripts/dba-search.js"></script>
@@ -79,8 +72,8 @@
     const categoryButton = document.getElementById("categoryButton");
     const categoryMenu = document.getElementById("categoryMenu");
     const bgToggle = document.getElementById("bgToggle");
+    const closestToggle = document.getElementById("closestToggle");
     const sentinel = document.createElement('div');
-
     let selectedCategory = 'mobler';
     const BATCH_SIZE = 30;
     let currentIndex = 0;
@@ -88,103 +81,59 @@
     window.allCards = [];
     window.pendingBgSearches = [];
     window.seenAdKeys = new Set();
+    window.userPosition = null;
     sentinel.style.height = '1px';
 
     const observer = new IntersectionObserver(entries => {
-        if (entries[0].isIntersecting) {
-            renderNextBatch();
-        }
-    }, {
-        rootMargin: '200px 0px 0px 0px'
-    });
-
-    function debounce(func, wait) {
-        let timeout;
-        return function(...args) {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(this, args), wait);
-        };
-    }
+        if (entries[0].isIntersecting) renderNextBatch();
+    }, { rootMargin: '200px 0px 0px 0px' });
 
     bgToggle.addEventListener("change", () => {
-        if (bgToggle.checked && window.bgSearch) {
-            window.bgSearch.resume();
+        if (bgToggle.checked && window.bgSearch) window.bgSearch.resume();
+    });
+
+    closestToggle.addEventListener("change", () => {
+        if (closestToggle.checked) {
+            window.userPosition = { lat: 54.890599, lon: 11.8710399 };
+            document.querySelector('.location-selector').classList.add('disabled');
+        } else {
+            window.userPosition = null;
+            document.querySelector('.location-selector').classList.remove('disabled');
         }
+        if (input.value.trim()) form.requestSubmit();
     });
 
     const categories = {
-        'mobler': {
-            ggSlug: '/mobler',
-            ggTitle: 'møbler',
-            dbaCat: '0.78',
-            reshopperFacetValue: 'Home'
-        },
-        'dyr': {
-            ggSlug: '/dyr-og-tilbehor',
-            ggTitle: 'dyr og tilbehør',
-            dbaCat: '0.77',
-            reshopperFacetValue: null
-        },
-        'kunst': {
-            ggSlug: '/antikviteter-og-kunst',
-            ggTitle: 'antikviteter og kunst',
-            dbaCat: '0.76',
-            reshopperFacetValue: null
-        },
-        'toejogboern': {
-            ggSlug: '/born',
-            ggTitle: 'børn',
-            dbaCat: '0.68',
-            reshopperFacetValue: 'Kids'
-        },
-        'alting': {
-            ggSlug: '',
-            ggTitle: 'alting',
-            dbaCat: undefined,
-            reshopperFacetValue: undefined
-        }
+        'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78', reshopperFacetValue: 'Home' },
+        'dyr': { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77', reshopperFacetValue: null },
+        'kunst': { ggSlug: '/antikviteter-og-kunst', ggTitle: 'antikviteter og kunst', dbaCat: '0.76', reshopperFacetValue: null },
+        'toejogboern': { ggSlug: '/born', ggTitle: 'børn', dbaCat: '0.68', reshopperFacetValue: 'Kids' },
+        'alting': { ggSlug: '', ggTitle: 'alting', dbaCat: undefined, reshopperFacetValue: undefined }
     };
 
-    const cardKey = (card) => card.dataset.id || card.dataset.key;
-
-    grid.addEventListener("click", (e) => {
+    const cardKey = card => card.dataset.id || card.dataset.key;
+    grid.addEventListener("click", e => {
         const card = e.target.closest(".card");
         if (!card) return;
-
         if (e.ctrlKey || e.metaKey) {
-            const href = card.href;
-            if (href) window.open(href, "_blank");
-
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            return false;
+            window.open(card.href, "_blank");
+            e.preventDefault(); e.stopPropagation();
         }
     }, true);
 
-    const showNoResults = (term) => {
-        if (window.allCards.length === 0) {
-            grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
-        }
+    const showNoResults = term => {
+        if (!window.allCards.length) grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
     };
 
-    const sortAllCards = () => {
-        window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
-    };
+    const sortAllCards = () => window.allCards.sort((a,b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
 
     const renderNextBatch = () => {
-        const nextBatch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
-        if (nextBatch.length === 0) return;
-        const fragment = document.createDocumentFragment();
-        nextBatch.forEach(card => fragment.appendChild(card));
-        grid.insertBefore(fragment, sentinel);
-        currentIndex += nextBatch.length;
-    };
-
-    const handleScroll = () => {
-        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
-            renderNextBatch();
-        }
+        const batch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
+        if (!batch.length) return;
+        const frag = document.createDocumentFragment();
+        batch.forEach(c => frag.appendChild(c));
+        grid.insertBefore(frag, sentinel);
+        currentIndex += batch.length;
     };
 
     window.sortAndRender = () => {
@@ -196,225 +145,99 @@
         observer.observe(sentinel);
     };
 
-    const insertNewCardsAnimated = (newCards) => {
-        const fragment = document.createDocumentFragment();
-        newCards.forEach(card => {
-            card.classList.add('new-card');
-            fragment.appendChild(card);
-            requestAnimationFrame(() => card.classList.remove('new-card'));
-        });
-        grid.insertBefore(fragment, grid.firstChild);
-    };
-
-    window.startSpinner = () => {
-        spinner.classList.add("active");
-        input.disabled = true;
-    };
-    window.stopSpinner = () => {
-        spinner.classList.remove("active");
-        input.disabled = false;
-    };
+    window.startSpinner = () => { spinner.classList.add("active"); input.disabled = true; };
+    window.stopSpinner = () => { spinner.classList.remove("active"); input.disabled = false; };
 
     const magicSpan = (id, terms, displayTerm) => {
-        const span = document.getElementById(id);
-        if (!span) return;
-
-        span.addEventListener('click', async () => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('click', async () => {
             if (spinner.classList.contains("active")) return;
-
             const catObj = categories[selectedCategory];
-            input.value = "";
-            input.disabled = true;
-            spinner.classList.add("active");
-            window.allCards = [];
-            window.totalAds = 0;
-            window.loadedAds = 0;
-            currentIndex = 0;
-            window.removeEventListener('scroll', handleScroll);
+            input.value = ""; input.disabled = true; spinner.classList.add("active");
+            window.allCards = []; window.totalAds = 0; window.loadedAds = 0; currentIndex = 0;
             window.seenAdKeys.clear();
-
             try {
                 window.isMagicMode = true;
-
-                const bgEnabled = bgToggle.checked;
-                if (bgEnabled && window.bgSearch) {
-                    window.bgSearch.clear();
-                    terms.forEach(term => window.bgSearch.addActiveSearch(term, catObj));
-                }
-
+                const bgOn = bgToggle.checked;
+                if (bgOn && window.bgSearch) { window.bgSearch.clear(); terms.forEach(t => window.bgSearch.addActiveSearch(t, catObj)); }
                 for (const term of terms) {
                     await window.hentOgVisGG(term, catObj, false);
                     await window.hentOgVisDBA(term, catObj.dbaCat, false);
                     await window.hentOgVisReshopper(term, false, catObj.reshopperFacetValue);
                 }
-
-                const seenKeys = new Set();
-                window.allCards = window.allCards.filter(card => {
-                    const key = cardKey(card);
-                    if (seenKeys.has(key)) return false;
-                    seenKeys.add(key);
-                    return true;
-                });
-
-                insertNewCardsAnimated(window.allCards);
+                const seen = new Set();
+                window.allCards = window.allCards.filter(c => { const k = cardKey(c); if (seen.has(k)) return false; seen.add(k); return true; });
                 window.loadedAds = window.totalAds = window.allCards.length;
                 window.sortAndRender();
                 showNoResults(displayTerm);
-
-                if (bgEnabled && window.bgSearch) {
-                    window.bgSearch.setBaseline();
-                } else {
-                    window.pendingBgSearches = terms.map(term => ({
-                        term,
-                        catObj
-                    }));
-                    if (window.bgSearch) window.bgSearch.clear();
-                }
-            } catch (err) {
-                console.error("Fejl i magicSpan-søgning:", err);
+                if (bgOn && window.bgSearch) window.bgSearch.setBaseline();
             } finally {
-                input.disabled = false;
-                spinner.classList.remove("active");
-
-                window.isMagicMode = false;
+                input.disabled = false; spinner.classList.remove("active"); window.isMagicMode = false;
             }
         });
     };
 
-    const defaultLi = categoryMenu.querySelector('ul:first-of-type > li[data-value="mobler"]');
-    if (defaultLi) defaultLi.classList.add('active');
+    categoryMenu.querySelector('li[data-value="mobler"]').classList.add('active');
+    const overlay = document.createElement('div'); overlay.className = 'menu-overlay';
+    categoryButton.addEventListener('click', e => { e.preventDefault(); categoryMenu.style.display = categoryMenu.style.display === 'block' ? 'none' : 'block'; if (categoryMenu.style.display === 'block') document.body.appendChild(overlay); else overlay.remove(); });
+    overlay.addEventListener('click', () => { categoryMenu.style.display = 'none'; overlay.remove(); });
 
-    const overlay = document.createElement('div');
-    overlay.className = 'menu-overlay';
+    input.addEventListener("focus", () => input.select());
 
-    categoryButton.addEventListener('click', (e) => {
+    categoryMenu.querySelectorAll('.categories-list > li').forEach(li => li.addEventListener('click', e => {
+        selectedCategory = li.dataset.value;
+        categoryMenu.querySelectorAll('.categories-list > li').forEach(i => i.classList.remove('active'));
+        li.classList.add('active');
+        categoryMenu.style.display = 'none'; overlay.remove();
+        if (input.value.trim()) form.requestSubmit();
+        e.stopPropagation();
+    }));
+
+    document.querySelectorAll('.locations-list input[type="checkbox"]').forEach(cb => cb.addEventListener('change', () => { if (input.value.trim()) form.requestSubmit(); }));
+
+    form.addEventListener("submit", async e => {
         e.preventDefault();
-        if (categoryMenu.style.display === 'block') {
-            categoryMenu.style.display = 'none';
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-        } else {
-            categoryMenu.style.display = 'block';
-            document.body.appendChild(overlay);
-        }
-    });
-
-    overlay.addEventListener('click', () => {
-        categoryMenu.style.display = 'none';
-        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    });
-
-    input.addEventListener("focus", function() {
-        this.select();
-    });
-
-    categoryMenu.querySelectorAll('.categories-list > li').forEach(li => {
-        li.addEventListener('click', (e) => {
-            selectedCategory = li.dataset.value;
-            categoryMenu.querySelectorAll('.categories-list > li').forEach(item => item.classList.remove('active'));
-            li.classList.add('active');
-            categoryMenu.style.display = 'none';
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-            if (input.value.trim()) form.requestSubmit();
-            e.stopPropagation();
-        });
-    });
-
-    document.querySelectorAll('.locations-list input[type="checkbox"]').forEach(checkbox => {
-        checkbox.addEventListener('change', () => {
-            if (input.value.trim()) form.requestSubmit();
-        });
-    });
-
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const term = input.value.trim();
-        if (!term) return;
-
+        const term = input.value.trim(); if (!term) return;
         const catObj = categories[selectedCategory];
-        input.disabled = true;
-        spinner.classList.add("active");
-
-        if (isFirstSearch) {
-            grid.innerHTML = "";
-            isFirstSearch = false;
-        }
-        window.allCards = [];
-        window.totalAds = 0;
-        window.loadedAds = 0;
-        currentIndex = 0;
-        window.removeEventListener('scroll', handleScroll);
+        input.disabled = true; spinner.classList.add("active");
+        if (isFirstSearch) { grid.innerHTML = ""; isFirstSearch = false; }
+        window.allCards = []; window.totalAds = 0; window.loadedAds = 0; currentIndex = 0;
         window.seenAdKeys.clear();
-
         if (window.bgSearch) window.bgSearch.clear();
-
         try {
             await Promise.all([
                 window.hentOgVisGG(term, catObj, false),
                 window.hentOgVisDBA(term, catObj.dbaCat, false),
                 window.hentOgVisReshopper(term, false, catObj.reshopperFacetValue)
             ]);
-
-            await new Promise(resolve => setTimeout(resolve, 0));
             window.loadedAds = window.totalAds;
             window.sortAndRender();
-
-            if (bgToggle.checked && window.bgSearch) {
-                window.bgSearch.addActiveSearch(term, catObj);
-                window.bgSearch.setBaseline();
-            } else {
-                window.pendingBgSearches = [{
-                    term,
-                    catObj
-                }];
-            }
-
+            if (bgToggle.checked && window.bgSearch) { window.bgSearch.addActiveSearch(term, catObj); window.bgSearch.setBaseline(); }
             showNoResults(term);
-        } catch (err) {
-            console.error("Fejl i søgning:", err);
         } finally {
-            input.disabled = false;
-            spinner.classList.remove("active");
+            input.disabled = false; spinner.classList.remove("active");
         }
     });
 
-    magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig", "Wikkelsø"], "gode sager");
-    magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander", "retro", "skammel"], "generelle sager");
+    magicSpan("rat", ["Jason","Rolschau","Glostrup møbelfabrik","Brande møbelindustri","Østervig","Wikkelsø"], "gode sager");
+    magicSpan("hvidt", ["bord","skrivebord","sofa","sofabord","spisebord","skænk","stol","lænestol","hvilestol","palisander","retro","skammel"], "generelle sager");
 })();
-
 (() => {
-    const PROXY_URLS = [
-        "https://corsproxy.io/?",
-        "https://api.allorigins.win/raw?url=",
-        "https://proxy.cors.sh/"
-    ];
-    const MAX_RETRIES = PROXY_URLS.length;
     window.cityToZip = {};
-
-
-async function loadPostnumre() {
-    try {
-        const data = await fetch("https://api.dataforsyningen.dk/postnumre");
-        if (!data.ok) throw new Error("HTTP " + data.status);
-        const json = await data.json();
-
-        json.forEach(entry => {
-            const city = entry.navn.trim();
-            if (!window.cityToZip[city]) window.cityToZip[city] = [];
-            window.cityToZip[city].push(entry.nr);
-        });
-        console.log("Postnumre hentet:", Object.keys(window.cityToZip).length);
-    } catch (err) {
-        console.error("Kunne ikke hente postnumre:", err);
-        window.cityToZip = {};
+    async function loadPostnumre() {
+        try {
+            const res = await fetch("https://api.dataforsyningen.dk/postnumre");
+            if (!res.ok) throw new Error("HTTP "+res.status);
+            const json = await res.json();
+            json.forEach(e => {
+                const city = e.navn.trim();
+                if (!window.cityToZip[city]) window.cityToZip[city] = [];
+                window.cityToZip[city].push(e.nr);
+            });
+        } catch (e) { console.error("Postnumre fejl:", e); }
     }
-}
-
-    window.getZipForCity = (cityName) => {
-        if (!cityName) return "";
-        const zips = window.cityToZip[cityName.trim()];
-        return zips && zips.length ? zips.join(", ") : "";
-    };
-
+    window.getZipForCity = city => city && window.cityToZip[city.trim()] ? window.cityToZip[city.trim()].join(", ") : "";
     loadPostnumre();
 })();
     </script>
