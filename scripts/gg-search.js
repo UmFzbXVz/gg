@@ -87,12 +87,11 @@ function getSelectedAreas() {
 
 async function hentSide(page, term, categorySlug) {
     const useNearest = window.userPosition !== null;
-
     const filters = {
-        category: categorySlug || "",
+        category: categorySlug ? categorySlug : "",   
         categoryFields: [],
         userType: "Private",
-        term: term,
+        term: term || "",
         weapons: true,
         display: "list"
     };
@@ -100,7 +99,8 @@ async function hentSide(page, term, categorySlug) {
     if (useNearest) {
         filters.latitude = window.userPosition.lat;
         filters.longitude = window.userPosition.lon;
-        filters.sorting = "Nearest";
+        filters.distance = 50; 
+        filters.sorting = "Nearest";   
     } else {
         filters.area = getSelectedAreas();
         filters.sorting = "LastCreated";
@@ -113,8 +113,13 @@ async function hentSide(page, term, categorySlug) {
             pagination: { perPage: 60, page: page },
             currentUrl: categorySlug || "/s"
         },
-        extensions: {"clientLibrary":{"name":"@apollo/client","version":"4.0.9"}},
-        query: GRAPHQL_QUERY
+        extensions: {
+            clientLibrary: {
+                name: "@apollo/client",
+                version: "4.0.9"
+            }
+        },
+        query: GRAPHQL_QUERY 
     };
 
     const res = await fetch(PROXY + API_URL, {
