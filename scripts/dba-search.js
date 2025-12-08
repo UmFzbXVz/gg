@@ -1,4 +1,3 @@
-// dba-search.js
 const MAX_RESULTS = 300;
 const PROXY = "https://corsproxy.io/?";
 const PRICE_FILE = "https://umfzbxvz.github.io/gg/docs/priser.json.gz";
@@ -157,7 +156,7 @@ async function fetchDBAPage(page, term, category) {
         p.append("sort", "CLOSEST");
         p.append("lat", window.userPosition.lat);
         p.append("lon", window.userPosition.lon);
-        p.append("radius", 30000);
+        p.append("radius", 50000);
     } else {
         p.append("sort", "PUBLISHED_DESC");
         getSelectedLocations().forEach(l => p.append("location", l));
