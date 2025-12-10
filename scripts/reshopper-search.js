@@ -1,71 +1,83 @@
 const RESHOPPER_MAX = 100;
-
 (() => {
-  const PROXY = "https://corsproxy.io/?";
-  let isLoading = false;
+	const PROXY = "https://corsproxy.io/?";
+	let isLoading = false;
+	const locationCoords = {
+		jylland: {
+			lat: 56.15,
+			lon: 10.20,
+			radius: 90
+		},
+		sydsjaellandOgOerne: {
+			lat: 55.24,
+			lon: 11.76,
+			radius: 60
+		},
+		fyn: {
+			lat: 55.40,
+			lon: 10.40,
+			radius: 50
+		},
+		sjaelland: {
+			lat: 55.68,
+			lon: 12.10,
+			radius: 90
+		}
+	};
+	const CUSTOM_LOCATION = {
+		lat: 54.891039361728026,
+		lon: 11.87686376273632,
+		radiusInKilometers: 50
+	};
 
-  const locationCoords = {
-    jylland: { lat: 56.15, lon: 10.20, radius: 90 },
-    sydsjaellandOgOerne: { lat: 55.24, lon: 11.76, radius: 60 },
-    fyn: { lat: 55.40, lon: 10.40, radius: 50 },
-    sjaelland: { lat: 55.68, lon: 12.10, radius: 90 }
-  };
+	function getSelectedLocationsRes() {
+		const selected = [];
+		if (document.getElementById("locationJylland")?.checked) selected.push('jylland');
+		if (document.getElementById("locationSydsjaelland")?.checked) selected.push('sydsjaellandOgOerne');
+		if (document.getElementById("locationFyn")?.checked) selected.push('fyn');
+		if (document.getElementById("locationSjaelland")?.checked) selected.push('sjaelland');
+		return selected.length ? selected : ['jylland'];
+	}
 
-  const CUSTOM_LOCATION = {
-    lat: 54.891039361728026,
-    lon: 11.87686376273632,
-    radiusInKilometers: 50
-  };
+	function formatPrice(amountInHundreds, currency) {
+		if (!amountInHundreds) return "";
+		let amount = amountInHundreds / 100;
+		return currency === "dkk" ?
+			`${amount.toLocaleString("da-DK")} kr.` :
+			`${amount} ${currency || ""}`;
+	}
 
-  function getSelectedLocationsRes() {
-    const selected = [];
-    if (document.getElementById("locationJylland")?.checked) selected.push('jylland');
-    if (document.getElementById("locationSydsjaelland")?.checked) selected.push('sydsjaellandOgOerne');
-    if (document.getElementById("locationFyn")?.checked) selected.push('fyn');
-    if (document.getElementById("locationSjaelland")?.checked) selected.push('sjaelland');
-    return selected.length ? selected : ['jylland'];
-  }
+	function getHighestQualityImages(images = []) {
+		const bestImages = {};
+		images.forEach(img => {
+			const fileId = img.fileId;
+			if (!fileId) return;
+			const pixels = (img.width || 0) * (img.height || 0);
+			if (!bestImages[fileId] || pixels > bestImages[fileId].pixels) {
+				bestImages[fileId] = {
+					...img,
+					pixels
+				};
+			}
+		});
+		return Object.values(bestImages).map(img => img.url);
+	}
 
-  function formatPrice(amountInHundreds, currency) {
-    if (!amountInHundreds) return "";
-    let amount = amountInHundreds / 100;
-    return currency === "dkk"
-      ? `${amount.toLocaleString("da-DK")} kr.`
-      : `${amount} ${currency || ""}`;
-  }
-
-  function getHighestQualityImages(images = []) {
-    const bestImages = {};
-    images.forEach(img => {
-      const fileId = img.fileId;
-      if (!fileId) return;
-      const pixels = (img.width || 0) * (img.height || 0);
-      if (!bestImages[fileId] || pixels > bestImages[fileId].pixels) {
-        bestImages[fileId] = { ...img, pixels };
-      }
-    });
-    return Object.values(bestImages).map(img => img.url);
-  }
-
-  function makeCard(item) {
-    const card = document.createElement("a");
-    card.className = "card";
-    card.href = `https://reshopper.com/da/item/${item.description.replace(/\s+/g, '-').toLowerCase()}/${item.id}`;
-    card.target = "_blank";
-    card.rel = "noopener noreferrer";
-
-    let bestImageUrls = getHighestQualityImages(item.images);
-    if (!bestImageUrls.length) bestImageUrls.push("noimage.svg");
-
-    const imageHtml = bestImageUrls[0].endsWith("noimage.svg")
-      ? `<img loading="lazy" src="${bestImageUrls[0]}" alt="${item.description}" class="fallback-image" />`
-      : `<img loading="lazy" src="${bestImageUrls[0]}" alt="${item.description}" />`;
-
-    const priceText = formatPrice(item.priceInHundreds, item.currency);
-    const sellerText = item.user?.userPublicName || "Ukendt";
-    const descriptionText = (item.extendedDescription || item.description || "").trim();
-
-    card.innerHTML = `
+	function makeCard(item) {
+		const card = document.createElement("a");
+		card.className = "card";
+		card.href = `https://reshopper.com/da/item/${item.description.replace(/\s+/g, '-').toLowerCase()}/${item.id}`;
+		card.target = "_blank";
+		card.rel = "noopener noreferrer";
+		let bestImageUrls = getHighestQualityImages(item.images);
+		if (!bestImageUrls.length) bestImageUrls.push("noimage.svg");
+		const imageHtml = bestImageUrls[0].endsWith("noimage.svg") ?
+			`<img loading="lazy" src="${bestImageUrls[0]}" alt="${item.description}" class="fallback-image" />` :
+			`<img loading="lazy" src="${bestImageUrls[0]}" alt="${item.description}" />`;
+		const priceText = formatPrice(item.priceInHundreds, item.currency);
+		const sellerText = item.user?.publicName || "Ukendt";
+		const descriptionText = (item.extendedDescription || item.description || "").trim();
+		card.innerHTML = `
       <div class="card-image-wrapper">
         ${imageHtml}
         <div class="reshopper-badge">
@@ -91,136 +103,168 @@ const RESHOPPER_MAX = 100;
         </div>
       </div>
     `;
-
-    card.dataset.timestamp = item.images?.[0]?.timeUploaded
-      ? new Date(item.images[0].timeUploaded).getTime()
-      : 0;
-    card.dataset.images = JSON.stringify(bestImageUrls);
-    card.dataset.key = item.id;
-    card.dataset.source = "reshopper";
-    card.dataset.seller = sellerText;
-    card.dataset.description = descriptionText || "Ingen beskrivelse tilgængelig.";
-    return card;
-  }
-
-  async function fetchReshopperPage(offset = 0, query = "", pageSize = 12, location = null, radiusInKilometers = null, segmentValue = null) {
-    const API_URL = "https://app.reshopper.com/web/items/faceted";
-    const payload = {
-      facets: [
-        { type: "segment", facetCount: 3, values: segmentValue ? [segmentValue] : undefined },
-        { type: "condition", facetCount: 5 },
-        { type: "gender", facetCount: 3 },
-        { type: "category", facetCount: 20 },
-        { type: "size", facetCount: 40 },
-        { type: "brandOrTitle", facetCount: 100 },
-        { type: "age", facetCount: 20 },
-        { type: "shopType", facetCount: 4 },
-        { type: "retailShop", facetCount: 10 },
-        { type: "isShippingOffered", facetCount: 3 }
-      ],
-      query,
-      pageSize,
-      offset,
-      country: "DK",
-      isSold: false,
-      removeSoldItemsFromQuery: true,
-      sortDirection: "desc",
-      sortBy: "created",
-      omitPointInTime: false,
-      itemCategoryGroupPath: ""
-    };
-
-    if (location && location.lat && location.lon) {
-      payload.location = { lat: String(location.lat), lon: String(location.lon) };
-    }
-    if (radiusInKilometers) {
-      payload.radiusInKilometers = radiusInKilometers;
-    }
-
-    const res = await fetch(PROXY + API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) throw new Error(`HTTP-fejl ${res.status}`);
-    return res.json();
-  }
-
-  window.hentOgVisReshopper = async function(term = "", bgMode = false, segmentValue = undefined) {
-    if (segmentValue === null) return;
-    if (isLoading) return;
-    isLoading = true;
-
-    try {
-      const closestToggle = document.getElementById("closestToggle");
-      const useClosest = closestToggle?.checked || false;
-
-      let locationsToSearch;
-
-      if (useClosest) {
-        locationsToSearch = [{ ...CUSTOM_LOCATION, name: "closest" }];
-      } else {
-        const selectedKeys = getSelectedLocationsRes();
-        locationsToSearch = selectedKeys.map(key => ({
-          lat: locationCoords[key].lat,
-          lon: locationCoords[key].lon,
-          radiusInKilometers: locationCoords[key].radius,
-          name: key
-        }));
-      }
-
-      let totalFetched = 0;
-      const pageSize = 12;
-      const numPagesPerLoc = bgMode ? 1 : (window.isMagicMode ? 2 : Math.ceil(RESHOPPER_MAX / pageSize));
-
-      for (const loc of locationsToSearch) {
-        let offset = 0;
-
-        const firstData = await fetchReshopperPage(
-          offset,
-          term,
-          pageSize,
-          { lat: loc.lat, lon: loc.lon },
-          loc.radiusInKilometers,
-          segmentValue
-        );
-
-        const locTotal = Math.min(firstData.totalHits || 0, RESHOPPER_MAX);
-        window.totalAds += locTotal;
-
-        for (const item of firstData.items) {
-          if (totalFetched >= RESHOPPER_MAX) break;
-          const adId = item.id;
-          if (window.seenAdKeys.has(adId)) continue;
-          window.allCards.push(makeCard(item));
-          window.seenAdKeys.add(adId);
-          totalFetched++;
-          window.loadedAds++;
-        }
-
-        for (let page = 1; page < numPagesPerLoc && totalFetched < RESHOPPER_MAX; page++) {
-          offset = page * pageSize;
-          const pageData = await fetchReshopperPage(
-            offset, term, pageSize, { lat: loc.lat, lon: loc.lon }, loc.radiusInKilometers, segmentValue);
-
-          for (const item of pageData.items) {
-            if (totalFetched >= RESHOPPER_MAX) break;
-            const adId = item.id;
-            if (window.seenAdKeys.has(adId)) continue;
-            window.allCards.push(makeCard(item));
-            window.seenAdKeys.add(adId);
-            totalFetched++;
-            window.loadedAds++;
-          }
-        }
-
-        if (totalFetched >= RESHOPPER_MAX) break;
-      }
-    } catch (err) {
-      console.error("Fejl Reshopper:", err);
-    } finally {
-      isLoading = false;
-    }
-  };
+		card.dataset.timestamp = item.images?.[0]?.timeUploaded ?
+			new Date(item.images[0].timeUploaded).getTime() :
+			0;
+		card.dataset.images = JSON.stringify(bestImageUrls);
+		card.dataset.key = item.id;
+		card.dataset.source = "reshopper";
+		card.dataset.seller = sellerText;
+		card.dataset.description = descriptionText || "Ingen beskrivelse tilgængelig.";
+		return card;
+	}
+	async function fetchReshopperPage(offset = 0, query = "", pageSize = 32, location = null, radiusInKilometers = null, segmentValue = null) {
+		const API_URL = "https://app.reshopper.com/api/query/items/faceted";
+		const payload = {
+			facets: [{
+					type: "segment",
+					facetCount: 3,
+					values: segmentValue ? [segmentValue] : undefined
+				},
+				{
+					type: "condition",
+					facetCount: 5
+				},
+				{
+					type: "gender",
+					facetCount: 3
+				},
+				{
+					type: "category",
+					facetCount: 20
+				},
+				{
+					type: "size",
+					facetCount: 40
+				},
+				{
+					type: "brandOrTitle",
+					facetCount: 60
+				},
+				{
+					type: "age",
+					facetCount: 20
+				},
+				{
+					type: "shopType",
+					facetCount: 4
+				},
+				{
+					type: "retailShop",
+					facetCount: 10
+				},
+				{
+					type: "isShippingOffered",
+					facetCount: 3
+				}
+			],
+			cursor: null,
+			query,
+			pageSize,
+			offset,
+			country: "DK",
+			isSold: false,
+			sortDirection: "asc",
+			sortBy: "distance",
+			omitPointInTime: false
+		};
+		if (location && location.lat && location.lon) {
+			payload.location = {
+				lat: location.lat,
+				lon: location.lon
+			};
+		}
+		if (radiusInKilometers) {
+			payload.radiusInKilometers = radiusInKilometers;
+		}
+		const res = await fetch(PROXY + API_URL, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"Accept-Encoding": "identity",
+				"ReshopperClient": "android 15",
+				"User-Agent": "Titanium SDK/13.0.0 (SM-G990; Android API Level: 35; sut-en-fed-pik;)",
+				"X-ReshopperVersion": "9.2.1"
+			},
+			body: JSON.stringify(payload)
+		});
+		if (!res.ok) throw new Error(`HTTP-fejl ${res.status}`);
+		return res.json();
+	}
+	window.hentOgVisReshopper = async function(term = "", bgMode = false, segmentValue = undefined) {
+		if (!document.getElementById("sourceReshopper")?.checked) {
+			return;
+		}
+		if (segmentValue === null) return;
+		if (isLoading) return;
+		isLoading = true;
+		try {
+			const closestToggle = document.getElementById("closestToggle");
+			const useClosest = closestToggle?.checked || false;
+			let locationsToSearch;
+			if (useClosest) {
+				locationsToSearch = [{
+					...CUSTOM_LOCATION,
+					name: "closest"
+				}];
+			} else {
+				const selectedKeys = getSelectedLocationsRes();
+				locationsToSearch = selectedKeys.map(key => ({
+					lat: locationCoords[key].lat,
+					lon: locationCoords[key].lon,
+					radiusInKilometers: locationCoords[key].radius,
+					name: key
+				}));
+			}
+			let totalFetched = 0;
+			const pageSize = 32;
+			const numPagesPerLoc = bgMode ? 1 : (window.isMagicMode ? 2 : Math.ceil(RESHOPPER_MAX / pageSize));
+			for (const loc of locationsToSearch) {
+				let offset = 0;
+				const firstData = await fetchReshopperPage(
+					offset,
+					term,
+					pageSize, {
+						lat: loc.lat,
+						lon: loc.lon
+					},
+					loc.radiusInKilometers,
+					segmentValue
+				);
+				const locTotal = Math.min(firstData.totalHits || 0, RESHOPPER_MAX);
+				window.totalAds += locTotal;
+				for (const item of firstData.items || []) {
+					if (totalFetched >= RESHOPPER_MAX) break;
+					const adId = item.id;
+					if (window.seenAdKeys.has(adId)) continue;
+					window.allCards.push(makeCard(item));
+					window.seenAdKeys.add(adId);
+					totalFetched++;
+					window.loadedAds++;
+				}
+				for (let page = 1; page < numPagesPerLoc && totalFetched < RESHOPPER_MAX; page++) {
+					offset = page * pageSize;
+					const pageData = await fetchReshopperPage(
+						offset, term, pageSize, {
+							lat: loc.lat,
+							lon: loc.lon
+						}, loc.radiusInKilometers, segmentValue);
+					for (const item of pageData.items || []) {
+						if (totalFetched >= RESHOPPER_MAX) break;
+						const adId = item.id;
+						if (window.seenAdKeys.has(adId)) continue;
+						window.allCards.push(makeCard(item));
+						window.seenAdKeys.add(adId);
+						totalFetched++;
+						window.loadedAds++;
+					}
+				}
+				if (totalFetched >= RESHOPPER_MAX) break;
+			}
+		} catch (err) {
+			console.error("Fejl Reshopper:", err);
+		} finally {
+			isLoading = false;
+		}
+	};
 })();
