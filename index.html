@@ -22,7 +22,7 @@
         <div class="input-wrapper">
           <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
           <svg id="searchSpinner" class="loading-border" viewBox="0 0 300 40" preserveAspectRatio="none">
-            <rect x="2" y="2" width="296" height="36" rx="6" ry="6" fill="none" stroke="#4caf50" stroke-width="5" stroke-linecap="round" />
+            <rect x="2" y="2" y="2" width="296" height="36" rx="6" ry="6" fill="none" stroke="#4caf50" stroke-width="5" stroke-linecap="round" />
           </svg>
         </div>
         <div class="category-selector">
@@ -42,15 +42,47 @@
             <div class="location-selector">
               <div class="category-menu-title">Områder</div>
               <ul class="locations-list">
-                <li><label><input type="checkbox" id="locationJylland" value="jylland">Jylland </label></li>
+                <li><label><input type="checkbox" id="locationJylland" value="jylland" checked>Jylland </label></li>
                 <li><label><input type="checkbox" id="locationSydsjaelland" value="sydsjaelland-og-oerne" checked> Sydsj. og øerne </label></li>
                 <li><label><input type="checkbox" id="locationFyn" value="fyn"> Fyn </label></li>
                 <li><label><input type="checkbox" id="locationSjaelland" value="sjaelland"> Sjælland </label></li>
               </ul>
             </div>
             <hr class="menu-divider" />
-            <label class="bg-toggle"> Auto-opdatér <input type="checkbox" id="bgToggle" checked></label>
-            <label class="bg-toggle"> NA50 <input type="checkbox" id="closestToggle"></label>
+            <div class="settings-section">
+              <div class="settings-header">
+                <span>Indstillinger</span>
+                <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <div class="settings-content">
+                <label class="bg-toggle"> Auto-opdatér <input type="checkbox" id="bgToggle" checked></label>
+                <label class="bg-toggle"> NA50 <input type="checkbox" id="closestToggle"></label>
+                <div class="settings-section sources-section">
+                  <div class="settings-header sources-header">
+                    <span>Kilder</span>
+                    <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </div>
+                  <div class="settings-content sources-content">
+                    <label class="bg-toggle">
+                      Den Blå Avis
+                      <input type="checkbox" id="sourceDBA" class="source-toggle source-dba" checked>
+                    </label>
+                    <label class="bg-toggle">
+                      Gul og Gratis
+                      <input type="checkbox" id="sourceGG" class="source-toggle source-gg" checked>
+                    </label>
+                    <label class="bg-toggle">
+                      Reshopper
+                      <input type="checkbox" id="sourceReshopper" class="source-toggle source-reshopper" checked>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </form>
@@ -63,8 +95,50 @@
     <script src="scripts/reshopper-search.js"></script>
     <script src="scripts/fremviser.js"></script>
     <script src="scripts/bg.js"></script>
+
     <script>
 (() => {
+    const STORAGE_KEY = "ratoghvidt_settings";
+
+    const checkboxes = [
+        "sourceDBA",
+        "sourceGG",
+        "sourceReshopper",
+        "locationJylland",
+        "locationSydsjaelland",
+        "locationFyn",
+        "locationSjaelland",
+        "bgToggle",
+        "closestToggle"
+    ];
+
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        try {
+            const settings = JSON.parse(saved);
+            checkboxes.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && typeof settings[id] === "boolean") {
+                    el.checked = settings[id];
+                }
+            });
+        } catch (e) { /* ugyldig data – ignorer */ }
+    }
+
+    checkboxes.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener("change", () => {
+                const current = {};
+                checkboxes.forEach(cid => {
+                    const cel = document.getElementById(cid);
+                    if (cel) current[cid] = cel.checked;
+                });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+            });
+        }
+    });
+
     const form = document.getElementById("searchForm");
     const input = document.getElementById("searchTerm");
     const spinner = document.getElementById("searchSpinner");
@@ -112,6 +186,7 @@
     };
 
     const cardKey = card => card.dataset.id || card.dataset.key;
+
     grid.addEventListener("click", e => {
         const card = e.target.closest(".card");
         if (!card) return;
@@ -180,7 +255,13 @@
 
     categoryMenu.querySelector('li[data-value="mobler"]').classList.add('active');
     const overlay = document.createElement('div'); overlay.className = 'menu-overlay';
-    categoryButton.addEventListener('click', e => { e.preventDefault(); categoryMenu.style.display = categoryMenu.style.display === 'block' ? 'none' : 'block'; if (categoryMenu.style.display === 'block') document.body.appendChild(overlay); else overlay.remove(); });
+    categoryButton.addEventListener('click', e => {
+        e.preventDefault();
+        const isOpen = categoryMenu.style.display === 'block';
+        categoryMenu.style.display = isOpen ? 'none' : 'block';
+        if (!isOpen) document.body.appendChild(overlay);
+        else overlay.remove();
+    });
     overlay.addEventListener('click', () => { categoryMenu.style.display = 'none'; overlay.remove(); });
 
     input.addEventListener("focus", () => input.select());
@@ -194,7 +275,9 @@
         e.stopPropagation();
     }));
 
-    document.querySelectorAll('.locations-list input[type="checkbox"]').forEach(cb => cb.addEventListener('change', () => { if (input.value.trim()) form.requestSubmit(); }));
+    document.querySelectorAll('.locations-list input[type="checkbox"]').forEach(cb => cb.addEventListener('change', () => {
+        if (input.value.trim()) form.requestSubmit();
+    }));
 
     form.addEventListener("submit", async e => {
         e.preventDefault();
@@ -213,7 +296,10 @@
             ]);
             window.loadedAds = window.totalAds;
             window.sortAndRender();
-            if (bgToggle.checked && window.bgSearch) { window.bgSearch.addActiveSearch(term, catObj); window.bgSearch.setBaseline(); }
+            if (bgToggle.checked && window.bgSearch) {
+                window.bgSearch.addActiveSearch(term, catObj);
+                window.bgSearch.setBaseline();
+            }
             showNoResults(term);
         } finally {
             input.disabled = false; spinner.classList.remove("active");
@@ -223,6 +309,7 @@
     magicSpan("rat", ["Jason","Rolschau","Glostrup møbelfabrik","Brande møbelindustri","Østervig","Wikkelsø"], "gode sager");
     magicSpan("hvidt", ["bord","skrivebord","sofa","sofabord","spisebord","skænk","stol","lænestol","hvilestol","palisander","retro","skammel"], "generelle sager");
 })();
+
 (() => {
     window.cityToZip = {};
     async function loadPostnumre() {
@@ -240,6 +327,13 @@
     window.getZipForCity = city => city && window.cityToZip[city.trim()] ? window.cityToZip[city.trim()].join(", ") : "";
     loadPostnumre();
 })();
+
+document.querySelector('.settings-header')?.addEventListener('click', function() {
+  this.closest('.settings-section').classList.toggle('open');
+});
+document.querySelector('.sources-header')?.addEventListener('click', function() {
+  this.closest('.sources-section').classList.toggle('open');
+});
     </script>
   </body>
 </html>
