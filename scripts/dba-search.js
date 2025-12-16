@@ -78,7 +78,7 @@ if (!isMobileDevice) {
 	window.getFirstPrice = () => Promise.resolve(null);
 }
 
-const API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON";
+const API_URL = "https://www.dba.dk/recommerce/forsale/search/api/search/SEARCH_ID_BAP_COMMON";
 let isLoading = false;
 
 const jylland = ["0.200006", "0.200005", "0.200007", "0.200008"];
