@@ -6,7 +6,7 @@ import math
 import concurrent.futures
 import time
 
-API_URL = "https://www.dba.dk/recommerce-search-page/api/search/SEARCH_ID_BAP_COMMON"
+API_URL = "https://www.dba.dk/recommerce/forsale/search/api/search/SEARCH_ID_BAP_COMMON"
 PRISER_FILE_GZ = "docs/priser.json.gz"
 MAX_PAGES = 50
 MAX_RETRIES = 3
