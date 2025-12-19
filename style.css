@@ -123,6 +123,14 @@ input:checked + .slider:before{transform:translateX(22px)}
 .original-link{position:absolute;bottom:10px;right:10px;color:#fff;font-weight:700;text-decoration:none;font-size:.9rem}
 .close-modal{position:absolute;top:10px;right:10px;background:none;border:none;color:#eee;font-size:2rem;cursor:pointer;z-index:10}
 .loading-spinner{position:absolute;top:50%;left:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border:4px solid #ffffff4d;border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite;z-index:10}
+.menu-section-header {  display: flex;  justify-content: center;  align-items: center;  position: relative;  font-weight: 700;  margin: 12px 20px 6px;  font-size: .95rem;  color: #333;  text-align: center;}
+.menu-section-header::before,
+.menu-section-header::after {  content: "";  flex: 1;  height: 1px;  background: linear-gradient(to right, transparent, #0000004d);  margin: 0 10px;}
+.menu-section-header::after {  background: linear-gradient(to left, transparent, #0000004d);}
+.menu-section-header.collapsible {  justify-content: space-between;  cursor: pointer;  user-select: none;  transition: background .2s ease;  padding: 10px 20px;  margin: 8px 0;}
+.menu-section-header.collapsible:hover {  background: #0000000d;}
+.menu-section-header.collapsible + .section-content,.sources-section .menu-section-header.collapsible + .sources-content {  overflow: hidden;  transition: max-height .35s ease, padding .35s ease, opacity .25s ease;  opacity: 1;}
+:not(.open) > .section-content,.sources-section:not(.open) > .sources-content {  max-height: 0 !important;  padding-top: 0 !important;  padding-bottom: 0 !important;opacity: 0;}
 @keyframes spin {
 to{transform:rotate(360deg)}
 }
@@ -186,11 +194,3 @@ to{transform:translateY(20px) scale(0.95);opacity:0}
 0%,100%{border-right-color:#4caf504d}
 50%{border-right-color:#55ff33b3}
 }
-.settings-section{margin:8px 0}
-.settings-header{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;color:#333;font-weight:700;font-size:.95rem;cursor:pointer;user-select:none;transition:background .2s ease}
-.settings-header:hover{background:#0000000d}
-.settings-header .chevron{transition:transform .25s ease}
-.settings-section.open .chevron{transform:rotate(180deg)}
-.settings-content{overflow:hidden;transition:max-height .35s ease,padding .35s ease,opacity .25s ease;opacity:1}
-.settings-section:not(.open) .settings-content{max-height:0;padding-top:0;padding-bottom:0;opacity:0}
-.settings-header span {flex: 1;text-align: center;}
