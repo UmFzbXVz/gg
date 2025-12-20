@@ -131,6 +131,14 @@ input:checked + .slider:before{transform:translateX(22px)}
 .menu-section-header.collapsible:hover {  background: #0000000d;}
 .menu-section-header.collapsible + .section-content,.sources-section .menu-section-header.collapsible + .sources-content {  overflow: hidden;  transition: max-height .35s ease, padding .35s ease, opacity .25s ease;  opacity: 1;}
 :not(.open) > .section-content,.sources-section:not(.open) > .sources-content {  max-height: 0 !important;  padding-top: 0 !important;  padding-bottom: 0 !important;opacity: 0;}
+.location-selector.disabled label,
+.location-selector.disabled input { opacity: 0.4; pointer-events: none; }
+.sources-header-icon {display: inline-block;width: 28px;height: 28px;}
+.network-node-svg {width: 100%;height: 100%;}
+.fill-circle {fill: transparent;transition: fill 0.3s ease;}
+.fill-dba { fill: #00098a; }  
+.fill-gg { fill: #faf286; }   
+.fill-reshopper { fill: #E91E63; } 
 @keyframes spin {
 to{transform:rotate(360deg)}
 }
