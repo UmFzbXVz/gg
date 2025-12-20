@@ -33,7 +33,7 @@
           <div id="categoryMenu" class="category-menu" style="display: none;">
             <div class="menu-section collapsible open">
               <div class="menu-section-header collapsible">
-                <span class="material-symbols-outlined">table_lamp</span>
+                <span id="categoryDividerIcon" class="material-symbols-outlined">table_lamp</span>
               </div>
               <div class="section-content">
                 <ul class="categories-list">
@@ -209,11 +209,11 @@
         window.bgSearch.resume();
     }
     const categories = {
-        'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78', reshopperFacetValue: 'Home' },
-        'dyr': { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77', reshopperFacetValue: null },
-        'kunst': { ggSlug: '/antikviteter-og-kunst', ggTitle: 'antikviteter og kunst', dbaCat: '0.76', reshopperFacetValue: null },
-        'toejogboern': { ggSlug: '/born', ggTitle: 'børn', dbaCat: '0.68', reshopperFacetValue: 'Kids' },
-        'alting': { ggSlug: '', ggTitle: 'alting', dbaCat: undefined, reshopperFacetValue: undefined }
+        'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78', reshopperFacetValue: 'Home', icon: 'table_lamp' },
+        'dyr': { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77', reshopperFacetValue: null, icon: 'pets' },
+        'kunst': { ggSlug: '/antikviteter-og-kunst', ggTitle: 'antikviteter og kunst', dbaCat: '0.76', reshopperFacetValue: null, icon: 'palette' },
+        'toejogboern': { ggSlug: '/born', ggTitle: 'børn', dbaCat: '0.68', reshopperFacetValue: 'Kids', icon: 'child_friendly' },
+        'alting': { ggSlug: '', ggTitle: 'alting', dbaCat: undefined, reshopperFacetValue: undefined, icon: 'search' }
     };
     const cardKey = card => card.dataset.id || card.dataset.key;
     grid.addEventListener("click", e => {
@@ -275,7 +275,13 @@
             }
         });
     };
+    const categoryDividerIcon = document.getElementById('categoryDividerIcon');
+    const updateCategoryIcon = () => {
+        const iconName = categories[selectedCategory].icon;
+        categoryDividerIcon.textContent = iconName;
+    };
     categoryMenu.querySelector('li[data-value="mobler"]').classList.add('active');
+    updateCategoryIcon();
     const overlay = document.createElement('div'); overlay.className = 'menu-overlay';
     categoryButton.addEventListener('click', e => {
         e.preventDefault();
@@ -290,6 +296,7 @@
         selectedCategory = li.dataset.value;
         categoryMenu.querySelectorAll('.categories-list > li').forEach(i => i.classList.remove('active'));
         li.classList.add('active');
+        updateCategoryIcon();
         categoryMenu.style.display = 'none'; overlay.remove();
         if (input.value.trim()) form.requestSubmit();
         e.stopPropagation();
