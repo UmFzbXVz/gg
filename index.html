@@ -174,6 +174,7 @@
     const categoryMenu = document.getElementById("categoryMenu");
     const bgToggle = document.getElementById("bgToggle");
     const closestToggle = document.getElementById("closestToggle");
+    const locationSelector = document.querySelector('.location-selector');
     const sentinel = document.createElement('div');
     let selectedCategory = 'mobler';
     const BATCH_SIZE = 30;
@@ -190,16 +191,23 @@
     bgToggle.addEventListener("change", () => {
         if (bgToggle.checked && window.bgSearch) window.bgSearch.resume();
     });
-    closestToggle.addEventListener("change", () => {
+    const applyClosestToggleState = () => {
         if (closestToggle.checked) {
             window.userPosition = { lat: 54.890599, lon: 11.8710399 };
-            document.querySelector('.location-selector').classList.add('disabled');
+            locationSelector.classList.add('disabled');
         } else {
             window.userPosition = null;
-            document.querySelector('.location-selector').classList.remove('disabled');
+            locationSelector.classList.remove('disabled');
         }
+    };
+    closestToggle.addEventListener("change", () => {
+        applyClosestToggleState();
         if (input.value.trim()) form.requestSubmit();
     });
+    applyClosestToggleState();
+    if (bgToggle.checked && window.bgSearch) {
+        window.bgSearch.resume();
+    }
     const categories = {
         'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78', reshopperFacetValue: 'Home' },
         'dyr': { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77', reshopperFacetValue: null },
