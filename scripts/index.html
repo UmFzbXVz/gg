@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="da">
+  <head>
+    <meta charset="UTF-8">
+    <title>Råt og Hvidt</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400..700,0..1,-50..200" />
+  </head>
+  <body>
+    <div class="page-container">
+      <h1>
+        <span class="title-highlight">
+          <span id="rat">Råt</span> og <span id="hvidt">Hvidt</span>
+        </span>
+      </h1>
+      <form id="searchForm" class="controls">
+        <div class="input-wrapper">
+          <input type="text" id="searchTerm" placeholder="søg efter..." autocomplete="off">
+          <svg id="searchSpinner" class="loading-border" viewBox="0 0 300 40" preserveAspectRatio="none">
+            <rect x="2" y="2" width="296" height="36" rx="6" ry="6" fill="none" stroke="#4caf50" stroke-width="5" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div class="category-selector">
+          <button id="categoryButton" class="category-button" type="button" aria-label="Åbn filter-menu">
+          <svg class="hamburger-icon" viewBox="0 0 100 100" width="30" height="30">
+            <path class="line line-top" d="M 20,30 H 80" />
+            <path class="line line-middle" d="M 20,50 H 80" />
+            <path class="line line-bottom" d="M 20,70 H 80" />
+          </svg>
+          </button>
+          <div id="categoryMenu" class="category-menu">
+            <div class="menu-section collapsible open">
+              <div class="menu-section-header collapsible">
+                <span id="categoryDividerIcon" class="material-symbols-outlined">table_lamp</span>
+              </div>
+              <div class="section-content">
+                <ul class="categories-list">
+                  <li data-value="mobler">Møbler og indretning</li>
+                  <li data-value="dyr">Dyr og udstyr</li>
+                  <li data-value="toejogboern">Tøj og børn</li>
+                  <li data-value="kunst">Kunst og antik</li>
+                  <li data-value="alting">Alting</li>
+                </ul>
+              </div>
+            </div>
+            <div class="menu-section collapsible open">
+              <div class="menu-section-header collapsible">
+                <span class="material-symbols-outlined">location_on</span>
+              </div>
+              <div class="section-content location-selector">
+                <ul class="locations-list">
+                  <li><label><input type="checkbox" id="locationJylland" value="jylland" checked>Jylland </label></li>
+                  <li><label><input type="checkbox" id="locationSydsjaelland" value="sydsjaelland-og-oerne" checked> Sydsj. og øerne </label></li>
+                  <li><label><input type="checkbox" id="locationFyn" value="fyn"> Fyn </label></li>
+                  <li><label><input type="checkbox" id="locationSjaelland" value="sjaelland"> Sjælland </label></li>
+                </ul>
+              </div>
+            </div>
+            <div class="menu-section collapsible">
+              <div class="menu-section-header collapsible">
+                <span class="material-symbols-outlined">settings</span>
+              </div>
+              <div class="section-content settings-content">
+                <label class="bg-toggle"> Auto-opdatér <input type="checkbox" id="bgToggle" checked></label>
+                <label class="bg-toggle"> NA50 <input type="checkbox" id="closestToggle"></label>
+              </div>
+            </div>
+            <div class="menu-section collapsible">
+              <div class="menu-section-header collapsible">
+                <div class="sources-header-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" class="network-node-svg">
+                    <path d="M220-80q-58 0-99-41t-41-99q0-58 41-99t99-41q18 0 35 4.5t32 12.5l153-153v-110q-44-13-72-49.5T340-740q0-58 41-99t99-41q58 0 99 41t41 99q0 48-28 84.5T520-606v110l154 153q15-8 31.5-12.5T740-360q58 0 99 41t41 99q0 58-41 99t-99 41q-58 0-99-41t-41-99q0-18 4.5-35t12.5-32L480-424 343-287q8 15 12.5 32t4.5 35q0 58-41 99t-99 41Zm520-80q25 0 42.5-17.5T800-220q0-25-17.5-42.5T740-280q-25 0-42.5 17.5T680-220q0 25 17.5 42.5T740-160ZM480-680q25 0 42.5-17.5T540-740q0-25-17.5-42.5T480-800q-25 0-42.5 17.5T420-740q0 25 17.5 42.5T480-680ZM220-160q25 0 42.5-17.5T280-220q0-25-17.5-42.5T220-280q-25 0-42.5 17.5T160-220q0 25 17.5 42.5T220-160Z" fill="currentColor"/>
+                    <circle class="fill-circle dba" cx="740" cy="-220" r="48"/>
+                    <circle class="fill-circle gg" cx="220" cy="-220" r="48"/>
+                    <circle class="fill-circle reshopper" cx="480" cy="-740" r="48"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="section-content sources-content">
+                <label class="bg-toggle">
+                  Den Blå Avis
+                  <input type="checkbox" id="sourceDBA" class="source-toggle source-dba" checked>
+                </label>
+                <label class="bg-toggle">
+                  Gul og Gratis
+                  <input type="checkbox" id="sourceGG" class="source-toggle source-gg" checked>
+                </label>
+                <label class="bg-toggle">
+                  Reshopper
+                  <input type="checkbox" id="sourceReshopper" class="source-toggle source-reshopper" checked>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+      <div id="grid"></div>
+    </div>
+    <script src="https://unpkg.com/@panzoom/panzoom@4.6.0/dist/panzoom.min.js"></script>
+    <script src="scripts/gg-search.js"></script>
+    <script src="scripts/dba-search.js"></script>
+    <script src="scripts/reshopper-search.js"></script>
+    <script src="scripts/fremviser.js"></script>
+    <script src="scripts/bg.js"></script>
+    <script>
+(() => {
+	const STORAGE_KEY = "ratoghvidt_settings";
+	const MENU_STATE_KEY = "ratoghvidt_menu_state";
+	const checkboxes = [
+		"sourceDBA",
+		"sourceGG",
+		"sourceReshopper",
+		"locationJylland",
+		"locationSydsjaelland",
+		"locationFyn",
+		"locationSjaelland",
+		"bgToggle",
+		"closestToggle"
+	];
+	const saved = localStorage.getItem(STORAGE_KEY);
+	if (saved) {
+		try {
+			const settings = JSON.parse(saved);
+			checkboxes.forEach(id => {
+				const el = document.getElementById(id);
+				if (el && typeof settings[id] === "boolean") {
+					el.checked = settings[id];
+				}
+			});
+		} catch (e) {}
+	}
+	checkboxes.forEach(id => {
+		const el = document.getElementById(id);
+		if (el) {
+			el.addEventListener("change", () => {
+				const current = {};
+				checkboxes.forEach(cid => {
+					const cel = document.getElementById(cid);
+					if (cel) current[cid] = cel.checked;
+				});
+				localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+			});
+		}
+	});
+	const defaultMenuState = {
+		categories: true,
+		locations: true,
+		settings: false,
+		sources: false
+	};
+	let menuState = {
+		...defaultMenuState
+	};
+	const savedMenuState = localStorage.getItem(MENU_STATE_KEY);
+	if (savedMenuState) {
+		try {
+			const parsed = JSON.parse(savedMenuState);
+			menuState = {
+				...defaultMenuState,
+				...parsed
+			};
+		} catch (e) {}
+	}
+	document.querySelector('.menu-section:nth-child(1)').classList.toggle('open', menuState.categories);
+	document.querySelector('.menu-section:nth-child(2)').classList.toggle('open', menuState.locations);
+	document.querySelector('.menu-section:nth-child(3)').classList.toggle('open', menuState.settings);
+	document.querySelector('.menu-section:nth-child(4)').classList.toggle('open', menuState.sources);
+	document.querySelectorAll('.menu-section-header.collapsible').forEach((header, index) => {
+		header.addEventListener('click', () => {
+			const section = header.parentElement;
+			section.classList.toggle('open');
+			if (index === 0) menuState.categories = section.classList.contains('open');
+			if (index === 1) menuState.locations = section.classList.contains('open');
+			if (index === 2) menuState.settings = section.classList.contains('open');
+			if (index === 3) menuState.sources = section.classList.contains('open');
+			localStorage.setItem(MENU_STATE_KEY, JSON.stringify(menuState));
+		});
+	});
+	const form = document.getElementById("searchForm");
+	const input = document.getElementById("searchTerm");
+	const spinner = document.getElementById("searchSpinner");
+	const grid = document.getElementById("grid");
+	const categoryButton = document.getElementById("categoryButton");
+	const categoryMenu = document.getElementById("categoryMenu");
+	const bgToggle = document.getElementById("bgToggle");
+	const closestToggle = document.getElementById("closestToggle");
+	const locationSelector = document.querySelector('.location-selector');
+	const sentinel = document.createElement('div');
+	let selectedCategory = 'mobler';
+	const BATCH_SIZE = 30;
+	let currentIndex = 0;
+	let isFirstSearch = true;
+	window.allCards = [];
+	window.pendingBgSearches = [];
+	window.seenAdKeys = new Set();
+	window.userPosition = null;
+	sentinel.style.height = '1px';
+	const observer = new IntersectionObserver(entries => {
+		if (entries[0].isIntersecting) renderNextBatch();
+	}, {
+		rootMargin: '200px 0px 0px 0px'
+	});
+	bgToggle.addEventListener("change", () => {
+		if (bgToggle.checked && window.bgSearch) window.bgSearch.resume();
+	});
+	const applyClosestToggleState = () => {
+		if (closestToggle.checked) {
+			window.userPosition = {
+				lat: 54.890599,
+				lon: 11.8710399
+			};
+			locationSelector.classList.add('disabled');
+		} else {
+			window.userPosition = null;
+			locationSelector.classList.remove('disabled');
+		}
+	};
+	closestToggle.addEventListener("change", () => {
+		applyClosestToggleState();
+		if (input.value.trim()) form.requestSubmit();
+	});
+	applyClosestToggleState();
+	if (bgToggle.checked && window.bgSearch) {
+		window.bgSearch.resume();
+	}
+	const categories = {
+		'mobler': {
+			ggSlug: '/mobler',
+			ggTitle: 'møbler',
+			dbaCat: '0.78',
+			reshopperFacetValue: 'Home',
+			icon: 'table_lamp'
+		},
+		'dyr': {
+			ggSlug: '/dyr-og-tilbehor',
+			ggTitle: 'dyr og tilbehør',
+			dbaCat: '0.77',
+			reshopperFacetValue: null,
+			icon: 'pets'
+		},
+		'kunst': {
+			ggSlug: '/antikviteter-og-kunst',
+			ggTitle: 'antikviteter og kunst',
+			dbaCat: '0.76',
+			reshopperFacetValue: null,
+			icon: 'palette'
+		},
+		'toejogboern': {
+			ggSlug: '/born',
+			ggTitle: 'børn',
+			dbaCat: '0.68',
+			reshopperFacetValue: 'Kids',
+			icon: 'child_friendly'
+		},
+		'alting': {
+			ggSlug: '',
+			ggTitle: 'alting',
+			dbaCat: undefined,
+			reshopperFacetValue: undefined,
+			icon: 'search'
+		}
+	};
+	const cardKey = card => card.dataset.id || card.dataset.key;
+	grid.addEventListener("click", e => {
+		const card = e.target.closest(".card");
+		if (!card) return;
+		if (e.ctrlKey || e.metaKey) {
+			window.open(card.href, "_blank");
+			e.preventDefault();
+			e.stopPropagation();
+		}
+	}, true);
+	const showNoResults = term => {
+		if (!window.allCards.length) grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
+	};
+	const sortAllCards = () => window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
+	const renderNextBatch = () => {
+		const batch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
+		if (!batch.length) return;
+		const frag = document.createDocumentFragment();
+		batch.forEach(c => frag.appendChild(c));
+		grid.insertBefore(frag, sentinel);
+		currentIndex += batch.length;
+	};
+	window.sortAndRender = () => {
+		sortAllCards();
+		grid.innerHTML = "";
+		grid.appendChild(sentinel);
+		currentIndex = 0;
+		renderNextBatch();
+		observer.observe(sentinel);
+	};
+	window.startSpinner = () => {
+		spinner.classList.add("active");
+		input.disabled = true;
+	};
+	window.stopSpinner = () => {
+		spinner.classList.remove("active");
+		input.disabled = false;
+	};
+	const magicSpan = (id, terms, displayTerm) => {
+		const el = document.getElementById(id);
+		if (!el) return;
+		el.addEventListener('click', async () => {
+			if (spinner.classList.contains("active")) return;
+			const catObj = categories[selectedCategory];
+			input.value = "";
+			input.disabled = true;
+			spinner.classList.add("active");
+			window.allCards = [];
+			window.totalAds = 0;
+			window.loadedAds = 0;
+			currentIndex = 0;
+			window.seenAdKeys.clear();
+			try {
+				window.isMagicMode = true;
+				const bgOn = bgToggle.checked;
+				if (bgOn && window.bgSearch) {
+					window.bgSearch.clear();
+					terms.forEach(t => window.bgSearch.addActiveSearch(t, catObj));
+				}
+				for (const term of terms) {
+					await window.hentOgVisGG(term, catObj, false);
+					await window.hentOgVisDBA(term, catObj.dbaCat, false);
+					await window.hentOgVisReshopper(term, false, catObj.reshopperFacetValue);
+				}
+				const seen = new Set();
+				window.allCards = window.allCards.filter(c => {
+					const k = cardKey(c);
+					if (seen.has(k)) return false;
+					seen.add(k);
+					return true;
+				});
+				window.loadedAds = window.totalAds = window.allCards.length;
+				window.sortAndRender();
+				showNoResults(displayTerm);
+				if (bgOn && window.bgSearch) window.bgSearch.setBaseline();
+			} finally {
+				input.disabled = false;
+				spinner.classList.remove("active");
+				window.isMagicMode = false;
+			}
+		});
+	};
+	const categoryDividerIcon = document.getElementById('categoryDividerIcon');
+	const updateCategoryIcon = () => {
+		const iconName = categories[selectedCategory].icon;
+		categoryDividerIcon.textContent = iconName;
+	};
+	categoryMenu.querySelector('li[data-value="mobler"]').classList.add('active');
+	updateCategoryIcon();
+	const overlay = document.createElement('div');
+	overlay.className = 'menu-overlay';
+	categoryButton.addEventListener('click', e => {
+		e.preventDefault();
+		const isOpen = categoryMenu.classList.contains('show');
+		categoryMenu.classList.toggle('show');
+		categoryButton.classList.toggle('open', !isOpen);
+		if (!isOpen) document.body.appendChild(overlay);
+		else overlay.remove();
+	});
+	overlay.addEventListener('click', () => {
+		categoryMenu.classList.remove('show');
+		overlay.remove();
+		categoryButton.classList.remove('open');
+	});
+	input.addEventListener("focus", () => input.select());
+	categoryMenu.querySelectorAll('.categories-list > li').forEach(li => li.addEventListener('click', e => {
+		selectedCategory = li.dataset.value;
+		categoryMenu.querySelectorAll('.categories-list > li').forEach(i => i.classList.remove('active'));
+		li.classList.add('active');
+		updateCategoryIcon();
+		categoryMenu.classList.remove('show');
+		overlay.remove();
+		categoryButton.classList.remove('open');
+		if (input.value.trim()) form.requestSubmit();
+		e.stopPropagation();
+	}));
+	document.querySelectorAll('.locations-list input[type="checkbox"]').forEach(cb => cb.addEventListener('change', () => {
+		if (input.value.trim()) form.requestSubmit();
+	}));
+	form.addEventListener("submit", async e => {
+		e.preventDefault();
+		const term = input.value.trim();
+		if (!term) return;
+		const catObj = categories[selectedCategory];
+		input.disabled = true;
+		spinner.classList.add("active");
+		if (isFirstSearch) {
+			grid.innerHTML = "";
+			isFirstSearch = false;
+		}
+		window.allCards = [];
+		window.totalAds = 0;
+		window.loadedAds = 0;
+		currentIndex = 0;
+		window.seenAdKeys.clear();
+		if (window.bgSearch) window.bgSearch.clear();
+		try {
+			await Promise.all([
+				window.hentOgVisGG(term, catObj, false),
+				window.hentOgVisDBA(term, catObj.dbaCat, false),
+				window.hentOgVisReshopper(term, false, catObj.reshopperFacetValue)
+			]);
+			window.loadedAds = window.totalAds;
+			window.sortAndRender();
+			if (bgToggle.checked && window.bgSearch) {
+				window.bgSearch.addActiveSearch(term, catObj);
+				window.bgSearch.setBaseline();
+			}
+			showNoResults(term);
+		} finally {
+			input.disabled = false;
+			spinner.classList.remove("active");
+		}
+	});
+	magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig", "Wikkelsø"], "gode sager");
+	magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander", "retro", "skammel"], "generelle sager");
+})();
+(() => {
+	window.cityToZip = {};
+	async function loadPostnumre() {
+		try {
+			const res = await fetch("https://api.dataforsyningen.dk/postnumre");
+			if (!res.ok) throw new Error("HTTP " + res.status);
+			const json = await res.json();
+			json.forEach(e => {
+				const city = e.navn.trim();
+				if (!window.cityToZip[city]) window.cityToZip[city] = [];
+				window.cityToZip[city].push(e.nr);
+			});
+		} catch (e) {
+			console.error("Postnumre fejl:", e);
+		}
+	}
+	window.getZipForCity = city => city && window.cityToZip[city.trim()] ? window.cityToZip[city.trim()].join(", ") : "";
+	loadPostnumre();
+})();
+
+function updateSourcesIcon() {
+	const dba = document.getElementById('sourceDBA').checked;
+	const gg = document.getElementById('sourceGG').checked;
+	const reshopper = document.getElementById('sourceReshopper').checked;
+	const circles = document.querySelectorAll('.sources-header-icon .fill-circle');
+	circles[0].classList.toggle('fill-reshopper', reshopper);
+	circles[1].classList.toggle('fill-gg', gg);
+	circles[2].classList.toggle('fill-dba', dba);
+}
+document.addEventListener('DOMContentLoaded', updateSourcesIcon);
+document.querySelectorAll('.source-toggle').forEach(cb => {
+	cb.addEventListener('change', updateSourcesIcon);
+});
+    </script>
+  </body>
+</html>
