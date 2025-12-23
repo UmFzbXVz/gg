@@ -1,21 +1,21 @@
 (() => {
-	const PROXY = "https://corsproxy.io/?";
-	const API_URL = "https://api.guloggratis.dk/graphql";
-	const HEADERS = {
-		"accept": "*/*",
-		"accept-encoding": "gzip, deflate",
-		"accept-language": "en-US,en;q=0.9",
-		"apollo-require-preflight": "true",
-		"content-type": "application/json",
-		"origin": "https://www.guloggratis.dk",
-		"referer": "https://www.guloggratis.dk/",
-		"user-agent": "Dalvik/2.1.0 (Linux; U; Android 15; SM-E366B Build/TQ3A.250901.001) GGApp/8.4.4 EmbeddedBrowser",
-		"x-client-idfa": "granted",
-		"x-client-type": "android",
-		"x-client-version": "8.4.4",
-		"x-requested-with": "dk.guloggratis"
-	};
-	const GET_LISTING_QUERY = `query GetListing($id: ID!) {
+  const PROXY = "https://corsproxy.io/?";
+  const API_URL = "https://api.guloggratis.dk/graphql";
+  const HEADERS = {
+    "accept": "*/*",
+    "accept-encoding": "gzip, deflate",
+    "accept-language": "en-US,en;q=0.9",
+    "apollo-require-preflight": "true",
+    "content-type": "application/json",
+    "origin": "https://www.guloggratis.dk",
+    "referer": "https://www.guloggratis.dk/",
+    "user-agent": "Dalvik/2.1.0 (Linux; U; Android 15; SM-E366B Build/TQ3A.250901.001) GGApp/8.4.4 EmbeddedBrowser",
+    "x-client-idfa": "granted",
+    "x-client-type": "android",
+    "x-client-version": "8.4.4",
+    "x-requested-with": "dk.guloggratis"
+  };
+  const GET_LISTING_QUERY = `query GetListing($id: ID!) {
         listing(id: $id) {
             id
             title
@@ -29,246 +29,202 @@
             }
         }
     }`;
+  const grid = document.getElementById("grid");
+  const decode = str =>
+    (str || "")
+    .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
 
-	const grid = document.getElementById("grid");
+  function sanitizeHtml(html) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    const allowedTags = ['p'];
+    const nodes = div.querySelectorAll('*');
+    nodes.forEach(node => {
+      if (!allowedTags.includes(node.tagName.toLowerCase())) {
+        node.replaceWith(...node.childNodes);
+      } else {
+        while (node.attributes.length > 0) {
+          node.removeAttribute(node.attributes[0].name);
+        }
+      }
+    });
+    return div.innerHTML.trim();
+  }
+  async function getDbaDescription(url) {
+    try {
+      const res = await fetch(PROXY + encodeURIComponent(url));
+      const text = await res.text();
+      const parser = new DOMParser();
+      const htmlDoc = parser.parseFromString(text, 'text/html');
+      let images = getBestImageUrls(htmlDoc);
 
-	const decode = str =>
-		(str || "")
-		.replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-		.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
+      function preloadSequential(imgs) {
+        if (!imgs.length) return;
+        const [first, ...rest] = imgs;
+        const img = new Image();
+        img.onload = () => preloadSequential(rest);
+        img.onerror = () => preloadSequential(rest);
+        img.src = first;
+      }
+      const buildResult = (descriptionHtml) => {
+        if (images.length > 1) {
+          preloadSequential(images);
+        }
+        const sanitizedHtml = sanitizeHtml(descriptionHtml);
+        return {
+          description: sanitizedHtml,
+          images: images.length ? [images[0], ...images.slice(1)] : []
+        };
+      };
+      const podiumLayout = htmlDoc.querySelector('podium-layout');
+      const template = podiumLayout?.querySelector('template[shadowrootmode="open"]');
+      let descEl = null;
+      if (template) {
+        descEl = template.content.querySelector('.whitespace-pre-wrap');
+        if (descEl && descEl.innerHTML.trim()) {
+          return buildResult(descEl.innerHTML.trim());
+        }
+      }
+      const staticRouterScript = Array.from(htmlDoc.querySelectorAll('script')).find(
+        script => script.textContent.includes('__staticRouterHydrationData')
+      );
+      if (staticRouterScript) {
+        try {
+          const jsonMatch = staticRouterScript.textContent.match(/__staticRouterHydrationData = JSON\.parse\("(.+?)"\)/);
+          if (jsonMatch && jsonMatch[1]) {
+            const data = JSON.parse(jsonMatch[1].replace(/\\"/g, '"'));
+            const fullDescription = data?.loaderData?.['item-recommerce']?.itemData?.description;
+            if (fullDescription && fullDescription.trim()) {
+              const htmlDescription = fullDescription
+                .split('\n')
+                .map(line => `<p>${line.trim()}</p>`)
+                .join('');
+              return buildResult(htmlDescription);
+            }
+          }
+        } catch (err) {}
+      }
+      return buildResult('<p>Ingen beskrivelse tilgængelig.</p>');
+    } catch (err) {
+      return {
+        description: '<p>Fejl ved indlæsning af beskrivelse.</p>',
+        images: []
+      };
+    }
+  }
 
-	function sanitizeHtml(html) {
-		const div = document.createElement('div');
-		div.innerHTML = html;
-		const allowedTags = ['p'];
-		const nodes = div.querySelectorAll('*');
-		nodes.forEach(node => {
-			if (!allowedTags.includes(node.tagName.toLowerCase())) {
-				node.replaceWith(...node.childNodes);
-			} else {
-				while (node.attributes.length > 0) {
-					node.removeAttribute(node.attributes[0].name);
-				}
-			}
-		});
-		return div.innerHTML.trim();
-	}
+  function getBestImageUrls(htmlDoc) {
+    const template = htmlDoc.querySelector('template[shadowrootmode]');
+    if (!template) return [];
+    const root = template.content;
+    const gallery = root.querySelector('section[data-testid="image-gallery"]');
+    if (!gallery) return [];
+    const imageMap = new Map();
+    const addOrUpdateImage = (url, width = 0) => {
+      if (!url) return;
+      const key = url.split('/').pop().split('?')[0];
+      if (!imageMap.has(key) || imageMap.get(key).width < width) {
+        imageMap.set(key, {
+          url,
+          width
+        });
+      }
+    };
+    const parseSrcset = (srcset) => {
+      return srcset.split(',')
+        .map(p => p.trim())
+        .map(part => {
+          const [url, size] = part.split(/\s+/);
+          let width = 0;
+          if (size && size.endsWith('w')) width = parseInt(size.replace('w', ''), 10);
+          return {
+            url,
+            width
+          };
+        });
+    };
+    gallery.querySelectorAll('img').forEach(img => {
+      if (img.hasAttribute('srcset')) {
+        parseSrcset(img.getAttribute('srcset')).forEach(({
+          url,
+          width
+        }) => addOrUpdateImage(url, width));
+      } else if (img.hasAttribute('src')) {
+        addOrUpdateImage(img.getAttribute('src'));
+      }
+    });
+    gallery.querySelectorAll('li').forEach(li => {
+      const bg = li.style.backgroundImage;
+      if (bg && bg.startsWith('url(')) {
+        const url = bg.slice(4, -1).replace(/["']/g, '');
+        addOrUpdateImage(url);
+      }
+    });
+    template.querySelectorAll('link[rel="preload"][as="image"]').forEach(link => {
+      if (link.hasAttribute('imagesrcset')) {
+        parseSrcset(link.getAttribute('imagesrcset')).forEach(({
+          url,
+          width
+        }) => addOrUpdateImage(url, width));
+      } else if (link.hasAttribute('href')) {
+        addOrUpdateImage(link.getAttribute('href'));
+      }
+    });
+    return Array.from(imageMap.values()).map(obj => obj.url);
+  }
 
-	async function getDbaDescription(url) {
-		try {
-			const res = await fetch(PROXY + encodeURIComponent(url));
-			const text = await res.text();
-			const parser = new DOMParser();
-			const htmlDoc = parser.parseFromString(text, 'text/html');
-
-			let images = getBestImageUrls(htmlDoc);
-
-			function preloadSequential(imgs) {
-				if (!imgs.length) return;
-				const [first, ...rest] = imgs;
-				const img = new Image();
-				img.onload = () => preloadSequential(rest);
-				img.onerror = () => preloadSequential(rest);
-				img.src = first;
-			}
-
-			const buildResult = (descriptionHtml) => {
-				if (images.length > 1) {
-					preloadSequential(images);
-				}
-				const sanitizedHtml = sanitizeHtml(descriptionHtml);
-				return {
-					description: sanitizedHtml,
-					images: images.length ? [images[0], ...images.slice(1)] : []
-				};
-			};
-
-			const podiumLayout = htmlDoc.querySelector('podium-layout');
-			const template = podiumLayout?.querySelector('template[shadowrootmode="open"]');
-			let descEl = null;
-			if (template) {
-				descEl = template.content.querySelector('.whitespace-pre-wrap');
-				if (descEl && descEl.innerHTML.trim()) {
-					return buildResult(descEl.innerHTML.trim());
-				} else {
-					console.log('No .whitespace-pre-wrap in template, template content:', template.content.innerHTML.substring(0, 1000));
-				}
-			} else {
-				console.log('No podium-layout or template found, DOM body:', htmlDoc.body.innerHTML.substring(0, 1000));
-			}
-
-			const staticRouterScript = Array.from(htmlDoc.querySelectorAll('script')).find(
-				script => script.textContent.includes('__staticRouterHydrationData')
-			);
-			if (staticRouterScript) {
-				try {
-					const jsonMatch = staticRouterScript.textContent.match(/__staticRouterHydrationData = JSON\.parse\("(.+?)"\)/);
-					if (jsonMatch && jsonMatch[1]) {
-						const data = JSON.parse(jsonMatch[1].replace(/\\"/g, '"'));
-						const fullDescription = data?.loaderData?.['item-recommerce']?.itemData?.description;
-						if (fullDescription && fullDescription.trim()) {
-							const htmlDescription = fullDescription
-								.split('\n')
-								.map(line => `<p>${line.trim()}</p>`)
-								.join('');
-							return buildResult(htmlDescription);
-						}
-					}
-				} catch (err) {
-					console.error('Error parsing __staticRouterHydrationData:', err);
-				}
-			}
-
-			return buildResult('<p>Ingen beskrivelse tilgængelig.</p>');
-		} catch (err) {
-			console.error('Error fetching DBA description:', err);
-			return {
-				description: '<p>Fejl ved indlæsning af beskrivelse.</p>',
-				images: []
-			};
-		}
-	}
-
-
-	function getBestImageUrls(htmlDoc) {
-		const template = htmlDoc.querySelector('template[shadowrootmode]');
-		if (!template) return [];
-
-		const root = template.content;
-		const gallery = root.querySelector('section[data-testid="image-gallery"]');
-		if (!gallery) return [];
-
-		const imageMap = new Map();
-
-		const addOrUpdateImage = (url, width = 0) => {
-			if (!url) return;
-			const key = url.split('/').pop().split('?')[0];
-			if (!imageMap.has(key) || imageMap.get(key).width < width) {
-				imageMap.set(key, {
-					url,
-					width
-				});
-			}
-		};
-
-		const parseSrcset = (srcset) => {
-			return srcset.split(',')
-				.map(p => p.trim())
-				.map(part => {
-					const [url, size] = part.split(/\s+/);
-					let width = 0;
-					if (size && size.endsWith('w')) {
-						width = parseInt(size.replace('w', ''), 10);
-					}
-					return {
-						url,
-						width
-					};
-				});
-		};
-
-		gallery.querySelectorAll('img').forEach(img => {
-			if (img.hasAttribute('srcset')) {
-				parseSrcset(img.getAttribute('srcset')).forEach(({url, width}) => addOrUpdateImage(url, width));
-			} else if (img.hasAttribute('src')) {
-				addOrUpdateImage(img.getAttribute('src'));
-			}
-		});
-
-		gallery.querySelectorAll('li').forEach(li => {
-			const bg = li.style.backgroundImage;
-			if (bg && bg.startsWith('url(')) {
-				const url = bg.slice(4, -1).replace(/["']/g, '');
-				addOrUpdateImage(url);
-			}
-		});
-
-		template.querySelectorAll('link[rel="preload"][as="image"]').forEach(link => {
-			if (link.hasAttribute('imagesrcset')) {
-				parseSrcset(link.getAttribute('imagesrcset')).forEach(({url, width}) => addOrUpdateImage(url, width));
-			} else if (link.hasAttribute('href')) {
-				addOrUpdateImage(link.getAttribute('href'));
-			}
-		});
-
-		return Array.from(imageMap.values()).map(obj => obj.url);
-	}
-
-	function priceBlock(price, diff) {
-		if (!diff) return `<div class="ad-price">${price}</div>`;
-		const numeric = +price.replace(/\D/g, "") || 0;
-		const oldPrice = diff > 0 ? numeric - diff : numeric + Math.abs(diff);
-		return `
-            <div class="ad-old-price">${oldPrice.toLocaleString("da-DK")} kr.</div>
-            <div class="ad-price">${price}</div>
-        `;
-	}
-
-	function buildImageSlider(images, title, includeZoom = false, includeGoogle = false, lowResFirst = null) {
-		const slides = images.map((src, idx) => {
-			let imgTag;
-			if (idx === 0) {
-				if (lowResFirst) {
-					imgTag = `<img src="${lowResFirst}" data-highres="${src}" alt="${title}" class="placeholder">`;
-				} else {
-					imgTag = `<img src="${src}" alt="${title}">`;
-				}
-			} else {
-				imgTag = `<img data-src="${src}" alt="${title}">`;
-			}
-
-			if (includeZoom) {
-				imgTag = `<div class="zoom-wrapper">${imgTag}</div>`;
-			}
-			if (includeGoogle) {
-				imgTag += `<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
+  function buildImageSlider(images, title, includeZoom = false, includeGoogle = false, lowResFirst = null) {
+    const slides = images.map((src, idx) => {
+      let imgTag;
+      if (idx === 0) {
+        if (lowResFirst) {
+          imgTag = `<img src="${lowResFirst}" data-highres="${src}" alt="${title}" class="placeholder">`;
+        } else {
+          imgTag = `<img src="${src}" alt="${title}">`;
+        }
+      } else {
+        imgTag = `<img data-src="${src}" alt="${title}">`;
+      }
+      if (includeZoom) {
+        imgTag = `<div class="zoom-wrapper">${imgTag}</div>`;
+      }
+      if (includeGoogle) {
+        imgTag += `<a href="https://lens.google.com/uploadbyurl?url=${encodeURIComponent(src)}" target="_blank" rel="noopener" class="google-icon">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Google_Lens_Icon.svg" width="20">
             </a>`;
-			}
-			return `<div class="slide">${imgTag}</div>`;
-		}).join("");
+      }
+      return `<div class="slide">${imgTag}</div>`;
+    }).join("");
+    const arrows = images.length > 1 ?
+      `<button class="arrow left-arrow"><</button><button class="arrow right-arrow">></button><div class="slide-indicator"></div>` :
+      "";
+    return `<div class="image-slider"><div class="slider-inner">${slides}</div>${arrows}</div>`;
+  }
 
+  function addLoadingSpinner(slide) {
+    const img = slide.querySelector('img');
+    if (!img || img.classList.contains('placeholder')) return;
+    const wrapper = slide.querySelector('.zoom-wrapper');
+    if (!wrapper) return;
+    const spinner = document.createElement('div');
+    spinner.className = 'loading-spinner';
+    wrapper.appendChild(spinner);
+    if (img.complete && img.naturalHeight !== 0) {
+      spinner.remove();
+      return;
+    }
+    img.addEventListener('load', () => spinner.remove());
+    img.addEventListener('error', () => spinner.remove());
+  }
 
-		const arrows = images.length > 1 ?
-			`<button class="arrow left-arrow"><</button><button class="arrow right-arrow">></button><div class="slide-indicator"></div>` :
-			"";
-
-		return `<div class="image-slider"><div class="slider-inner">${slides}</div>${arrows}</div>`;
-	}
-
-	function imageSlider(images, title) {
-		return buildImageSlider(images, title, false, false);
-	}
-
-	function addLoadingSpinner(slide) {
-		const img = slide.querySelector('img');
-		if (!img || img.classList.contains('placeholder')) return;
-
-		const wrapper = slide.querySelector('.zoom-wrapper');
-		if (!wrapper) return;
-
-		const spinner = document.createElement('div');
-		spinner.className = 'loading-spinner';
-		wrapper.appendChild(spinner);
-
-		if (img.complete && img.naturalHeight !== 0) {
-			spinner.remove();
-			return;
-		}
-
-		img.addEventListener('load', () => spinner.remove());
-		img.addEventListener('error', () => spinner.remove());
-	}
-
-	function openAdModal(title, description, price, location, images, originalUrl, priceDiff = 0, lowResFirst = null) {
-		const modal = document.createElement("div");
-		modal.className = "ad-modal";
-
-		const hasDescription = description && description.trim() && !["Ingen beskrivelse tilgængelig.", "Fejl ved indlæsning af beskrivelse."].includes(description.trim());
-		const useGoogleLens = images.length && images[0] !== "noimage.svg";
-		const sliderHtml = buildImageSlider(images, title, true, useGoogleLens, lowResFirst);
-
-		modal.innerHTML = `
+  function openAdModal(title, description, price, location, images, originalUrl, priceDiff = 0, lowResFirst = null) {
+    const modal = document.createElement("div");
+    modal.className = "ad-modal";
+    const hasDescription = description && description.trim() && !["Ingen beskrivelse tilgængelig.", "Fejl ved indlæsning af beskrivelse."].includes(description.trim());
+    const useGoogleLens = images.length && images[0] !== "noimage.svg";
+    const sliderHtml = buildImageSlider(images, title, true, useGoogleLens, lowResFirst);
+    modal.innerHTML = `
         <div class="ad-modal-content">
             ${sliderHtml}
             <div class="ad-info">
@@ -288,362 +244,323 @@
             <button class="close-modal">×</button>
         </div>
     `;
-
-		document.body.appendChild(modal);
-		document.body.style.overflow = "hidden";
-
-		const inner = modal.querySelector(".slider-inner");
-		const slides = Array.from(modal.querySelectorAll('.slide'));
-		slides.forEach(addLoadingSpinner);
-		const indicator = modal.querySelector(".slide-indicator");
-		let currentSlide = 0;
-
-		const firstImg = slides[0]?.querySelector("img");
-		if (firstImg) {
-			firstImg.addEventListener("load", () => {
-				slides.slice(1).forEach(slide => {
-					const img = slide.querySelector("img[data-src]");
-					if (img) {
-						img.src = img.dataset.src;
-						img.removeAttribute("data-src");
-					}
-				});
-			}, {
-				once: true
-			});
-		}
-
-		const placeholderImg = slides[0]?.querySelector('img.placeholder');
-		if (placeholderImg) {
-			const highRes = placeholderImg.dataset.highres;
-			const loader = new Image();
-			loader.src = highRes;
-			loader.onload = () => {
-				placeholderImg.src = highRes;
-				placeholderImg.classList.remove('placeholder');
-				delete placeholderImg.dataset.highres;
-			};
-		}
-
-		const zoomCycle = [1, 2, 5];
-		let currentZoomIndex = 0;
-
-		slides.forEach((slide, idx) => {
-			const img = slide.querySelector('img');
-			if (img.src.includes("noimage.svg")) {
-				return;
-			}
-
-			const pz = Panzoom(img, {
-				maxScale: 5,
-				minScale: 1,
-				contain: 'outside',
-				panOnlyWhenZoomed: true,
-				step: 0.2,
-				animate: true,
-				duration: 150
-			});
-			img._pz = pz;
-
-			let zoomCycle = [1, 2, 5];
-			let currentZoomIndex = 0;
-			let isAnimating = false;
-
-			function handleZoomCycle(event) {
-				if (isAnimating) return;
-				event.preventDefault();
-				currentZoomIndex = (currentZoomIndex + 1) % zoomCycle.length;
-				const targetScale = zoomCycle[currentZoomIndex];
-
-				const rect = img.getBoundingClientRect();
-				let clientX = rect.left + rect.width / 2;
-				let clientY = rect.top + rect.height / 2;
-
-				if (event.type === 'dblclick') {
-					clientX = event.clientX;
-					clientY = event.clientY;
-				} else if (event.type === 'touchend') {
-					const touch = event.changedTouches[0];
-					clientX = touch.clientX;
-					clientY = touch.clientY;
-				}
-
-				if (targetScale === 1) {
-					isAnimating = true;
-					pz.reset({
-						animate: true
-					});
-					setTimeout(() => {
-						isAnimating = false;
-					}, 160);
-				} else {
-					isAnimating = true;
-					pz.zoomToPoint(targetScale, {
-						clientX,
-						clientY,
-						animate: true
-					});
-					setTimeout(() => {
-						isAnimating = false;
-					}, 160);
-				}
-			}
-
-			img.addEventListener('dblclick', handleZoomCycle);
-
-			let lastTapTime = 0,
-				lastTapX = 0,
-				lastTapY = 0;
-			img.addEventListener('touchend', (event) => {
-				const currentTime = Date.now();
-				const touch = event.changedTouches[0];
-				const currentX = touch.clientX;
-				const currentY = touch.clientY;
-
-				const timeDiff = currentTime - lastTapTime;
-				const distance = Math.hypot(currentX - lastTapX, currentY - lastTapY);
-
-				if (timeDiff < 300 && distance < 50) {
-					handleZoomCycle(event);
-					lastTapTime = 0;
-				} else {
-					lastTapTime = currentTime;
-					lastTapX = currentX;
-					lastTapY = currentY;
-				}
-			});
-		});
-
-		const updateSlide = (newIndex) => {
-			if (newIndex === undefined) newIndex = currentSlide;
-			const oldImg = slides[currentSlide].querySelector('img');
-			if (oldImg._pz) {
-				oldImg._pz.reset();
-				oldImg._baseScale = oldImg._pz.getScale();
-			} else {
-				oldImg._baseScale = 1;
-			}
-
-			currentSlide = newIndex;
-			inner.style.transform = `translateX(-${currentSlide * 100}%)`;
-			inner.style.transition = "transform 0.3s ease";
-			if (indicator) indicator.textContent = `${currentSlide + 1}/${images.length}`;
-
-			const newImg = slides[currentSlide].querySelector('img');
-			if (newImg._pz) {
-				newImg._pz.reset();
-				newImg._baseScale = newImg._pz.getScale();
-			} else {
-				newImg._baseScale = 1;
-			}
-		};
-
-		updateSlide();
-
-		modal.querySelector(".left-arrow")?.addEventListener("click", () => {
-			const nextIndex = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
-			updateSlide(nextIndex);
-		});
-
-		modal.querySelector(".right-arrow")?.addEventListener("click", () => {
-			const nextIndex = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
-			updateSlide(nextIndex);
-		});
-
-		let startX = 0,
-			startY = 0;
-		inner.addEventListener("touchstart", e => {
-			startX = e.touches[0].clientX;
-			startY = e.touches[0].clientY;
-			inner.style.transition = "none";
-		}, {
-			passive: true
-		});
-
-		inner.addEventListener("touchend", e => {
-			const diffX = e.changedTouches[0].clientX - startX;
-			const diffY = e.changedTouches[0].clientY - startY;
-
-			const img = slides[currentSlide].querySelector('img');
-			const zoomed = img._pz ? Math.abs(img._pz.getScale() - img._baseScale) > 0.01 : false;
-
-			if (!zoomed && Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
-				const nextIndex = diffX > 0 ?
-					(currentSlide > 0 ? currentSlide - 1 : images.length - 1) :
-					(currentSlide < images.length - 1 ? currentSlide + 1 : 0);
-				updateSlide(nextIndex);
-			}
-		}, {
-			passive: true
-		});
-
-		const closeModal = () => {
-			modal.classList.add("closing");
-			modal.addEventListener("animationend", () => {
-				modal.remove();
-				document.body.style.overflow = "auto";
-			}, {
-				once: true
-			});
-		};
-
-		modal.querySelector(".close-modal").addEventListener("click", closeModal);
-		modal.addEventListener("click", e => {
-			if (e.target === modal) closeModal();
-		});
-
-		const keyHandler = e => {
-			if (e.key === "ArrowLeft") updateSlide(currentSlide > 0 ? currentSlide - 1 : images.length - 1);
-			if (e.key === "ArrowRight") updateSlide(currentSlide < images.length - 1 ? currentSlide + 1 : 0);
-			if (e.key === "Escape") closeModal();
-		};
-		document.addEventListener("keydown", keyHandler);
-
-		history.pushState({
-			modalOpen: true
-		}, "", window.location.href);
-		const popHandler = () => {
-			const modal = document.querySelector(".ad-modal");
-			if (modal && modal.isConnected) {
-				modal.querySelector(".close-modal")?.click();
-			}
-		};
-		window.addEventListener("popstate", popHandler);
-	}
-
-async function getReshopperLocation(itemId) {
-    try {
-        const proxy = PROXY;
-        const apiUrl = `https://app.reshopper.com/api/views/items/${itemId}/via-feed`;
-        const headers = {
-            "Accept-Encoding": "identity",
-            "Connection": "Keep-Alive",
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Host": "app.reshopper.com",
-            "ReshopperClient": "android 13",
-            "User-Agent": "Titanium SDK/12.8.1 (SM-G960F; Android API Level: 33; en-US;)",
-            "X-ReshopperVersion": "9.1.10"
-        };
-
-        const res = await fetch(proxy + encodeURIComponent(apiUrl), {
-            method: "POST",
-            headers,
-            body: new FormData() 
+    document.body.appendChild(modal);
+    document.body.style.overflow = "hidden";
+    const inner = modal.querySelector(".slider-inner");
+    const slides = Array.from(modal.querySelectorAll('.slide'));
+    slides.forEach(addLoadingSpinner);
+    const indicator = modal.querySelector(".slide-indicator");
+    let currentSlide = 0;
+    const firstImg = slides[0]?.querySelector("img");
+    if (firstImg) {
+      firstImg.addEventListener("load", () => {
+        slides.slice(1).forEach(slide => {
+          const img = slide.querySelector("img[data-src]");
+          if (img) {
+            img.src = img.dataset.src;
+            img.removeAttribute("data-src");
+          }
         });
-
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-
-        const data = await res.json();
-        const loc = data?.item?.user?.address?.location;
-        if (!loc || !loc.lat || !loc.lon) return "Ukendt placering";
-
-        const reverseUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${Number(loc.lon).toFixed(6)}&y=${Number(loc.lat).toFixed(6)}&struktur=mini`;
-       const revRes = await fetch(reverseUrl);
-
-        if (!revRes.ok) throw new Error(`HTTP error ${revRes.status}`);
-
-        const revData = await revRes.json();
-
-        let city = revData.postnrnavn || "Ukendt";
-        const zip = revData.postnr || "";
-
-        if (city === "Ukendt" && zip && window.cityToZip) {
-            const matchingCity = Object.keys(window.cityToZip).find(cityName => 
-                window.cityToZip[cityName].includes(zip)
-            );
-            if (matchingCity) {
-                city = matchingCity;
-            }
-        }
-
-        return `${city}${zip ? ` ${zip}` : ""}`;
-    } catch (err) {
-        console.error("Error fetching Reshopper location:", err);
-        return "Ukendt placering";
+      }, {
+        once: true
+      });
     }
-}
+    const placeholderImg = slides[0]?.querySelector('img.placeholder');
+    if (placeholderImg) {
+      const highRes = placeholderImg.dataset.highres;
+      const loader = new Image();
+      loader.src = highRes;
+      loader.onload = () => {
+        placeholderImg.src = highRes;
+        placeholderImg.classList.remove('placeholder');
+        delete placeholderImg.dataset.highres;
+      };
+    }
+    slides.forEach((slide, idx) => {
+      const img = slide.querySelector('img');
+      if (img.src.includes("noimage.svg")) return;
+      const pz = Panzoom(img, {
+        maxScale: 5,
+        minScale: 1,
+        contain: 'outside',
+        panOnlyWhenZoomed: true,
+        step: 0.2,
+        animate: true,
+        duration: 150,
+        noWheel: true
+      });
+      img._pz = pz;
+      if (!('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
+        slide.addEventListener('wheel', e => {
+          e.preventDefault();
+          const currentScale = pz.getScale();
+          const delta = e.deltaY < 0 ? 0.25 : -0.25;
+          let targetScale = currentScale + delta;
+          targetScale = Math.max(1, Math.min(targetScale, 5));
+          pz.zoomToPoint(targetScale, {
+            clientX: e.clientX,
+            clientY: e.clientY,
+            animate: false
+          });
+        }, {
+          passive: false
+        });
+      }
+      let zoomCycle = [1, 2, 5];
+      let currentZoomIndex = 0;
+      let isAnimating = false;
 
-	grid.addEventListener("click", async e => {
-		const card = e.target.closest(".card");
-		if (!card || e.target.classList.contains("info-btn")) return;
-		e.preventDefault();
-		e.stopPropagation();
-
-		const isGG = !!card.querySelector(".gg-badge");
-		const isDBA = !!card.querySelector(".dba-badge");
-		const isReshopper = !!card.querySelector(".reshopper-badge");
-
-		const originalUrl = card.href;
-		const title = card.querySelector("h3")?.innerText || "Ukendt titel";
-		const price = card.querySelector(".price")?.innerText || "Ingen pris";
-		let location = card.querySelector(".city")?.innerText || "Ukendt placering";
-		let description = "";
-		let images = [];
-		let priceDiff = Number(card.dataset.priceDiff || 0);
-		let lowResFirst = null;
-
-		if (isDBA) {
-			lowResFirst = card.querySelector("img").src;
-		}
-
-		if (isGG) {
-			const id = card.querySelector(".info-btn")?.dataset.id;
-			if (id) {
-				try {
-					const body = {
-						operationName: "GetListing",
-						variables: {
-							id
-						},
-						query: GET_LISTING_QUERY
-					};
-					const res = await fetch(PROXY + API_URL, {
-						method: "POST",
-						headers: HEADERS,
-						body: JSON.stringify(body)
-					});
-					const data = await res.json();
-					const listing = data?.data?.listing;
-					if (listing) {
-						const rawDescription = decode(listing.description || "Ingen beskrivelse.");
-						const formattedDescription = rawDescription
-							.split('\n')
-							.map(line => line.trim())
-							.filter(line => line.length > 0)
-							.map(line => `<p>${line}</p>`)
-							.join('');
-						description = sanitizeHtml(formattedDescription);
-						images = listing.images?.map(img => img.medium || img.small || "").filter(Boolean) || [];
-						if (images.length === 0) {
-							images = ["noimage.svg"];
-						}
-					} else {
-						description = '<p>Ingen beskrivelse tilgængelig.</p>';
-					}
-				} catch (err) {
-					console.error('Error fetching GG listing:', err);
-					description = '<p>Fejl ved indlæsning af beskrivelse.</p>';
-				}
-			}
-		} else if (isDBA) {
-			const result = await getDbaDescription(originalUrl);
-			description = result.description;
-			images = result.images;
-		} else if (isReshopper) {
-			try {
-				images = JSON.parse(card.dataset.images || "[]");
-			} catch {
-				images = [];
-			}
-			description = decode(card.dataset.description || "Ingen beskrivelse tilgængelig.");
-			const itemId = card.dataset.key;
-			location = await getReshopperLocation(itemId);
-		}
-
-		if (!images.length) {
-			images = ["noimage.svg"];
-		}
-
-		openAdModal(title, description, price, location, images, originalUrl, priceDiff, lowResFirst);
-	});
+      function handleZoomCycle(event) {
+        if (isAnimating) return;
+        event.preventDefault();
+        currentZoomIndex = (currentZoomIndex + 1) % zoomCycle.length;
+        const targetScale = zoomCycle[currentZoomIndex];
+        const rect = img.getBoundingClientRect();
+        let clientX = rect.left + rect.width / 2;
+        let clientY = rect.top + rect.height / 2;
+        if (event.type === 'dblclick') {
+          clientX = event.clientX;
+          clientY = event.clientY;
+        } else if (event.type === 'touchend') {
+          const touch = event.changedTouches[0];
+          clientX = touch.clientX;
+          clientY = touch.clientY;
+        }
+        if (targetScale === 1) {
+          isAnimating = true;
+          pz.reset({
+            animate: true
+          });
+          setTimeout(() => {
+            isAnimating = false
+          }, 160);
+        } else {
+          isAnimating = true;
+          pz.zoomToPoint(targetScale, {
+            clientX,
+            clientY,
+            animate: true
+          });
+          setTimeout(() => {
+            isAnimating = false
+          }, 160);
+        }
+      }
+      img.addEventListener('dblclick', handleZoomCycle);
+      let lastTapTime = 0,
+        lastTapX = 0,
+        lastTapY = 0;
+      img.addEventListener('touchend', event => {
+        const currentTime = Date.now();
+        const touch = event.changedTouches[0];
+        const currentX = touch.clientX;
+        const currentY = touch.clientY;
+        const timeDiff = currentTime - lastTapTime;
+        const distance = Math.hypot(currentX - lastTapX, currentY - lastTapY);
+        if (timeDiff < 300 && distance < 50) {
+          handleZoomCycle(event);
+          lastTapTime = 0;
+        } else {
+          lastTapTime = currentTime;
+          lastTapX = currentX;
+          lastTapY = currentY;
+        }
+      });
+    });
+    const updateSlide = (newIndex) => {
+      if (newIndex === undefined) newIndex = currentSlide;
+      const oldImg = slides[currentSlide].querySelector('img');
+      if (oldImg._pz) {
+        oldImg._pz.reset();
+        oldImg._baseScale = oldImg._pz.getScale();
+      } else {
+        oldImg._baseScale = 1;
+      }
+      currentSlide = newIndex;
+      inner.style.transform = `translateX(-${currentSlide * 100}%)`;
+      inner.style.transition = "transform 0.3s ease";
+      if (indicator) indicator.textContent = `${currentSlide + 1}/${images.length}`;
+      const newImg = slides[currentSlide].querySelector('img');
+      if (newImg._pz) {
+        newImg._pz.reset();
+        newImg._baseScale = newImg._pz.getScale();
+      } else {
+        newImg._baseScale = 1;
+      }
+    };
+    updateSlide();
+    modal.querySelector(".left-arrow")?.addEventListener("click", () => {
+      const nextIndex = (currentSlide > 0) ? currentSlide - 1 : images.length - 1;
+      updateSlide(nextIndex);
+    });
+    modal.querySelector(".right-arrow")?.addEventListener("click", () => {
+      const nextIndex = (currentSlide < images.length - 1) ? currentSlide + 1 : 0;
+      updateSlide(nextIndex);
+    });
+    let startX = 0,
+      startY = 0;
+    inner.addEventListener("touchstart", e => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      inner.style.transition = "none";
+    }, {
+      passive: true
+    });
+    inner.addEventListener("touchend", e => {
+      const diffX = e.changedTouches[0].clientX - startX;
+      const diffY = e.changedTouches[0].clientY - startY;
+      const img = slides[currentSlide].querySelector('img');
+      const zoomed = img._pz ? Math.abs(img._pz.getScale() - img._baseScale) > 0.01 : false;
+      if (!zoomed && Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+        const nextIndex = diffX > 0 ?
+          (currentSlide > 0 ? currentSlide - 1 : images.length - 1) :
+          (currentSlide < images.length - 1 ? currentSlide + 1 : 0);
+        updateSlide(nextIndex);
+      }
+    }, {
+      passive: true
+    });
+    const closeModal = () => {
+      modal.classList.add("closing");
+      modal.addEventListener("animationend", () => {
+        modal.remove();
+        document.body.style.overflow = "auto";
+      }, {
+        once: true
+      });
+    };
+    modal.querySelector(".close-modal").addEventListener("click", closeModal);
+    modal.addEventListener("click", e => {
+      if (e.target === modal) closeModal();
+    });
+    const keyHandler = e => {
+      if (e.key === "ArrowLeft") updateSlide(currentSlide > 0 ? currentSlide - 1 : images.length - 1);
+      if (e.key === "ArrowRight") updateSlide(currentSlide < images.length - 1 ? currentSlide + 1 : 0);
+      if (e.key === "Escape") closeModal();
+    };
+    document.addEventListener("keydown", keyHandler);
+    history.pushState({
+      modalOpen: true
+    }, "", window.location.href);
+    const popHandler = () => {
+      const modal = document.querySelector(".ad-modal");
+      if (modal && modal.isConnected) {
+        modal.querySelector(".close-modal")?.click();
+      }
+    };
+    window.addEventListener("popstate", popHandler);
+  }
+  async function getReshopperLocation(itemId) {
+    try {
+      const proxy = PROXY;
+      const apiUrl = `https://app.reshopper.com/api/views/items/${itemId}/via-feed`;
+      const headers = {
+        "Accept-Encoding": "identity",
+        "Connection": "Keep-Alive",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Host": "app.reshopper.com",
+        "ReshopperClient": "android 13",
+        "User-Agent": "Titanium SDK/12.8.1 (SM-G960F; Android API Level: 33; en-US;)",
+        "X-ReshopperVersion": "9.1.10"
+      };
+      const res = await fetch(proxy + encodeURIComponent(apiUrl), {
+        method: "POST",
+        headers,
+        body: new FormData()
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      const loc = data?.item?.user?.address?.location;
+      if (!loc || !loc.lat || !loc.lon) return "Ukendt placering";
+      const reverseUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${Number(loc.lon).toFixed(6)}&y=${Number(loc.lat).toFixed(6)}&struktur=mini`;
+      const revRes = await fetch(reverseUrl);
+      if (!revRes.ok) throw new Error(`HTTP error ${revRes.status}`);
+      const revData = await revRes.json();
+      let city = revData.postnrnavn || "Ukendt";
+      const zip = revData.postnr || "";
+      if (city === "Ukendt" && zip && window.cityToZip) {
+        const matchingCity = Object.keys(window.cityToZip).find(cityName =>
+          window.cityToZip[cityName].includes(zip)
+        );
+        if (matchingCity) city = matchingCity;
+      }
+      return `${city}${zip ? ` ${zip}` : ""}`;
+    } catch (err) {
+      return "Ukendt placering";
+    }
+  }
+  grid.addEventListener("click", async e => {
+    const card = e.target.closest(".card");
+    if (!card || e.target.classList.contains("info-btn")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const isGG = !!card.querySelector(".gg-badge");
+    const isDBA = !!card.querySelector(".dba-badge");
+    const isReshopper = !!card.querySelector(".reshopper-badge");
+    const originalUrl = card.href;
+    const title = card.querySelector("h3")?.innerText || "Ukendt titel";
+    const price = card.querySelector(".price")?.innerText || "Ingen pris";
+    let location = card.querySelector(".city")?.innerText || "Ukendt placering";
+    let description = "";
+    let images = [];
+    let priceDiff = Number(card.dataset.priceDiff || 0);
+    let lowResFirst = null;
+    if (isDBA) {
+      lowResFirst = card.querySelector("img").src;
+    }
+    if (isGG) {
+      const id = card.querySelector(".info-btn")?.dataset.id;
+      if (id) {
+        try {
+          const body = {
+            operationName: "GetListing",
+            variables: {
+              id
+            },
+            query: GET_LISTING_QUERY
+          };
+          const res = await fetch(PROXY + API_URL, {
+            method: "POST",
+            headers: HEADERS,
+            body: JSON.stringify(body)
+          });
+          const data = await res.json();
+          const listing = data?.data?.listing;
+          if (listing) {
+            const rawDescription = decode(listing.description || "Ingen beskrivelse.");
+            const formattedDescription = rawDescription
+              .split('\n')
+              .map(line => line.trim())
+              .filter(line => line.length > 0)
+              .map(line => `<p>${line}</p>`)
+              .join('');
+            description = sanitizeHtml(formattedDescription);
+            images = listing.images?.map(img => img.medium || img.small || "").filter(Boolean) || [];
+            if (images.length === 0) images = ["noimage.svg"];
+          } else {
+            description = '<p>Ingen beskrivelse tilgængelig.</p>';
+          }
+        } catch (err) {
+          description = '<p>Fejl ved indlæsning af beskrivelse.</p>';
+        }
+      }
+    } else if (isDBA) {
+      const result = await getDbaDescription(originalUrl);
+      description = result.description;
+      images = result.images;
+    } else if (isReshopper) {
+      try {
+        images = JSON.parse(card.dataset.images || "[]");
+      } catch {
+        images = [];
+      }
+      description = decode(card.dataset.description || "Ingen beskrivelse tilgængelig.");
+      const itemId = card.dataset.key;
+      location = await getReshopperLocation(itemId);
+    }
+    if (!images.length) {
+      images = ["noimage.svg"];
+    }
+    openAdModal(title, description, price, location, images, originalUrl, priceDiff, lowResFirst);
+  });
 })();
