@@ -96,10 +96,16 @@ function getSelectedLocations() {
 	return sel.length ? sel : jylland;
 }
 
-function formatPrice(amount, currency) {
-	if (typeof amount !== "number") return "";
-	if (amount === 0) return "Gives væk";
-	return amount.toLocaleString("da-DK") + " kr.";
+function formatPrice(amount, currency, trade_type) {
+  if (typeof amount !== "number") return "";
+  if (amount === 0) {
+    if (trade_type === "Gives væk") {
+      return "Gives væk";
+    } else {
+      return "Til salg";  
+    }
+  }
+  return amount.toLocaleString("da-DK") + " kr.";
 }
 
 function makeCard(doc) {
@@ -114,7 +120,7 @@ function makeCard(doc) {
 	const location = doc.location || "";
 	const zip = window.getZipForCity(location);
 	const imageSrc = doc.image_urls[0];
-	const priceText = formatPrice(doc.price?.amount, doc.price?.currency_code);
+	const priceText = formatPrice(doc.price?.amount, doc.price?.currency_code, doc.trade_type);
 
 	const imageHtml = imageSrc.endsWith("noimage.svg") ?
 		`<img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" class="fallback-image" />` :
