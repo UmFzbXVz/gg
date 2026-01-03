@@ -146,6 +146,7 @@ input:checked + .slider:before{transform:translateX(22px)}
 .category-button.open .hamburger-icon .line-middle {  opacity: 0;  transform: scale(0.8);}
 .category-button.open .hamburger-icon .line-bottom {  transform: rotate(-45deg) translate(12px, -8px);}
 .menu-section-header.collapsible,.category-button,.bg-toggle {-webkit-tap-highlight-color: transparent; }
+.retailer-badge {    position: absolute;    top: 10px;    left: 10px;    background: #ff9800cc;    color: #000;    font-weight: 700;    padding: 2px 6px;    border-radius: 4px;    font-size: .7rem;    pointer-events: none;    z-index: 1;}
 @keyframes spin {
 to{transform:rotate(360deg)}
 }
