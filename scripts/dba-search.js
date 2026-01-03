@@ -127,12 +127,24 @@ function makeCard(doc) {
 		`<img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" class="fallback-image" />` :
 		`<img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" />`;
 
+	let retailerBadgeHtml = '';
+	if (isRetailer) {
+		const orgName = doc.organisation_name?.trim();
+		if (orgName) {
+			retailerBadgeHtml = `<div class="retailer-badge retailer-named">${orgName}</div>`;
+			card.dataset.organisationName = orgName; 
+		} else {
+			retailerBadgeHtml = '<div class="retailer-badge">Forhandler</div>';
+			card.dataset.organisationName = '';
+		}
+	}
+
 	card.innerHTML = `
         <div class="card-image-wrapper">
         ${imageHtml}
         </div>
         <div class="dba-badge">dba</div>
-        ${isRetailer ? '<div class="retailer-badge">Forhandler</div>' : ''}
+        ${retailerBadgeHtml}
         <div class="card-content">
             <h3>${doc.heading || ""}</h3>
             <div class="card-footer">

@@ -77,15 +77,26 @@
           images: images.length ? [images[0], ...images.slice(1)] : []
         };
       };
-      const podiumLayout = htmlDoc.querySelector('podium-layout');
-      const template = podiumLayout?.querySelector('template[shadowrootmode="open"]');
-      let descEl = null;
-      if (template) {
-        descEl = template.content.querySelector('.whitespace-pre-wrap');
+    const podiumLayout = htmlDoc.querySelector('podium-layout');
+    const template = podiumLayout?.querySelector('template[shadowrootmode="open"]');
+    let descEl = null;
+
+    if (template) {
+      descEl = template.content.querySelector('.whitespace-pre-wrap');
+      
         if (descEl && descEl.innerHTML.trim()) {
-          return buildResult(descEl.innerHTML.trim());
+
+          let descText = descEl.innerHTML.trim();
+
+          const h2Beskrivelse = descText.match(/<h2 class="h3">Beskrivelse<\/h2>/);
+          if (h2Beskrivelse) {
+            descText = descText.replace(h2Beskrivelse[0], '').trim();  
+          }
+
+          return buildResult(descText);
         }
-      }
+    }
+
       const staticRouterScript = Array.from(htmlDoc.querySelectorAll('script')).find(
         script => script.textContent.includes('__staticRouterHydrationData')
       );
@@ -94,6 +105,7 @@
           const jsonMatch = staticRouterScript.textContent.match(/__staticRouterHydrationData = JSON\.parse\("(.+?)"\)/);
           if (jsonMatch && jsonMatch[1]) {
             const data = JSON.parse(jsonMatch[1].replace(/\\"/g, '"'));
+            const fullData = data?.loaderData?.['item-recommerce'];
             const fullDescription = data?.loaderData?.['item-recommerce']?.itemData?.description;
             if (fullDescription && fullDescription.trim()) {
               const htmlDescription = fullDescription
