@@ -121,6 +121,7 @@ function makeCard(doc) {
 	const zip = window.getZipForCity(location);
 	const imageSrc = doc.image_urls[0];
 	const priceText = formatPrice(doc.price?.amount, doc.price?.currency_code, doc.trade_type);
+	const isRetailer = doc.flags && Array.isArray(doc.flags) && doc.flags.includes('retailer');
 
 	const imageHtml = imageSrc.endsWith("noimage.svg") ?
 		`<img loading="lazy" src="${imageSrc}" alt="${doc.heading || ''}" class="fallback-image" />` :
@@ -128,9 +129,10 @@ function makeCard(doc) {
 
 	card.innerHTML = `
         <div class="card-image-wrapper">
-            ${imageHtml}
+        ${imageHtml}
         </div>
         <div class="dba-badge">dba</div>
+        ${isRetailer ? '<div class="retailer-badge">Forhandler</div>' : ''}
         <div class="card-content">
             <h3>${doc.heading || ""}</h3>
             <div class="card-footer">
@@ -143,6 +145,13 @@ function makeCard(doc) {
 	card.dataset.timestamp = doc.timestamp || 0;
 	card.dataset.images = JSON.stringify(doc.image_urls);
 	card.dataset.key = doc.id;
+    card.dataset.sellerType = isRetailer ? 'retailer' : 'private';
+
+    if (isRetailer && doc.organisation_name) {
+        card.dataset.organisationName = doc.organisation_name.trim();
+    } else {
+        card.dataset.organisationName = '';
+    }
 
 	const adId = String(doc.id);
 	const currentPrice = doc.price?.amount;
@@ -172,7 +181,7 @@ async function fetchDBAPage(page, term, category) {
 	p.append("q", term);
 	if (category) p.append("category", category);
 	if (document.getElementById("closestToggle")?.checked && window.userPosition) {
-		p.append("sort", "CLOSEST");
+		p.append("sort", "CLOSEST"); 
 		p.append("lat", window.userPosition.lat);
 		p.append("lon", window.userPosition.lon);
 		p.append("radius", 50000);
@@ -180,7 +189,13 @@ async function fetchDBAPage(page, term, category) {
 		p.append("sort", "PUBLISHED_DESC");
 		getSelectedLocations().forEach(l => p.append("location", l));
 	}
-	p.append("dealer_segment", "1");
+	const includeDealers = document.getElementById("includeDealersToggle")?.checked || false;
+    if (includeDealers) {
+      p.append("dealer_segment", "1");
+      p.append("dealer_segment", "3");
+    } else {
+      p.append("dealer_segment", "1");
+    }
 	["1", "2"].forEach(t => p.append("trade_type", t));
 	p.append("page", page);
 
