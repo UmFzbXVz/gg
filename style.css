@@ -29,12 +29,12 @@ input{padding:clamp(8px,1.5vw,14px) clamp(12px,2vw,20px);font-size:clamp(1rem,2v
 .card-image-wrapper{width:100%;aspect-ratio:4 / 3;overflow:hidden;flex-shrink:0}
 .card-image-wrapper img{width:100%;height:100%;object-fit:cover;display:block}
 .card-content{padding:2px 10px;padding-top:5px;flex:1;display:flex;flex-direction:column;color:#fff}
-.card-content h3{margin:0 0 auto;font-size:clamp(0.7rem,0.88rem,1rem);font-weight:600}
-.card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:auto;font-size:clamp(0.7rem,0.8rem,0.95rem);gap:8px;white-space:nowrap}
+.card-content h3{margin:5px 0 auto;font-size:clamp(0.7rem,0.88rem,1rem);font-weight:normal}
+.card-footer {  display: flex;  justify-content: space-between;  align-items: flex-start;  margin-top: auto;  font-size: clamp(0.7rem, 0.8rem, 0.95rem);  gap: 8px;  white-space: nowrap;  position: relative;}
 .location{display:flex;flex-wrap:nowrap;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#ccc;font-size:clamp(0.7rem,0.8rem,0.9rem)}
-.city{display:flex;flex-wrap:nowrap;white-space:nowrap;color:#ccc;font-size:clamp(0.7rem,2vw,0.9rem)}
-.location .city,.location .zip{margin-right:4px;flex-shrink:1;font-size:clamp(0.7rem,2vw,0.9rem)}
-.price{text-align:left;font-weight:700;color:#d9534f;flex-wrap:nowrap;white-space:nowrap;font-size:clamp(0.8rem,2vw,1rem)}
+.city {  position: absolute;  bottom: 3px;  right: 0;  color: #ccc;  font-size: clamp(0.7rem, 2vw, 0.8rem);}
+.location .city,.location .zip{margin-right:4px;flex-shrink:1;font-size:clamp(0.7rem,2vw,0.8rem)}
+.price{font-weight:bold;color:white;font-size:clamp(1rem,2vw,1rem); margin: 5px 0 3px 0}
 .toggle-container{display:flex;align-items:center;gap:10px;white-space:nowrap}
 .switch{position:relative;display:inline-block;width:50px;height:28px}
 .switch input{opacity:0;width:0;height:0}
@@ -45,7 +45,6 @@ input:checked + .slider{background-color:#4caf50}
 input:checked + .slider:before{transform:translateX(22px)}
 .slide .google-icon{position:absolute;bottom:12px;left:12px;width:36px;height:36px;background:#0006;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:6px;box-shadow:0 4px 12px #0000004d;transition:transform .25s ease,background .25s ease,box-shadow .25s ease;z-index:5}
 .slide .google-icon img{width:100%;height:100%;object-fit:contain}
-.slide .google-icon:hover{transform:scale(1.3);background:#fffffff2;box-shadow:0 6px 20px #00000080}
 .image-slider.empty-slider{background:transparent;display:flex;align-items:center;justify-content:center}
 .image-slider.empty-slider .empty-slide{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
 .image-slider .slide img[src$="noimage.svg"]{max-width:128px;max-height:128px}
@@ -113,7 +112,7 @@ input:checked + .slider:before{transform:translateX(22px)}
 .ad-title{font-size:1.2rem;margin:0 0 10px}
 .ad-title-wrapper{max-height:60px;display:flex;justify-content:center}
 .ad-title-wrapper h2{margin:0;font-size:1.2rem;text-align:center}
-.ad-price{font-size:1.3rem;color:#d9534f;font-weight:700}
+.ad-price{font-size:1.3rem;color:white;font-weight:700}
 .ad-old-price{text-decoration:line-through}
 .ad-description{text-align:center;white-space:normal;font-size:clamp(1rem,1vw,1.2rem);color:#ddd;max-height:30%;overflow-y:auto;overflow-x:hidden;padding:4px;display:block;justify-content:center}
 .ad-location{font-size:1rem;font-weight:700;color:#ccc}
@@ -147,6 +146,10 @@ input:checked + .slider:before{transform:translateX(22px)}
 .category-button.open .hamburger-icon .line-bottom {  transform: rotate(-45deg) translate(12px, -8px);}
 .menu-section-header.collapsible,.category-button,.bg-toggle {-webkit-tap-highlight-color: transparent; }
 .retailer-badge { position: absolute; top: 10px; left: 10px; background: #ff9800cc; color: #000; font-weight: 700; max-width:40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 6px; border-radius: 4px; font-size: .7rem; pointer-events: none; z-index: 1;}
+.ad-modal .retailer-link {  position: absolute;  bottom: 10px;  left: 10px;  z-index: 10;  overflow: hidden;  transition: transform 0.2s;}
+.ad-modal .retailer-link:hover {  transform: scale(1.05);}
+.ad-modal .retailer-link img {  display: block;  width: 32px;  height: 32px;  object-fit: contain;  background: transparent;}
+
 @keyframes spin {
 to{transform:rotate(360deg)}
 }
@@ -164,7 +167,6 @@ input{font-size:16px!important}
 .card img{aspect-ratio:16 / 9}
 .card-footer,.location{white-space:normal}
 .price{font-size:clamp(1.5vw,3vw,4vw)}
-.location{font-size:.8rem}
 }
 .card.new-card{opacity:0;transform:translateY(20px);transition:transform .5s ease,opacity .5s ease}
 @keyframes fadeInCard {
@@ -218,4 +220,3 @@ to{transform:translateY(20px) scale(0.95);opacity:0}
         background: transparent;
     }
 }
-
