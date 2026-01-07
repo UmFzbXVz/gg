@@ -34,11 +34,10 @@
     (str || "")
     .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
     .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
-
 function sanitizeHtml(html) {
   const div = document.createElement('div');
   div.innerHTML = html;
-  const allowedTags = ['p', 'br']; 
+  const allowedTags = ['p', 'br'];
   const nodes = div.querySelectorAll('*');
   nodes.forEach(node => {
     if (!allowedTags.includes(node.tagName.toLowerCase())) {
@@ -249,7 +248,7 @@ function sanitizeHtml(html) {
     img.addEventListener('error', () => spinner.remove());
   }
 
-  function openAdModal(title, description, price, location, images, originalUrl, priceDiff = 0, lowResFirst = null, retailerUrl = null, retailerLogo = null) {
+function openAdModal(title, description, price, location, images, originalUrl, priceDiff = 0, lowResFirst = null, retailerUrl = null, retailerLogo = null) {
     const modal = document.createElement("div");
     modal.className = "ad-modal";
     const hasDescription = description && description.trim() && !["Ingen beskrivelse tilgængelig.", "Fejl ved indlæsning af beskrivelse."].includes(description.trim());
@@ -258,32 +257,61 @@ function sanitizeHtml(html) {
 
     const retailerLinkHtml = (retailerUrl && retailerUrl !== "null") ?
       `<a href="${retailerUrl}" target="_blank" rel="noopener" class="retailer-link" title="Besøg forhandlerens hjemmeside">
-         <img src="https://pic.onlinewebfonts.com/thumbnails/icons_513967.svg" alt="Forhandler logo" width="32" height="32">
+         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M841-518v318q0 33-23.5 56.5T761-120H201q-33 0-56.5-23.5T121-200v-318q-23-21-35.5-54t-.5-72l42-136q8-26 28.5-43t47.5-17h556q27 0 47 16.5t29 43.5l42 136q12 39-.5 71T841-518Zm-272-42q27 0 41-18.5t11-41.5l-22-140h-78v148q0 21 14 36.5t34 15.5Zm-180 0q23 0 37.5-15.5T441-612v-148h-78l-22 140q-4 24 10.5 42t37.5 18Zm-178 0q18 0 31.5-13t16.5-33l22-154h-78l-40 134q-6 20 6.5 43t41.5 23Zm540 0q29 0 42-23t6-43l-42-134h-76l22 154q3 20 16.5 33t31.5 13ZM201-200h560v-282q-5 2-6.5 2H751q-27 0-47.5-9T663-518q-18 18-41 28t-49 10q-27 0-50.5-10T481-518q-17 18-39.5 28T393-480q-29 0-52.5-10T299-518q-21 21-41.5 29.5T211-480h-4.5q-2.5 0-5.5-2v282Zm560 0H201h560Z"/></svg>
        </a>` : '';
 
     modal.innerHTML = `
         <div class="ad-modal-content">
             ${sliderHtml}
             <div class="ad-info">
-                <div class="ad-title-wrapper"><h2>${decode(title)}</h2></div>
-                ${hasDescription ? `<hr class="ad-divider"><div class="ad-description">${decode(description)}</div>` : ""}
-                <hr class="ad-divider">
-                <div class="ad-price-container">
-                    ${priceDiff ? `<div class="ad-old-price">${(parseInt(price.replace(/\D/g,"")) - priceDiff).toLocaleString("da-DK")} kr.</div>` : ""}
-                    <div class="ad-price">${price}</div>
+                <div class="ad-title-wrapper">
+                    <h2>${decode(title)}</h2>
                 </div>
-                <hr class="price-divider">
-                <div class="ad-location">${decode(location)}</div>
+                ${hasDescription ? `<div class="ad-description">${decode(description)}</div>` : ""}
+                <div class="ad-price-location-container">
+                    <div class="ad-price-container clickable-price-container">
+                        ${priceDiff ? `<div class="ad-old-price">${(parseInt(price.replace(/\D/g,"")) - priceDiff).toLocaleString("da-DK")} kr.</div>` : ""}
+                        <div class="ad-price">${price}</div>
+                    </div>
+                    <div class="ad-location">${decode(location)}</div>
+                </div>
             </div>
-
             ${retailerLinkHtml}
-
             <a href="${originalUrl}" target="_blank" rel="noopener" class="original-link">
                 <img src="https://ruban.nu/image/external-link-white.svg" width="24">
             </a>
             <button class="close-modal">×</button>
         </div>
     `;
+    
+    const priceElement = modal.querySelector('.ad-price');
+    if (priceElement && originalUrl) {
+        priceElement.style.cursor = 'pointer';
+        priceElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            if (isMobile) {
+                const fallbackTimer = setTimeout(() => {
+                    window.open(originalUrl, '_blank', 'noopener');
+                }, 1000);
+                window.location.href = originalUrl;
+                
+                const blurHandler = () => {
+                    clearTimeout(fallbackTimer);
+                    window.removeEventListener('blur', blurHandler);
+                };
+                window.addEventListener('blur', blurHandler);
+                
+                const pagehideHandler = () => {
+                    clearTimeout(fallbackTimer);
+                };
+                window.addEventListener('pagehide', pagehideHandler, { once: true });
+            } else {
+                window.open(originalUrl, '_blank', 'noopener');
+            }
+        });
+    }
+    
     document.body.appendChild(modal);
 
     const inner = modal.querySelector(".slider-inner");
