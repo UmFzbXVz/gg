@@ -314,6 +314,8 @@ function openAdModal(title, description, price, location, images, originalUrl, p
     
     document.body.appendChild(modal);
 
+    document.body.style.overflow = "hidden";
+
     const inner = modal.querySelector(".slider-inner");
     const slides = Array.from(modal.querySelectorAll('.slide'));
     slides.forEach(addLoadingSpinner);
