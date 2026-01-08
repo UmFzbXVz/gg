@@ -100,336 +100,424 @@
       </form>
       <div id="grid"></div>
     </div>
+
     <script src="https://unpkg.com/@panzoom/panzoom@4.6.0/dist/panzoom.min.js"></script>
     <script src="scripts/gg-search.js"></script>
     <script src="scripts/dba-search.js"></script>
     <script src="scripts/reshopper-search.js"></script>
     <script src="scripts/fremviser.js"></script>
     <script src="scripts/bg.js"></script>
+
     <script>
-(() => {
-	const STORAGE_KEY = "ratoghvidt_settings";
-	const MENU_STATE_KEY = "ratoghvidt_menu_state";
-	const checkboxes = [
-		"sourceDBA",
-		"sourceGG",
-		"sourceReshopper",
-		"locationJylland",
-		"locationSydsjaelland",
-		"locationFyn",
-		"locationSjaelland",
-		"bgToggle",
-		"closestToggle",
-		"includeDealersToggle"
-	];
-	const saved = localStorage.getItem(STORAGE_KEY);
-	let settings = { selectedCategory: 'mobler' };
-	if (saved) {
-		try {
-			const parsed = JSON.parse(saved);
-			settings = { ...settings, ...parsed };
-			if (!['mobler', 'dyr', 'toejogboern', 'kunst', 'alting'].includes(settings.selectedCategory)) {
-				settings.selectedCategory = 'mobler';
-			}
-		} catch (e) {}
-	}
-	checkboxes.forEach(id => {
-		const el = document.getElementById(id);
-		if (el && typeof settings[id] === "boolean") {
-			el.checked = settings[id];
-		}
-	});
-	const saveSettings = () => {
-		const current = {};
-		checkboxes.forEach(cid => {
-			const cel = document.getElementById(cid);
-			if (cel) current[cid] = cel.checked;
-		});
-		current.selectedCategory = selectedCategory;
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-	};
-	checkboxes.forEach(id => {
-		const el = document.getElementById(id);
-		if (el) {
-			el.addEventListener("change", saveSettings);
-		}
-	});
-	const defaultMenuState = {
-		categories: true,
-		locations: true,
-		settings: false,
-		sources: false
-	};
-	let menuState = { ...defaultMenuState };
-	const savedMenuState = localStorage.getItem(MENU_STATE_KEY);
-	if (savedMenuState) {
-		try {
-			const parsed = JSON.parse(savedMenuState);
-			menuState = { ...defaultMenuState, ...parsed };
-		} catch (e) {}
-	}
-	document.querySelector('.menu-section:nth-child(1)').classList.toggle('open', menuState.categories);
-	document.querySelector('.menu-section:nth-child(2)').classList.toggle('open', menuState.locations);
-	document.querySelector('.menu-section:nth-child(3)').classList.toggle('open', menuState.settings);
-	document.querySelector('.menu-section:nth-child(4)').classList.toggle('open', menuState.sources);
-	document.querySelectorAll('.menu-section-header.collapsible').forEach((header, index) => {
-		header.addEventListener('click', () => {
-			const section = header.parentElement;
-			section.classList.toggle('open');
-			if (index === 0) menuState.categories = section.classList.contains('open');
-			if (index === 1) menuState.locations = section.classList.contains('open');
-			if (index === 2) menuState.settings = section.classList.contains('open');
-			if (index === 3) menuState.sources = section.classList.contains('open');
-			localStorage.setItem(MENU_STATE_KEY, JSON.stringify(menuState));
-		});
-	});
-	const form = document.getElementById("searchForm");
-	const input = document.getElementById("searchTerm");
-	const spinner = document.getElementById("searchSpinner");
-	const grid = document.getElementById("grid");
-	const categoryButton = document.getElementById("categoryButton");
-	const categoryMenu = document.getElementById("categoryMenu");
-	const bgToggle = document.getElementById("bgToggle");
-	const closestToggle = document.getElementById("closestToggle");
-	const locationSelector = document.querySelector('.location-selector');
-	const sentinel = document.createElement('div');
-	let selectedCategory = settings.selectedCategory;
-	const BATCH_SIZE = 30;
-	let currentIndex = 0;
-	let isFirstSearch = true;
-	window.allCards = [];
-	window.pendingBgSearches = [];
-	window.seenAdKeys = new Set();
-	window.userPosition = null;
-	sentinel.style.height = '1px';
-	const observer = new IntersectionObserver(entries => {
-		if (entries[0].isIntersecting) renderNextBatch();
-	}, { rootMargin: '200px 0px 0px 0px' });
-	bgToggle.addEventListener("change", () => {
-		if (bgToggle.checked && window.bgSearch) window.bgSearch.resume();
-	});
-	const applyClosestToggleState = () => {
-		if (closestToggle.checked) {
-			window.userPosition = { lat: 54.890599, lon: 11.8710399 };
-			locationSelector.classList.add('disabled');
-		} else {
-			window.userPosition = null;
-			locationSelector.classList.remove('disabled');
-		}
-	};
-	closestToggle.addEventListener("change", () => {
-		applyClosestToggleState();
-		if (input.value.trim()) form.requestSubmit();
-	});
-	applyClosestToggleState();
-	if (bgToggle.checked && window.bgSearch) {
-		window.bgSearch.resume();
-	}
-	const categories = {
-		'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78', reshopperFacetValue: 'Home', icon: 'table_lamp' },
-		'dyr': { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77', reshopperFacetValue: null, icon: 'pets' },
-		'kunst': { ggSlug: '/antikviteter-og-kunst', ggTitle: 'antikviteter og kunst', dbaCat: '0.76', reshopperFacetValue: null, icon: 'palette' },
-		'toejogboern': { ggSlug: '/born', ggTitle: 'børn', dbaCat: '0.68', reshopperFacetValue: 'Kids', icon: 'child_friendly' },
-		'alting': { ggSlug: '', ggTitle: 'alting', dbaCat: undefined, reshopperFacetValue: undefined, icon: 'search' }
-	};
-	const cardKey = card => card.dataset.id || card.dataset.key;
-	grid.addEventListener("click", e => {
-		const card = e.target.closest(".card");
-		if (!card) return;
-		if (e.ctrlKey || e.metaKey) {
-			window.open(card.href, "_blank");
-			e.preventDefault();
-			e.stopPropagation();
-		}
-	}, true);
-	const showNoResults = term => {
-		if (!window.allCards.length) grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
-	};
-	const sortAllCards = () => window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
-	const renderNextBatch = () => {
-		const batch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
-		if (!batch.length) return;
-		const frag = document.createDocumentFragment();
-		batch.forEach(c => frag.appendChild(c));
-		grid.insertBefore(frag, sentinel);
-		currentIndex += batch.length;
-	};
-	window.sortAndRender = () => {
-		sortAllCards();
-		grid.innerHTML = "";
-		grid.appendChild(sentinel);
-		currentIndex = 0;
-		renderNextBatch();
-		observer.observe(sentinel);
-	};
-	window.startSpinner = () => {
-		spinner.classList.add("active");
-		input.disabled = true;
-	};
-	window.stopSpinner = () => {
-		spinner.classList.remove("active");
-		input.disabled = false;
-	};
-	const magicSpan = (id, terms, displayTerm) => {
-		const el = document.getElementById(id);
-		if (!el) return;
-		el.addEventListener('click', async () => {
-			if (spinner.classList.contains("active")) return;
-			const catObj = categories[selectedCategory];
-			input.value = "";
-			input.disabled = true;
-			spinner.classList.add("active");
-			window.allCards = [];
-			window.totalAds = 0;
-			window.loadedAds = 0;
-			currentIndex = 0;
-			window.seenAdKeys.clear();
-			try {
-				window.isMagicMode = true;
-				const bgOn = bgToggle.checked;
-				if (bgOn && window.bgSearch) {
-					window.bgSearch.clear();
-					terms.forEach(t => window.bgSearch.addActiveSearch(t, catObj));
-				}
-				for (const term of terms) {
-					await window.hentOgVisGG(term, catObj, false);
-					await window.hentOgVisDBA(term, catObj.dbaCat, false);
-					await window.hentOgVisReshopper(term, false, catObj.reshopperFacetValue);
-				}
-				const seen = new Set();
-				window.allCards = window.allCards.filter(c => {
-					const k = cardKey(c);
-					if (seen.has(k)) return false;
-					seen.add(k);
-					return true;
-				});
-				window.loadedAds = window.totalAds = window.allCards.length;
-				window.sortAndRender();
-				showNoResults(displayTerm);
-				if (bgOn && window.bgSearch) window.bgSearch.setBaseline();
-			} finally {
-				input.disabled = false;
-				spinner.classList.remove("active");
-				window.isMagicMode = false;
-			}
-		});
-	};
-	const categoryDividerIcon = document.getElementById('categoryDividerIcon');
-	const updateCategoryIcon = () => {
-		const iconName = categories[selectedCategory].icon;
-		categoryDividerIcon.textContent = iconName;
-	};
-	const setActiveCategory = cat => {
-		categoryMenu.querySelectorAll('.categories-list > li').forEach(i => i.classList.remove('active'));
-		categoryMenu.querySelector(`.categories-list > li[data-value="${cat}"]`).classList.add('active');
-		updateCategoryIcon();
-	};
-	setActiveCategory(selectedCategory);
-	const overlay = document.createElement('div');
-	overlay.className = 'menu-overlay';
-	categoryButton.addEventListener('click', e => {
-		e.preventDefault();
-		const isOpen = categoryMenu.classList.contains('show');
-		categoryMenu.classList.toggle('show');
-		categoryButton.classList.toggle('open', !isOpen);
-		if (!isOpen) document.body.appendChild(overlay);
-		else overlay.remove();
-	});
-	overlay.addEventListener('click', () => {
-		categoryMenu.classList.remove('show');
-		overlay.remove();
-		categoryButton.classList.remove('open');
-	});
-	input.addEventListener("focus", () => input.select());
-	categoryMenu.querySelectorAll('.categories-list > li').forEach(li => li.addEventListener('click', e => {
-		selectedCategory = li.dataset.value;
-		setActiveCategory(selectedCategory);
-		saveSettings();
-		categoryMenu.classList.remove('show');
-		overlay.remove();
-		categoryButton.classList.remove('open');
-		if (input.value.trim()) form.requestSubmit();
-		e.stopPropagation();
-	}));
-	document.querySelectorAll('.locations-list input[type="checkbox"]').forEach(cb => cb.addEventListener('change', () => {
-		if (input.value.trim()) form.requestSubmit();
-	}));
-	const includeDealersToggle = document.getElementById("includeDealersToggle");
-	if (includeDealersToggle) {
-		includeDealersToggle.addEventListener("change", () => {
-			if (input.value.trim()) form.requestSubmit();
-		});
-	}
-	form.addEventListener("submit", async e => {
-		e.preventDefault();
-		const term = input.value.trim();
-		if (!term) return;
-		const catObj = categories[selectedCategory];
-		input.disabled = true;
-		spinner.classList.add("active");
-		if (isFirstSearch) {
-			grid.innerHTML = "";
-			isFirstSearch = false;
-		}
-		window.allCards = [];
-		window.totalAds = 0;
-		window.loadedAds = 0;
-		currentIndex = 0;
-		window.seenAdKeys.clear();
-		if (window.bgSearch) window.bgSearch.clear();
-		try {
-			await Promise.all([
-				window.hentOgVisGG(term, catObj, false),
-				window.hentOgVisDBA(term, catObj.dbaCat, false),
-				window.hentOgVisReshopper(term, false, catObj.reshopperFacetValue)
-			]);
-			window.loadedAds = window.totalAds;
-			window.sortAndRender();
-			if (bgToggle.checked && window.bgSearch) {
-				window.bgSearch.addActiveSearch(term, catObj);
-				window.bgSearch.setBaseline();
-			}
-			showNoResults(term);
-		} finally {
-			input.disabled = false;
-			spinner.classList.remove("active");
-		}
-	});
-	magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig", "Wikkelsø"], "gode sager");
-	magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander", "retro", "skammel"], "generelle sager");
-})();
-(() => {
-	window.cityToZip = {};
-	async function loadPostnumre() {
-		try {
-			const res = await fetch("https://api.dataforsyningen.dk/postnumre");
-			if (!res.ok) throw new Error("HTTP " + res.status);
-			const json = await res.json();
-			json.forEach(e => {
-				const city = e.navn.trim();
-				if (!window.cityToZip[city]) window.cityToZip[city] = [];
-				window.cityToZip[city].push(e.nr);
-			});
-		} catch (e) {
-			console.error("Postnumre fejl:", e);
-		}
-	}
-	window.getZipForCity = city => city && window.cityToZip[city.trim()] ? window.cityToZip[city.trim()].join(", ") : "";
-	loadPostnumre();
-})();
-function updateSourcesIcon() {
-	const dba = document.getElementById('sourceDBA').checked;
-	const gg = document.getElementById('sourceGG').checked;
-	const reshopper = document.getElementById('sourceReshopper').checked;
-	const circles = document.querySelectorAll('.sources-header-icon .fill-circle');
-	circles[0].classList.toggle('fill-reshopper', reshopper);
-	circles[1].classList.toggle('fill-gg', gg);
-	circles[2].classList.toggle('fill-dba', dba);
-}
-document.addEventListener('DOMContentLoaded', updateSourcesIcon);
-document.querySelectorAll('.source-toggle').forEach(cb => {
-	cb.addEventListener('change', updateSourcesIcon);
-});
+      (() => {
+        const STORAGE_KEY = "ratoghvidt_settings";
+        const MENU_STATE_KEY = "ratoghvidt_menu_state";
+        const checkboxes = [
+          "sourceDBA", "sourceGG", "sourceReshopper",
+          "locationJylland", "locationSydsjaelland", "locationFyn", "locationSjaelland",
+          "bgToggle", "closestToggle", "includeDealersToggle"
+        ];
+        const saved = localStorage.getItem(STORAGE_KEY);
+        let settings = { selectedCategory: 'mobler' };
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            settings = { ...settings, ...parsed };
+            if (!['mobler', 'dyr', 'toejogboern', 'kunst', 'alting'].includes(settings.selectedCategory)) {
+              settings.selectedCategory = 'mobler';
+            }
+          } catch (e) {}
+        }
+        checkboxes.forEach(id => {
+          const el = document.getElementById(id);
+          if (el && typeof settings[id] === "boolean") {
+            el.checked = settings[id];
+          }
+        });
+        const saveSettings = () => {
+          const current = {};
+          checkboxes.forEach(cid => {
+            const cel = document.getElementById(cid);
+            if (cel) current[cid] = cel.checked;
+          });
+          current.selectedCategory = selectedCategory;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+        };
+        checkboxes.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener("change", saveSettings);
+          }
+        });
+        const defaultMenuState = {
+          categories: true,
+          locations: true,
+          settings: false,
+          sources: false
+        };
+        let menuState = { ...defaultMenuState };
+        const savedMenuState = localStorage.getItem(MENU_STATE_KEY);
+        if (savedMenuState) {
+          try {
+            const parsed = JSON.parse(savedMenuState);
+            menuState = { ...defaultMenuState, ...parsed };
+          } catch (e) {}
+        }
+        document.querySelector('.menu-section:nth-child(1)').classList.toggle('open', menuState.categories);
+        document.querySelector('.menu-section:nth-child(2)').classList.toggle('open', menuState.locations);
+        document.querySelector('.menu-section:nth-child(3)').classList.toggle('open', menuState.settings);
+        document.querySelector('.menu-section:nth-child(4)').classList.toggle('open', menuState.sources);
+        document.querySelectorAll('.menu-section-header.collapsible').forEach((header, index) => {
+          header.addEventListener('click', () => {
+            const section = header.parentElement;
+            section.classList.toggle('open');
+            if (index === 0) menuState.categories = section.classList.contains('open');
+            if (index === 1) menuState.locations = section.classList.contains('open');
+            if (index === 2) menuState.settings = section.classList.contains('open');
+            if (index === 3) menuState.sources = section.classList.contains('open');
+            localStorage.setItem(MENU_STATE_KEY, JSON.stringify(menuState));
+          });
+        });
+        const form = document.getElementById("searchForm");
+        const input = document.getElementById("searchTerm");
+        const spinner = document.getElementById("searchSpinner");
+        const grid = document.getElementById("grid");
+        const categoryButton = document.getElementById("categoryButton");
+        const categoryMenu = document.getElementById("categoryMenu");
+        const bgToggle = document.getElementById("bgToggle");
+        const closestToggle = document.getElementById("closestToggle");
+        const locationSelector = document.querySelector('.location-selector');
+        const sentinel = document.createElement('div');
+        let selectedCategory = settings.selectedCategory;
+        const BATCH_SIZE = 30;
+        let currentIndex = 0;
+        let isFirstSearch = true;
+        window.allCards = [];
+        window.pendingBgSearches = [];
+        window.seenAdKeys = new Set();
+        window.userPosition = null;
+        sentinel.style.height = '1px';
+        const observer = new IntersectionObserver(entries => {
+          if (entries[0].isIntersecting) renderNextBatch();
+        }, { rootMargin: '200px 0px 0px 0px' });
+        bgToggle.addEventListener("change", () => {
+          if (bgToggle.checked && window.bgSearch) window.bgSearch.resume();
+        });
+        const applyClosestToggleState = () => {
+          if (closestToggle.checked) {
+            window.userPosition = { lat: 54.890599, lon: 11.8710399 };
+            locationSelector.classList.add('disabled');
+          } else {
+            window.userPosition = null;
+            locationSelector.classList.remove('disabled');
+          }
+        };
+        closestToggle.addEventListener("change", () => {
+          applyClosestToggleState();
+          if (input.value.trim()) form.requestSubmit();
+        });
+        applyClosestToggleState();
+        if (bgToggle.checked && window.bgSearch) {
+          window.bgSearch.resume();
+        }
+        const categories = {
+          'mobler': { ggSlug: '/mobler', ggTitle: 'møbler', dbaCat: '0.78', reshopperFacetValue: 'Home', icon: 'table_lamp' },
+          'dyr': { ggSlug: '/dyr-og-tilbehor', ggTitle: 'dyr og tilbehør', dbaCat: '0.77', reshopperFacetValue: null, icon: 'pets' },
+          'kunst': { ggSlug: '/antikviteter-og-kunst', ggTitle: 'antikviteter og kunst', dbaCat: '0.76', reshopperFacetValue: null, icon: 'palette' },
+          'toejogboern': { ggSlug: '/born', ggTitle: 'børn', dbaCat: '0.68', reshopperFacetValue: 'Kids', icon: 'child_friendly' },
+          'alting': { ggSlug: '', ggTitle: 'alting', dbaCat: undefined, reshopperFacetValue: undefined, icon: 'search' }
+        };
+        const cardKey = card => card.dataset.id || card.dataset.key;
+        grid.addEventListener("click", e => {
+          const card = e.target.closest(".card");
+          if (!card) return;
+          if (e.ctrlKey || e.metaKey) {
+            window.open(card.href, "_blank");
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }, true);
+        const showNoResults = term => {
+          if (!window.allCards.length) grid.innerHTML = `<div class="no-results">0 søgeresultater for "<strong>${term}</strong>".</div>`;
+        };
+        const sortAllCards = () => window.allCards.sort((a, b) => Number(b.dataset.timestamp) - Number(a.dataset.timestamp));
+        const renderNextBatch = () => {
+          const batch = window.allCards.slice(currentIndex, currentIndex + BATCH_SIZE);
+          if (!batch.length) return;
+          const frag = document.createDocumentFragment();
+          batch.forEach(c => frag.appendChild(c));
+          grid.insertBefore(frag, sentinel);
+          currentIndex += batch.length;
+        };
+        window.sortAndRender = () => {
+          sortAllCards();
+          grid.innerHTML = "";
+          grid.appendChild(sentinel);
+          currentIndex = 0;
+          renderNextBatch();
+          observer.observe(sentinel);
+        };
+        window.startSpinner = () => {
+          spinner.classList.add("active");
+          input.disabled = true;
+        };
+        window.stopSpinner = () => {
+          spinner.classList.remove("active");
+          input.disabled = false;
+        };
+        const magicSpan = (id, terms, displayTerm) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener('click', async () => {
+            if (spinner.classList.contains("active")) return;
+            const catObj = categories[selectedCategory];
+            input.value = "";
+            input.disabled = true;
+            spinner.classList.add("active");
+            window.allCards = [];
+            window.totalAds = 0;
+            window.loadedAds = 0;
+            currentIndex = 0;
+            window.seenAdKeys.clear();
+            try {
+              window.isMagicMode = true;
+              const bgOn = bgToggle.checked;
+              if (bgOn && window.bgSearch) {
+                window.bgSearch.clear();
+                terms.forEach(t => window.bgSearch.addActiveSearch(t, catObj));
+              }
+              for (const term of terms) {
+                await window.hentOgVisGG(term, catObj, false);
+                await window.hentOgVisDBA(term, catObj.dbaCat, false);
+                await window.hentOgVisReshopper(term, false, catObj.reshopperFacetValue);
+              }
+              const seen = new Set();
+              window.allCards = window.allCards.filter(c => {
+                const k = cardKey(c);
+                if (seen.has(k)) return false;
+                seen.add(k);
+                return true;
+              });
+              window.loadedAds = window.totalAds = window.allCards.length;
+              window.sortAndRender();
+              showNoResults(displayTerm);
+              if (bgOn && window.bgSearch) window.bgSearch.setBaseline();
+            } finally {
+              input.disabled = false;
+              spinner.classList.remove("active");
+              window.isMagicMode = false;
+            }
+          });
+        };
+        const categoryDividerIcon = document.getElementById('categoryDividerIcon');
+        const updateCategoryIcon = () => {
+          const iconName = categories[selectedCategory].icon;
+          categoryDividerIcon.textContent = iconName;
+        };
+        const setActiveCategory = cat => {
+          categoryMenu.querySelectorAll('.categories-list > li').forEach(i => i.classList.remove('active'));
+          categoryMenu.querySelector(`.categories-list > li[data-value="${cat}"]`).classList.add('active');
+          updateCategoryIcon();
+        };
+        setActiveCategory(selectedCategory);
+        const overlay = document.createElement('div');
+        overlay.className = 'menu-overlay';
+        categoryButton.addEventListener('click', e => {
+          e.preventDefault();
+          const isOpen = categoryMenu.classList.contains('show');
+          categoryMenu.classList.toggle('show');
+          categoryButton.classList.toggle('open', !isOpen);
+          if (!isOpen) document.body.appendChild(overlay);
+          else overlay.remove();
+        });
+        overlay.addEventListener('click', () => {
+          categoryMenu.classList.remove('show');
+          overlay.remove();
+          categoryButton.classList.remove('open');
+        });
+        input.addEventListener("focus", () => input.select());
+        categoryMenu.querySelectorAll('.categories-list > li').forEach(li => li.addEventListener('click', e => {
+          selectedCategory = li.dataset.value;
+          setActiveCategory(selectedCategory);
+          saveSettings();
+          categoryMenu.classList.remove('show');
+          overlay.remove();
+          categoryButton.classList.remove('open');
+          if (input.value.trim()) form.requestSubmit();
+          e.stopPropagation();
+        }));
+        document.querySelectorAll('.locations-list input[type="checkbox"]').forEach(cb => cb.addEventListener('change', () => {
+          if (input.value.trim()) form.requestSubmit();
+        }));
+        const includeDealersToggle = document.getElementById("includeDealersToggle");
+        if (includeDealersToggle) {
+          includeDealersToggle.addEventListener("change", () => {
+            if (input.value.trim()) form.requestSubmit();
+          });
+        }
+        form.addEventListener("submit", async e => {
+          e.preventDefault();
+          const term = input.value.trim();
+          if (!term) return;
+          const catObj = categories[selectedCategory];
+          input.disabled = true;
+          spinner.classList.add("active");
+          if (isFirstSearch) {
+            grid.innerHTML = "";
+            isFirstSearch = false;
+          }
+          window.allCards = [];
+          window.totalAds = 0;
+          window.loadedAds = 0;
+          currentIndex = 0;
+          window.seenAdKeys.clear();
+          if (window.bgSearch) window.bgSearch.clear();
+          try {
+            await Promise.all([
+              window.hentOgVisGG(term, catObj, false),
+              window.hentOgVisDBA(term, catObj.dbaCat, false),
+              window.hentOgVisReshopper(term, false, catObj.reshopperFacetValue)
+            ]);
+            window.loadedAds = window.totalAds;
+            window.sortAndRender();
+            if (bgToggle.checked && window.bgSearch) {
+              window.bgSearch.addActiveSearch(term, catObj);
+              window.bgSearch.setBaseline();
+            }
+            showNoResults(term);
+          } finally {
+            input.disabled = false;
+            spinner.classList.remove("active");
+          }
+        });
+        magicSpan("rat", ["Jason", "Rolschau", "Glostrup møbelfabrik", "Brande møbelindustri", "Østervig", "Wikkelsø"], "gode sager");
+        magicSpan("hvidt", ["bord", "skrivebord", "sofa", "sofabord", "spisebord", "skænk", "stol", "lænestol", "hvilestol", "palisander", "retro", "skammel"], "generelle sager");
+      })();
+
+      (() => {
+        window.cityToZip = {};
+        async function loadPostnumre() {
+          try {
+            const res = await fetch("https://api.dataforsyningen.dk/postnumre");
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const json = await res.json();
+            json.forEach(e => {
+              const city = e.navn.trim();
+              if (!window.cityToZip[city]) window.cityToZip[city] = [];
+              window.cityToZip[city].push(e.nr);
+            });
+          } catch (e) {
+            console.error("Postnumre fejl:", e);
+          }
+        }
+        window.getZipForCity = city => city && window.cityToZip[city.trim()] ? window.cityToZip[city.trim()].join(", ") : "";
+        loadPostnumre();
+      })();
+
+      function updateSourcesIcon() {
+        const dba = document.getElementById('sourceDBA').checked;
+        const gg = document.getElementById('sourceGG').checked;
+        const reshopper = document.getElementById('sourceReshopper').checked;
+        const circles = document.querySelectorAll('.sources-header-icon .fill-circle');
+        circles[0].classList.toggle('fill-reshopper', reshopper);
+        circles[1].classList.toggle('fill-gg', gg);
+        circles[2].classList.toggle('fill-dba', dba);
+      }
+      document.addEventListener('DOMContentLoaded', updateSourcesIcon);
+      document.querySelectorAll('.source-toggle').forEach(cb => {
+        cb.addEventListener('change', updateSourcesIcon);
+      });
+
+      function formatTimeSince(timestampMs) {
+        const ts = Number(timestampMs);
+        if (isNaN(ts) || ts < 1000000000000) return "";
+        const diffSec = Math.floor((Date.now() - ts) / 1000);
+        if (diffSec < 60) return "lige nu";
+        const sec = diffSec % 60;
+        const minTotal = Math.floor(diffSec / 60);
+        const min = minTotal % 60;
+        const hoursTotal = Math.floor(diffSec / 3600);
+        const hours = hoursTotal % 24;
+        const days = Math.floor(diffSec / 86400);
+        const weeks = Math.floor(days / 7);
+        if (diffSec < 3600) {
+          return `${minTotal}:${sec < 10 ? "0" : ""}${sec}`;
+        } else if (diffSec < 72 * 3600) {
+          return `${hoursTotal}t ${min < 10 ? "0" : ""}${min}m`;
+        } else if (days < 7) {
+          return `${days}d ${hours < 10 ? "0" : ""}${hours}t`;
+        } else if (weeks < 8) {
+          const remainingDays = days % 7;
+          return `${weeks}u ${remainingDays > 0 ? remainingDays + "d" : ""}`.trim();
+        } else {
+          return new Date(ts).toLocaleDateString('da-DK', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+          });
+        }
+      }
+      const updateVisibleTimeBadges = () => {
+        document.querySelectorAll('.card .time-since-badge').forEach(badge => {
+          const card = badge.closest('.card');
+          if (card && card.dataset.timestamp) {
+            badge.textContent = formatTimeSince(card.dataset.timestamp);
+          }
+        });
+      };
+      let timeTicker = null;
+      function startTimeTicker() {
+        if (timeTicker) return;
+        updateVisibleTimeBadges();
+        timeTicker = setInterval(updateVisibleTimeBadges, 30000);
+      }
+      function stopTimeTicker() {
+        if (timeTicker) {
+          clearInterval(timeTicker);
+          timeTicker = null;
+        }
+      }
+      document.addEventListener('DOMContentLoaded', () => {
+        const bgToggle = document.getElementById('bgToggle');
+        if (bgToggle?.checked) startTimeTicker();
+        bgToggle?.addEventListener('change', () => {
+          if (bgToggle.checked) {
+            startTimeTicker();
+          } else {
+            stopTimeTicker();
+          }
+        });
+      });
+      const grid = document.getElementById('grid');
+      const cardObserver = new MutationObserver(mutations => {
+        let needsUpdate = false;
+        for (const mutation of mutations) {
+          if (mutation.type === 'childList') {
+            for (const node of mutation.addedNodes) {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                if (node.classList?.contains('card')) {
+                  const badge = node.querySelector('.time-since-badge');
+                  if (badge && node.dataset.timestamp) {
+                    badge.textContent = formatTimeSince(node.dataset.timestamp);
+                  }
+                } else {
+                  node.querySelectorAll?.('.card .time-since-badge').forEach(badge => {
+                    const card = badge.closest('.card');
+                    if (card?.dataset.timestamp) {
+                      badge.textContent = formatTimeSince(card.dataset.timestamp);
+                      needsUpdate = true;
+                    }
+                  });
+                }
+              }
+            }
+          }
+        }
+        if (needsUpdate && document.getElementById('bgToggle')?.checked) {
+          updateVisibleTimeBadges();
+        }
+      });
+      cardObserver.observe(grid, { childList: true, subtree: false });
     </script>
   </body>
 </html>
