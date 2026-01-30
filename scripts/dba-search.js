@@ -320,7 +320,7 @@ async function fetchDBAPage(page, term, category) {
   }
   ["1", "2"].forEach(t => p.append("trade_type", t));
   p.append("page", page);
-  const res = await fetch(`${PROXY}${API_URL}?${p.toString()}`);
+  const res = await fetch(`${API_URL}?${p.toString()}`);
   if (!res.ok) throw new Error("HTTP " + res.status);
   const data = await res.json();
   const docs = (data.docs || []).filter(d => d.type === "bap");
